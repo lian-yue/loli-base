@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-18 07:04:24
-/*	Updated: UTC 2014-12-30 13:14:51
+/*	Updated: UTC 2015-01-03 08:58:47
 /*
 /* ************************************************************************** */
 namespace Model;
@@ -67,7 +67,7 @@ class Page extends Model{
 		if ($this->limit) {
 			return $this->limit;
 		}
-		return $this->limit = ($limit = absint(gp('$limit'))) && $limit <= $this->maxLimit ? $limit : $this->defaultLimit;
+		return $this->limit = ($limit = absint(r('$limit'))) && $limit <= $this->maxLimit ? $limit : $this->defaultLimit;
 	}
 
 	// 偏移
@@ -76,7 +76,7 @@ class Page extends Model{
 			return $this->offset;
 		}
 		if ($this->isOffset()) {
-			return $this->offset = absint(gp('$offset'));
+			return $this->offset = absint(r('$offset'));
 		}
 		return $this->offset = empty($_REQUEST['$page']) || $_REQUEST['$page'] < 0 ? 0 : ($_REQUEST['$page'] - 1) * $this->limit();
 	}

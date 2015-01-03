@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-01-01 06:21:11
+/*	Updated: UTC 2015-01-03 08:58:38
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
@@ -98,11 +98,11 @@ class Base extends Model{
 	}
 
 	public function doNonce() {
-		return $this->Form->hidden(['name' => '_nonce', 'value' => gp('_nonce') ? gp('_nonce') : call_user_func_array([$this, 'getNonce'], func_get_args())]);
+		return $this->Form->hidden(['name' => '_nonce', 'value' => r('_nonce') ? r('_nonce') : call_user_func_array([$this, 'getNonce'], func_get_args())]);
 	}
 
 	public function isNonce() {
-		return gp('_nonce') === call_user_func_array([$this, 'getNonce'], func_get_args());
+		return r('_nonce') === call_user_func_array([$this, 'getNonce'], func_get_args());
 	}
 
 	public function exitNonce() {

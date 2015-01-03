@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-02 08:45:21
+/*	Updated: UTC 2015-01-03 09:02:06
 /*
 /* ************************************************************************** */
 
@@ -125,6 +125,7 @@ function is_filepath($path) {
 	}
 	return $path;
 }
+
 
 
 
@@ -600,7 +601,7 @@ function prioritysortcall($a, $b) {
 *	返回值 '' 或者
 **/
 function g($k, $d='') {
-	return isset($_GET[$k]) ? (is_array($_GET[$k]) ? 'array' :(string) $_GET[$k]) : $d;
+	return isset($_GET[$k]) ? (is_array($_GET[$k]) ? ($_POST[$k]? '': '1') :(string) $_GET[$k]) : $d;
 }
 
 /**
@@ -610,8 +611,8 @@ function g($k, $d='') {
 *
 *	返回值 '' 或者
 **/
-function gp($k, $d='') {
-	return isset($_REQUEST[$k]) ? (is_array($_REQUEST[$k]) ? 'array' :(string) $_REQUEST[$k]) : $d;
+function r($k, $d= '') {
+	return isset($_REQUEST[$k]) ? (is_array($_REQUEST[$k]) ? ($_POST[$k]? '': '1') :(string) $_REQUEST[$k]) : $d;
 }
 /**
 *	返回 无html 标签 无 ' " 的 REQUEST 参数
@@ -621,7 +622,7 @@ function gp($k, $d='') {
 *	返回值 '' 或者
 **/
 function p($k, $d='') {
-	return isset($_POST[$k]) ? (is_array($_POST[$k]) ? 'array' :(string) $_POST[$k]) : $d;
+	return isset($_POST[$k]) ? (is_array($_POST[$k]) ? ($_POST[$k]? '': '1') :(string) $_POST[$k]) : $d;
 }
 
 

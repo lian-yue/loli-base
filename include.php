@@ -8,9 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-01-03 07:29:01
+/*	Updated: UTC 2015-01-03 09:02:30
 /*
 /* ************************************************************************** */
+namespace Loli;
+
 // 如果是网页 ICO 结束查询 或者 flash 请求
 if (!empty($_SERVER['REQUEST_URI']) && in_array(strtolower($_SERVER['REQUEST_URI']), ['/favicon.ico', '/crossdomain.xml', '/robots.txt'])) {
 	exit;
@@ -24,6 +26,7 @@ date_default_timezone_set('UTC');
 
 // 修改默认编码
 mb_internal_encoding('UTF-8');
+
 
 // 修改
 $_SERVER += ['SERVER_SOFTWARE' => '', 'REQUEST_URI' => ''];
@@ -57,26 +60,34 @@ if (empty($_SERVER['REQUEST_URI']) || (php_sapi_name() != 'cgi-fcgi' && preg_mat
 		}
 	}
 }
-
 // 为PHP解决所有请求CGI主机 SCRIPT_FILENAME , 在php.cgi设置的东西结束
 if (isset($_SERVER['SCRIPT_FILENAME']) && (strpos($_SERVER['SCRIPT_FILENAME'], 'php.cgi') == strlen($_SERVER['SCRIPT_FILENAME']) - 7)) {
 	$_SERVER['SCRIPT_FILENAME'] = $_SERVER['PATH_TRANSLATED'];
 }
-
 // 修改 Dreamhost  和 CGI 的
 if (strpos($_SERVER['SCRIPT_NAME'], 'php.cgi') !== false) {
 	unset($_SERVER['PATH_INFO']);
 }
-
 // 修改 空 PHP_SELF
 if (empty($_SERVER['PHP_SELF'])) {
 	$_SERVER['PHP_SELF'] = preg_replace('/(\?.*)?$/', '', $_SERVER["REQUEST_URI"]);
 }
 
 
+
+
+// Loli 目录
+const DIR = __DIR__;
+
+
+// 载入函数
+require __DIR__ . '/functions.php';
+
+
+// 自动加载
 spl_autoload_register(function($name) {
 	$name = strtr($name, '\\', '/');
-	if (is_file($file = APPLICATION . '/' . $name . '.php') || is_file($file = __DIR__ . '/' . $name . '.php')) {
+	if (is_file($file = \DIR . '/' . $name . '.php') || is_file($file = __DIR__ . '/' . $name . '.php')) {
 		require $file;
 		do_call($name);
 		return true;
@@ -84,8 +95,8 @@ spl_autoload_register(function($name) {
 	return false;
 });
 
-require __DIR__ . '/functions.php';
 
+// debug
 if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 	new Debug($_SERVER['LOLI']['DEBUG']);
 }
@@ -93,9 +104,6 @@ if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 
 // ajax 加载
 Model::__reg('Ajax', ['file' => __DIR__ . '/Model/Ajax.php']);
-
-// 语言
-Model::__reg('Lang', ['file' => __DIR__ . '/Model/Lang.php']);
 
 // 时间
 Model::__reg('Date', ['file' => __DIR__ . '/Model/Date.php']);

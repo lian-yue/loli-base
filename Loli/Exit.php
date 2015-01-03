@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-10 10:53:37
-/*	Updated: UTC 2014-12-31 10:07:00
+/*	Updated: UTC 2015-01-03 08:58:43
 /*
 /* ************************************************************************** */
 namespace Model;
@@ -23,7 +23,7 @@ class Exit_ extends Model{
 	}
 
 	public function get($a = []) {
-		if (gp('msg')) {
+		if (r('msg')) {
 			if (!$a || in_array(go('msg'), (array) $a)) {
 				$a = ['msg'];
 			}
