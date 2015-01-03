@@ -8,10 +8,10 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-03 09:02:07
+/*	Updated: UTC 2015-01-03 09:27:02
 /*
 /* ************************************************************************** */
-namespace Model;
+namespace Loli;
 use Loli\Cookie;
 
 class Lang{

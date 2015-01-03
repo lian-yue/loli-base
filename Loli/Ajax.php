@@ -8,40 +8,36 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-10 10:24:36
-/*	Updated: UTC 2015-01-02 08:43:07
+/*	Updated: UTC 2015-01-03 09:32:52
 /*
 /* ************************************************************************** */
-namespace Model;
+namespace Loli;
 
 class Ajax extends Base{
 
-	public $is = false;
+	public static $is = false;
 
-	public $type = 'json';
+	public static $js = true;
 
-	public $js = true;
+	public static $type = 'json';
 
-	public $xmlhttprequest = false;
+	private static $_xmlhttprequest = false;
 
-	public $accept = '';
+	private static $_accept = '';
 
-	public function __construct() {
-		$this->xmlhttprequest = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-		$this->accept = isset($_SERVER['HTTP_ACCEPT']) ? explode(',', $_SERVER['HTTP_ACCEPT'])[0] : '';
-		if ($this->accept) {
-			$this->accept = explode('/', $this->accept);
-			$this->accept = strtolower(trim(end($this->accept)));
+	public static function init() {
+		self::$_xmlhttprequest = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+		$accept = empty($_SERVER['HTTP_ACCEPT']) ? '' : explode(',', $_SERVER['HTTP_ACCEPT'])[0];
+		if ($accept) {
+			$accept = explode('/', $accept);
+			self::$_accept = strtolower(trim(end($accept)));
 		}
-		$this->is = $this->xmlhttprequest || in_array($this->accept, ['json', 'xml']) || !empty($_REQUEST['ajax']);
-		$this->type = empty($_REQUEST['ajax']) ? (in_array($this->accept, ['json', 'xml'])? $this->accept : false) : (string) $_REQUEST['ajax'];
+		$this->is = self::$_xmlhttprequest || in_array(self::$_accept, ['json', 'xml']) || !empty($_REQUEST['ajax']);
+		$this->type = empty($_REQUEST['ajax']) ? (in_array(self::$_accept, ['json', 'xml'])? self::$_accept : false) : (string) $_REQUEST['ajax'];
 	}
 
 
-	public function __invoke(){
-		return call_user_func_array([$this, 'run'], func_get_args());
-	}
-
-	public function add($a) {
+	public static function add($a) {
 		if ($this->is) {
 			return false;
 		}
@@ -52,7 +48,7 @@ class Ajax extends Base{
 	 * 写入 ajax
 	 * @param 参数 string
 	 */
-	public function set($a) {
+	public static function set($a) {
 		$this->type = (string) $a;
 		$this->is = true;
 		return true;
@@ -63,9 +59,8 @@ class Ajax extends Base{
 	 * @param  array $data 传入数组
 	 * @return exit 结束掉
 	 */
-	public function run($data) {
+	public static function run($data) {
 		@header('Content-Ajax: true');
-		$data = get_call('ajax.run', (array) $data, $this);
 		$type = strtolower($this->type);
 		if ($type == 'query') {
 			$data = merge_string($data);
@@ -87,11 +82,11 @@ class Ajax extends Base{
 			@header('Content-Type: application/x-javascript; charset=UTF-8');
 			$data = $function . '(' . json_encode($data) . ')';
 		} else {
-			if ('POST' != $_SERVER['REQUEST_METHOD'] || $this->xmlhttprequest || $this->accept == 'json') {
+			if ('POST' != $_SERVER['REQUEST_METHOD'] || self::$_xmlhttprequest || self::$_accept == 'json') {
 				@header('Content-Type: application/json; charset=UTF-8');
 			}
 			$data = json_encode($data);
 		}
-		exit($data);
+		return $data;
 	}
 }
