@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-10 10:24:36
-/*	Updated: UTC 2015-01-03 10:04:04
+/*	Updated: UTC 2015-01-03 11:41:28
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -59,7 +59,7 @@ class Ajax extends Base{
 	 * @param  array $data 传入数组
 	 * @return exit 结束掉
 	 */
-	public static function run($data) {
+	public static function get($data) {
 		@header('Content-Ajax: true');
 		$type = strtolower($this->type);
 		if ($type == 'query') {

@@ -8,89 +8,87 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-18 07:04:24
-/*	Updated: UTC 2015-01-03 08:58:47
+/*	Updated: UTC 2015-01-03 12:08:55
 /*
 /* ************************************************************************** */
-namespace Model;
-use Loli\Model;
-
-class Page extends Model{
+namespace Loli;
+class Page{
 
 	// 总共数量
-	public $count = 0;
+	public static $count = 0;
 
-	public $limit = 0;
+	public static $limit = 0;
 
-	public $maxLimit = 50;
+	public static $maxLimit = 50;
 
-	public $defaultLimit = 10;
+	public static $defaultLimit = 10;
 
 
-	public $offset = false;
+	public static $offset = false;
 
-	public $maxOffset = 0;
+	public static $maxOffset = 0;
 
-	public $isOffset = -1;
+	public static $isOffset = -1;
 
 
 
 	// url 连接
-	public $url = false;
+	public static $url = false;
 
 	// 更多使用的
-	public $more = [];
+	public static $more = [];
 
 	// 上一页
-	public $prev = 'page.prev';
+	public static $prev = 'page.prev';
 
 	// 下一页
-	public $next = 'page.next';
+	public static $next = 'page.next';
 
 	// 点符号
-	public $dot = '&hellip;';
+	public static $dot = '&hellip;';
 
-	public $info = true;
+	public static $info = true;
 
-	public $end = 1;
+	public static $end = 1;
 
-	public $mid = 3;
+	public static $mid = 3;
 
 	// 保留的参数
-	public $query = ['$limit', '$orderby', '$order'];
+	public static $query = ['$limit', '$orderby', '$order'];
 
-	public function __invoke() {
-		return call_user_func_array([$this, 'run'], func_get_args());
+	public static function count(){
+		return self::$count;
 	}
 
 	// 每页数量
-	public function limit() {
-		if ($this->limit) {
-			return $this->limit;
+	public static function limit() {
+		if (self::$limit) {
+			return self::$limit;
 		}
-		return $this->limit = ($limit = absint(r('$limit'))) && $limit <= $this->maxLimit ? $limit : $this->defaultLimit;
+		return self::$limit = ($limit = absint(r('$limit'))) && $limit <= self::$maxLimit ? $limit : self::$defaultLimit;
 	}
 
 	// 偏移
-	public function offset() {
-		if ($this->offset !== false) {
-			return $this->offset;
+	public static function offset() {
+		if (self::$offset !== false) {
+			return self::$offset;
 		}
-		if ($this->isOffset()) {
-			return $this->offset = absint(r('$offset'));
+		if (self::isOffset()) {
+			return self::$offset = absint(r('$offset'));
 		}
-		return $this->offset = empty($_REQUEST['$page']) || $_REQUEST['$page'] < 0 ? 0 : ($_REQUEST['$page'] - 1) * $this->limit();
+		return self::$offset = empty($_REQUEST['$page']) || $_REQUEST['$page'] < 0 ? 0 : ($_REQUEST['$page'] - 1) * self::limit();
 	}
 
 	// 是否允许偏移
-	public function isOffset() {
-		if ($this->isOffset == -1) {
-			$this->isOffset = ($this->url && strpos('offset=' . $this->value(), $this->url)) || (isset($_REQUEST['$offset']) && (!$this->url || !strpos('page=' . $this->value(), $this->url)));
+	public static function isOffset() {
+		if (self::$isOffset == -1) {
+			self::$isOffset = (self::$url && strpos('offset=' . self::value(), self::$url)) || (isset($_REQUEST['$offset']) && (!self::$url || !strpos('page=' . self::value(), self::$url)));
 		}
-		return $this->isOffset;
+		return self::$isOffset;
 	}
 
 	// key 的值
-	public function value() {
+	public static function value() {
 		static $uniqid;
 		if (!isset($uniqid)) {
 			$uniqid = uniqid(mt_rand(), true);
@@ -99,38 +97,38 @@ class Page extends Model{
 	}
 
 	// 当前页面
-	public function current() {
-		return ceil($this->offset() / $this->limit()) + 1;
+	public static function current() {
+		return ceil(self::offset() / self::limit()) + 1;
 	}
 
 	// 最大页面
-	public function maximum() {
-		return  ($r = ceil($this->count / $this->limit())) < 1 ? 1 : $r + ($this->offset() % $this->limit() ? 1 : 0);
+	public static function maximum() {
+		return  ($r = ceil(self::count() / self::limit())) < 1 ? 1 : $r + (self::offset() % self::limit() ? 1 : 0);
 	}
 
 
-	public function run($type = 'plain') {
-		if (!$this->count < 0 || ($maximum = $this->maximum()) <= 1) {
+	public static function get($type = 'plain') {
+		if (!self::count() < 0 || ($maximum = self::maximum()) <= 1) {
 			return false;
 		}
-		$current = $this->current();
+		$current = self::current();
 
-		$value = $this->value();
-		$url = $this->url();
+		$value = self::value();
+		$url = self::url();
 
 		// 选择页面信息
-		if ($this->count && $this->info) {
+		if (self::count() && self::$info) {
 			$arr[] = ['name' => $current .' / ' . $maximum, 'class' => ['info'], 'url' => ''];
 		}
 
-		if ($this->isOffset()) {
-			$limit = $this->limit();
-			$offset = $this->offset();
-			$count = $this->count;
+		if (self::isOffset()) {
+			$limit = self::limit();
+			$offset = self::offset();
+			$count = self::count();
 
 			// 上一页
-			if ($offset > 0 && $this->prev) {
-				$arr[] = ['name' => $this->Lang->__($this->prev), 'class' => ['prev'], 'url' => strtr($url, [$value => max($offset - $limit, 0)])];
+			if ($offset > 0 && self::$prev) {
+				$arr[] = ['name' => Lang::get(self::$prev), 'class' => ['prev'], 'url' => strtr($url, [$value => max($offset - $limit, 0)])];
 			}
 
 			for ($i = 1; $i <= $maximum; $i++) {
@@ -139,11 +137,11 @@ class Page extends Model{
 					$arr[] = ['name' => $i, 'class' => ['current', 'page-' . $i], 'url' => strtr($url, [$value => max(($offset % $limit) + (($i - 2) * $limit), 0)])];
 					$dot = true;
 				} else {
-					if (($i <= $this->end || ($current && $i >= $current - $this->mid && $i <= $current + $this->mid) || $i > $maximum - $this->end)) {
+					if (($i <= self::$end || ($current && $i >= $current - self::$mid && $i <= $current + self::$mid) || $i > $maximum - self::$end)) {
 						$arr[] = ['name' => $i, 'class' => ['page-' . $i], 'url' => strtr($url, [$value => max(($offset % $limit) + (($i - 2) * $limit), 0)])];
 						$dot = true;
-					} elseif ($this->dot && $dot) {
-						$arr[] = ['name' => $this->Lang->__($this->dot), 'class' => ['dot'], 'url' => ''];
+					} elseif (self::$dot && $dot) {
+						$arr[] = ['name' => Lang::get(self::$dot), 'class' => ['dot'], 'url' => ''];
 						$dot = false;
 					}
 				}
@@ -151,15 +149,15 @@ class Page extends Model{
 
 
 			// 下一页
-			if ($this->next && ($offset + $limit) < $count) {
-				$arr[] = ['name' => $this->Lang->__($this->next), 'class' => ['next'], 'url' => strtr($url, [$value => $offset + $limit])];
+			if (self::$next && ($offset + $limit) < $count) {
+				$arr[] = ['name' => Lang::get(self::$next), 'class' => ['next'], 'url' => strtr($url, [$value => $offset + $limit])];
 			}
 		} else {
-			$current = $this->current();
+			$current = self::current();
 
 			// 上一页
-			if ($current > 1 && $this->prev) {
-				$arr[] = ['name' => $this->Lang->__($this->prev), 'class' => ['prev'], 'url' => strtr($url, [$value => $current - 1])];
+			if ($current > 1 && self::$prev) {
+				$arr[] = ['name' => Lang::get(self::$prev), 'class' => ['prev'], 'url' => strtr($url, [$value => $current - 1])];
 			}
 
 			for ($i = 1; $i <= $maximum; ++$i) {
@@ -168,19 +166,19 @@ class Page extends Model{
 					$arr[] = ['name' => $i, 'class' => ['current', 'page-' . $i], 'url' => strtr($url, [$value => $i])];
 					$dot = true;
 				} else {
-					if (($i <= $this->end || ($current && $i >= $current - $this->mid && $i <= $current + $this->mid) || $i > $maximum - $this->end)) {
+					if (($i <= self::$end || ($current && $i >= $current - self::$mid && $i <= $current + self::$mid) || $i > $maximum - self::$end)) {
 						$arr[] = ['name' => $i, 'class' => ['page-' . $i], 'url' => strtr($url, [$value => $i])];
 						$dot = true;
-					} elseif ($this->dot && $dot) {
-						$arr[] = ['name' => $this->Lang->__($this->dot), 'class' => ['dot'], 'url' => ''];
+					} elseif (self::$dot && $dot) {
+						$arr[] = ['name' => Lang::get(self::$dot), 'class' => ['dot'], 'url' => ''];
 						$dot = false;
 					}
 				}
 			}
 
 			// 下一页
-			if ($this->next && $current < $maximum) {
-				$arr[] = ['name' => $this->Lang->__($this->next), 'class' => ['next'], 'url' => strtr($url, [$value => $current + 1])];
+			if (self::$next && $current < $maximum) {
+				$arr[] = ['name' => Lang::get(self::$next), 'class' => ['next'], 'url' => strtr($url, [$value => $current + 1])];
 			}
 		}
 
@@ -200,25 +198,25 @@ class Page extends Model{
 		return join('', $r);
 	}
 
-	public function url($more = false) {
-		$value = $this->value();
-		if (!$this->url) {
+	public static function url($more = false) {
+		$value = self::value();
+		if (!self::$url) {
 			$parse = parse_url(current_url());
 			$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
-			$parse['query'][$this->isOffset() ? '$offset': '$page'] = $value;
+			$parse['query'][self::isOffset() ? '$offset': '$page'] = $value;
 			$parse['query'] = merge_string($parse['query']);
-			$this->url = merge_url($parse);
+			self::$url = merge_url($parse);
 		}
-		if (strpos($this->url, $value) === false) {
-			$this->url .= (strpos($this->url, '?') === false ? '?' : '&') . urlencode($this->isOffset() ? '$offset': '$page').'=' . $value;
+		if (strpos(self::$url, $value) === false) {
+			self::$url .= (strpos(self::$url, '?') === false ? '?' : '&') . urlencode(self::isOffset() ? '$offset': '$page').'=' . $value;
 		}
-		$url = $this->url;
+		$url = self::$url;
 
-		if ($this->query) {
+		if (self::$query) {
 			$parse = parse_url($url);
 			$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 			$g = [];
-			foreach ($this->query as $v) {
+			foreach (self::$query as $v) {
 				if (isset($_REQUEST[$v]) && !isset($parse['query'][$v])) {
 					$g[$v] = $_REQUEST[$v];
 				}
@@ -231,28 +229,28 @@ class Page extends Model{
 	}
 
 
-	public function prev() {
-		if (($current = $this->current()) > 1) {
-			return strtr($this->url(), [$this->value() => $this->isOffset() ? max($this->offset() - $this->limit(), 0) : $current - 1]);
+	public static function prev() {
+		if (($current = self::current()) > 1) {
+			return strtr(self::url(), [self::value() => self::isOffset() ? max(self::offset() - self::limit(), 0) : $current - 1]);
 		}
 		return false;
 	}
 
-	public function next() {
-		if (($count = $this->offset() + $this->limit()) < $this->count) {
-			return strtr($this->url(), [$this->value() => $this->isOffset() ? $count : $this->current() + 1]);
+	public static function next() {
+		if (($count = self::offset() + self::limit()) < self::count()) {
+			return strtr(self::url(), [self::value() => self::isOffset() ? $count : self::current() + 1]);
 		}
-		return $this->more();
+		return self::more();
 	}
 
-	public function more() {
-		if (!$this->more ||$this->count < $this->limit()) {
+	public static function more() {
+		if (!self::$more ||self::count() < self::limit()) {
 			return false;
 		}
 		$parse = parse_url(current_url());
 		$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 		unset($parse['query']['$offset'], $parse['query']['$page']);
-		$parse['query'] = $this->more + $parse['query'];
+		$parse['query'] = self::$more + $parse['query'];
 		$parse['query'] = merge_string($parse['query']);
 		return merge_url($parse);
 	}
