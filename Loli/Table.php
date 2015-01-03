@@ -8,12 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 06:47:03
-/*	Updated: UTC 2014-12-30 11:57:26
+/*	Updated: UTC 2015-01-03 10:41:29
 /*
 /* ************************************************************************** */
-namespace Model;
-use Loli\Model;
-class Table extends Model{
+namespace Loli;
+class Table{
 
 
 
@@ -24,7 +23,7 @@ class Table extends Model{
 	*	2 参数 是否显示 默认 true
 	*	3 参数 附加class
 	**/
-	public function form($a, $echo = true, $class = '') {
+	public static function form($a, $echo = true, $class = '') {
 		$class = (array) $class;
 		$class[] = 'table-form';
 		$r = '<table class="' . implode(' ', $class) .'" >';
@@ -33,7 +32,7 @@ class Table extends Model{
 		foreach ($a as $k => $v) {
 			$v = is_string($v) ? ['value' => $v, 'class' => []] : $v + ['class' => []];
 			if (isset($v['value']) && is_array($v['value'])) {
-				$v['value'] = $this->Root->Form($v['value'], false);
+				$v['value'] = Form::get($v['value'], false);
 			}
 
 			$class =  [$i % 2 ? 'odd' : 'even'];
@@ -72,7 +71,7 @@ class Table extends Model{
 	*	3 参数 是否显示
 	*	4 参数 class
 	**/
-	public function lists($tbody = [], $thead = [], $echo = true, $class = '') {
+	public static function lists($tbody = [], $thead = [], $echo = true, $class = '') {
 		$class = (array) $class;
 		$class[] = 'table-lists';
 		$r = '<table class="'. implode(' ', $class) .'" >';
