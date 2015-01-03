@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-10 10:24:36
-/*	Updated: UTC 2015-01-03 09:32:52
+/*	Updated: UTC 2015-01-03 10:04:04
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -90,3 +90,4 @@ class Ajax extends Base{
 		return $data;
 	}
 }
+Ajax::init();

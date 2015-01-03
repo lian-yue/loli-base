@@ -8,26 +8,25 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-03-24 11:06:22
-/*	Updated: UTC 2015-01-01 14:12:31
+/*	Updated: UTC 2015-01-03 10:31:49
 /*
 /* ************************************************************************** */
-namespace Model;
-use Loli\Model;
-class Form extends Model{
+namespace Loli;
+class Form{
 
-	private $_tags = ['span', 'div', 'p', 'a', 'code'];
+	private static $_tags = ['span', 'div', 'p', 'a', 'code'];
 
-	public function __invoke($a = [], $e = true) {
+	public static function get($a = [], $e = true) {
 		$a['type'] = empty($a['type']) ? 'text' : $a['type'];
-		if (in_array(strtolower($a['type']), ['attr', 'filter', 'label', '_tags', 'result', 'input', 'html']) || !method_exists($this->form, $a['type'])) {
+		if ( $a['type']{0} == '_' || strtolower($a['type']) == 'get' || !method_exists(__CLASS__, $a['type'])) {
 			return false;
 		}
-		return $this->{$a['type']}($a, $e);
+		return call_user_func_array([__CLASS__, $a['type']], [$a, $e]);
 	}
 
 
 
-	public function fieldset($a, $e = true, $class = '') {
+	public static function fieldset($a, $e = true, $class = '') {
 		$class = (array) $class;
 		$class[] = 'form-fieldset';
 		$r = '<fieldset class="'. implode(' ', $class) .'">';
@@ -37,7 +36,7 @@ class Form extends Model{
 		if ( isset($a['value'])) {
 			if ( is_array($a['value'])) {
 				foreach ( $a['value'] as $kk => $vv) {
-					$r .='<div class="form-div form-div-'. $kk .'">'. (is_array($vv) ? $this->__invoke($vv, false) : $vv) . '</div>';
+					$r .='<div class="form-div form-div-'. $kk .'">'. (is_array($vv) ? self::get($vv, false) : $vv) . '</div>';
 				}
 			} else {
 				$r.= $a['value'];
@@ -45,7 +44,7 @@ class Form extends Model{
 		}
 		$r .= '</fieldset>';
 
-		return $this->_result($r, $e);
+		return self::_result($r, $e);
 	}
 
 	/**
@@ -56,8 +55,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function text($a = [], $e = true) {
-		return $this->_input('text', $a, $e);
+	public static function text($a = [], $e = true) {
+		return self::_input('text', $a, $e);
 	}
 
 
@@ -70,8 +69,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function hidden($a = [], $e = true) {
-		return $this->_input('hidden', $a, $e);
+	public static function hidden($a = [], $e = true) {
+		return self::_input('hidden', $a, $e);
 	}
 
 	/**
@@ -82,8 +81,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function file($a = [], $e = true) {
-		return $this->_input('file', $a, $e);
+	public static function file($a = [], $e = true) {
+		return self::_input('file', $a, $e);
 	}
 
 	/**
@@ -94,8 +93,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function password($a = [], $e = true) {
-		return $this->_input('password', $a, $e);
+	public static function password($a = [], $e = true) {
+		return self::_input('password', $a, $e);
 	}
 
 
@@ -107,8 +106,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function email($a = [], $e = true) {
-		return $this->_input('email', $a, $e);
+	public static function email($a = [], $e = true) {
+		return self::_input('email', $a, $e);
 	}
 
 	/**
@@ -119,8 +118,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function url($a = [], $e = true) {
-		return $this->_input('url', $a, $e);
+	public static function url($a = [], $e = true) {
+		return self::_input('url', $a, $e);
 	}
 
 	/**
@@ -131,8 +130,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function search($a = [], $e = true) {
-		return $this->_input('search', $a, $e);
+	public static function search($a = [], $e = true) {
+		return self::_input('search', $a, $e);
 	}
 
 	/**
@@ -143,8 +142,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function number($a = [], $e = true) {
-		return $this->_input('number', $a, $e);
+	public static function number($a = [], $e = true) {
+		return self::_input('number', $a, $e);
 	}
 
 	/**
@@ -155,8 +154,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function color($a = [], $e = true) {
-		return $this->_input('color', $a, $e);
+	public static function color($a = [], $e = true) {
+		return self::_input('color', $a, $e);
 	}
 
 	/**
@@ -167,8 +166,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function range($a = [], $e = true) {
-		return $this->_input('range', $a, $e);
+	public static function range($a = [], $e = true) {
+		return self::_input('range', $a, $e);
 	}
 
 
@@ -180,8 +179,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function tel($a = [], $e = true) {
-		return $this->_input('tel', $a, $e);
+	public static function tel($a = [], $e = true) {
+		return self::_input('tel', $a, $e);
 	}
 
 	/**
@@ -192,8 +191,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function datetimeLocal($a = [], $e = true) {
-		return $this->_input('datetime-local', $a, $e);
+	public static function datetime_local($a = [], $e = true) {
+		return self::_input('datetime-local', $a, $e);
 	}
 
 	/**
@@ -204,8 +203,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function image($a = [], $e = true) {
-		return $this->_input('image', $a, $e);
+	public static function image($a = [], $e = true) {
+		return self::_input('image', $a, $e);
 	}
 	/**
 	*	date 表单
@@ -215,8 +214,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function datetime($a = [], $e = true) {
-		return $this->_input('datetime', $a, $e);
+	public static function datetime($a = [], $e = true) {
+		return self::_input('datetime', $a, $e);
 	}
 	/**
 	*	date 表单
@@ -226,8 +225,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function date($a = [], $e = true) {
-		return $this->_input('date', $a, $e);
+	public static function date($a = [], $e = true) {
+		return self::_input('date', $a, $e);
 	}
 
 	/**
@@ -238,8 +237,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function month($a = [], $e = true) {
-		return $this->_input('month', $a, $e);
+	public static function month($a = [], $e = true) {
+		return self::_input('month', $a, $e);
 	}
 
 
@@ -251,8 +250,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function week($a = [], $e = true) {
-		return $this->_input('week', $a, $e);
+	public static function week($a = [], $e = true) {
+		return self::_input('week', $a, $e);
 	}
 
 	/**
@@ -263,8 +262,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function time($a = [], $e = true) {
-		return $this->_input('time', $a, $e);
+	public static function time($a = [], $e = true) {
+		return self::_input('time', $a, $e);
 	}
 
 	/**
@@ -275,10 +274,9 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function submit($a = [], $e = true) {
-		$a['value'] = empty($a['value']) ? $this->lang->__('Submit') : $a['value'];
-		$a['name'] = empty($a['name']) ? 'submit' : $a['name'];
-		return $this->_input('submit', $a, $e);
+	public static function submit($a = [], $e = true) {
+		$a['name'] = isset($a['name']) ? 'submit' : $a['name'];
+		return self::_input('submit', $a, $e);
 	}
 	/**
 	*	submit 按钮
@@ -288,8 +286,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function reset($a = [], $e = true) {
-		return $this->_input('reset', $a, $e);
+	public static function reset($a = [], $e = true) {
+		return self::_input('reset', $a, $e);
 	}
 
 
@@ -301,15 +299,14 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function button($a = [], $e = true) {
-		$a['value'] = empty($a['value']) ? $this->lang->__('Submit') : $a['value'];
+	public static function button($a = [], $e = true) {
 		$a['name'] = empty($a['name']) ? 'button' : $a['name'];
-		$this->_filter($a, 'button');
+		self::_filter($a, 'button');
 		$a['type'] = 'submit';
-		$r = $this->_label($a);
-		$r .= '<button '. $this->_attr($a, ['value']) . '><strong>'. $a['value'] .'</strong></button>';
-		$r .= $this->_tags($a);
-		return $this->_result($r, $e);
+		$r = self::_label($a);
+		$r .= '<button '. self::_attr($a, ['value']) . '><strong>'. $a['value'] .'</strong></button>';
+		$r .= self::_tags($a);
+		return self::_result($r, $e);
 	}
 
 
@@ -321,12 +318,12 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function textarea($a = [], $e = true) {
-		$this->_filter($a, 'textarea');
-		$r = $this->_label($a);
-		$r .= '<textarea '. $this->_attr($a, ['value']) .' >'. $a['value'] .'</textarea>';
-		$r .= $this->_tags($a);
-		return $this->_result($r, $e);
+	public static function textarea($a = [], $e = true) {
+		self::_filter($a, 'textarea');
+		$r = self::_label($a);
+		$r .= '<textarea '. self::_attr($a, ['value']) .' >'. $a['value'] .'</textarea>';
+		$r .= self::_tags($a);
+		return self::_result($r, $e);
 	}
 
 
@@ -338,10 +335,10 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function select($a = [], $e = true) {
-		$this->_filter($a, 'select');
-		$r = $this->_label($a);
-		$r .= '<select '. $this->_attr($a, ['value', 'option']) .' >';
+	public static function select($a = [], $e = true) {
+		self::_filter($a, 'select');
+		$r = self::_label($a);
+		$r .= '<select '. self::_attr($a, ['value', 'option']) .' >';
 		foreach ($a['option'] as $k => $v) {
 			if (is_array($v) && isset($v['label']) && isset($v['value'])) {
 					$r .= '<optgroup class="optgroup-'. $k .'" label="'. $v['label'] .'">';
@@ -354,8 +351,8 @@ class Form extends Model{
 			}
 		}
 		$r .= '</select>';
-		$r .= $this->_tags($a);
-		return $this->_result($r, $e);
+		$r .= self::_tags($a);
+		return self::_result($r, $e);
 	}
 
 
@@ -367,8 +364,8 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function radio($a = [], $e = true) {
-		$this->_filter($a, 'radio');
+	public static function radio($a = [], $e = true) {
+		self::_filter($a, 'radio');
 		$r = '';
 		foreach ($a['option'] as $k => $v) {
 			$r .= '<label for="'. $a['id'] . '-' . $k .'" class="radio-label radio-'. $a['id'] .'  radio-'. $a['id'] .'-'. $k .'">';
@@ -376,8 +373,8 @@ class Form extends Model{
 			$r .= '<span class="radio-span form-span">' . $v . '</span>';
 			$r .= '</label>';
 		}
-		$r .= $this->_tags($a);
-		return $this->_result($r, $e);
+		$r .= self::_tags($a);
+		return self::_result($r, $e);
 	}
 
 	/**
@@ -388,20 +385,20 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	public function checkbox($a = [], $e = true) {
+	public static function checkbox($a = [], $e = true) {
 		if (empty($a['option'])) {
-			return $this->_input('checkbox', $a, $e);
+			return self::_input('checkbox', $a, $e);
 		}
-		$this->_filter($a, 'checkbox');
-		$r = $this->_label($a);
+		self::_filter($a, 'checkbox');
+		$r = self::_label($a);
 		foreach ($a['option'] as $k => $v) {
 			$r .= '<label for="'. $a['id'] . '-' . $k .'" class="checkbox-label checkbox-'. $a['id'] .' checkbox-'. $a['id'] .'-'. $k .'">';
 			$r .= '<input type="'. $a['type'] .'" name="'. $a['name'] .'" id="' . $a['id'] . '-' . $k .'" class="'. $a['class'][$k] . '" ' . $a['disabled'][$k] . $a['readonly'][$k].  ' value="'. $k .'" '.(in_array((string) $k,  $a['value']) ? 'checked="checked"' : '').' />';
 			$r .= '<span class="checkbox-span form-span">' . $v . '</span>';
 			$r .= '</label>';
 		}
-		$r .= $this->_tags($a);
-		return $this->_result($r, $e);
+		$r .= self::_tags($a);
+		return self::_result($r, $e);
 	}
 
 
@@ -413,12 +410,12 @@ class Form extends Model{
 	*	3 参数 e 是否显示
 	*
 	**/
-	private function _input($type,  $a = [], $e = true) {
-		$this->_filter($a, $type);
-		$r = $this->_label($a);
-		$r .= '<input '. $this->_attr($a) . '/>';
-		$r .= $this->_tags($a);
-		return $this->_result($r, $e);
+	private static function _input($type,  $a = [], $e = true) {
+		self::_filter($a, $type);
+		$r = self::_label($a);
+		$r .= '<input '. self::_attr($a) . '/>';
+		$r .= self::_tags($a);
+		return self::_result($r, $e);
 	}
 
 	/**
@@ -429,7 +426,7 @@ class Form extends Model{
 	*
 	*	返回值 或者显示
 	**/
-	private function _result($r, $e) {
+	private static function _result($r, $e) {
 		if (!$e) {
 			return $r;
 		}
@@ -443,7 +440,7 @@ class Form extends Model{
 	*
 	*	返回值 label 标签 或 ''
 	**/
-	private function _label($a) {
+	private static function _label($a) {
 		return empty($a['label']) ? '' : '<label for="'. $a['id'] . '" class="label-'. $a['id'] . ' form-label">'. $a['label'] . '</label>';
 	}
 
@@ -454,9 +451,9 @@ class Form extends Model{
 	*
 	*	返回值 label 标签 或 ''
 	**/
-	private function _tags($a, $tags = []) {
+	private static function _tags($a, $tags = []) {
 		$r = '';
-		foreach ( array_intersect_key($a, array_flip($tags?(array)$tags:$this->_tags)) as $k => $v) {
+		foreach ( array_intersect_key($a, array_flip($tags?(array)$tags:self::$_tags)) as $k => $v) {
 			if ( $v) {
 				if ( is_array( $v)) {
 					$r .= '<' . $k;
@@ -481,10 +478,10 @@ class Form extends Model{
 	*
 	*	请勿直接使用
 	***/
-	private function _attr($a, $in = []) {
+	private static function _attr($a, $in = []) {
 		$r = '';
 		foreach ($a as $k => $v) {
-			if ( $k == 'label' || $k == 'legend' || in_array($k, $this->_tags) || in_array($k, $in) || (!$v && !in_array($k, ['value', 'min', 'max']))) {
+			if ( $k == 'label' || $k == 'legend' || in_array($k, self::$_tags) || in_array($k, $in) || (!$v && !in_array($k, ['value', 'min', 'max']))) {
 				continue;
 			} else {
 				$v = is_array($v) || is_object($v) ? reset($v) : $v;
@@ -506,7 +503,7 @@ class Form extends Model{
 	*
 	*	引用返回
 	**/
-	private function _filter(&$a, $type = 'text') {
+	private static function _filter(&$a, $type = 'text') {
 		$a['name'] = empty($a['name']) ? 'form' : $a['name'];
 		$i = 'form-' . preg_replace('/[^0-9a-z_-]/i','_', $a['name']);
 		$a = $a + [ 'name' => '', 'class' => '', 'id' => $i, 'value' => '', 'option' => []];
@@ -574,17 +571,17 @@ class Form extends Model{
 		}
 
 		// html 转义
-		$this->_html($a);
+		self::_html($a);
 		return true;
 	}
 
-	private function _html(&$a, $tags = []) {
+	private static function _html(&$a, $tags = []) {
 		foreach ($a as $k => &$v) {
-			if (in_array($k, $tags ? (array)$tags : $this->_tags)) {
+			if (in_array($k, $tags ? (array)$tags : self::$_tags)) {
 				continue;
 			}
 			if (is_array($v)) {
-				$this->_html($v, []);
+				self::_html($v, []);
 			} else {
 				$v = strtr($v, ['"' => '&quot;', '\'' => '&#039;', '<' => '&lt;', '>' => '&gt;']);
 			}

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-01-03 09:17:49
+/*	Updated: UTC 2015-01-03 10:33:16
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -87,7 +87,7 @@ require __DIR__ . '/functions.php';
 // 自动加载
 spl_autoload_register(function($name) {
 	$name = strtr($name, '\\', '/');
-	if (is_file($file = \DIR . '/' . $name . '.php') || is_file($file = __DIR__ . '/' . $name . '.php')) {
+	if (is_file($file = __DIR__ . '/' . $name . '.php')) {
 		require $file;
 		do_call($name);
 		return true;
@@ -102,14 +102,8 @@ if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 }
 
 
-// ajax 加载
-Model::__reg('Ajax', ['file' => __DIR__ . '/Model/Ajax.php']);
-
 // 时间
 Model::__reg('Date', ['file' => __DIR__ . '/Model/Date.php']);
-
-// 表单
-Model::__reg('Form', ['file' => __DIR__ . '/Model/Form.php']);
 
 // 表格
 Model::__reg('Table', ['file' => __DIR__ . '/Model/Table.php']);
