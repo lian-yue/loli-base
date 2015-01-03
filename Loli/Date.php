@@ -8,19 +8,19 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-01 07:03:51
+/*	Updated: UTC 2015-01-03 12:27:41
 /*
 /* ************************************************************************** */
-namespace Model;
-use Loli\Model, DateTime, DateTimeZone, Loli\Cookie;
+namespace Loli;
+use  DateTime, DateTimeZone;
 
-class Date extends Model{
+class Date{
 
 	// 时区
-	public $timezone = '+00:00';
+	public static $timezone = '+00:00';
 
 	// 全部时区
-	public $allTimezone = [
+	public static $allTimezone = [
 		'-12:00',
 		'-11:30',
 		'-11:00',
@@ -80,29 +80,25 @@ class Date extends Model{
 		'+14:00',
 	];
 
-	public $name = '';
+	public static $name = '';
 
-	public function __construct() {
+	public static function init() {
 		if (!empty($_SERVER['LOLI']['DATE'])) {
 			foreach ($_SERVER['LOLI']['DATE'] as $k => $v) {
 				if (in_array($k, ['timezone', 'allTimezone', 'name'])) {
-					$this->$k = $v;
+					self::$$k = $v;
 				}
 			}
 		}
 
 
-		//$this->allTimezone = array_merge(DateTimeZone::listIdentifiers(), $this->allTimezone);
+		//self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
 
 		// COOKIE
-		$this->name && ($cookie = Cookie::get($this->name)) && $this->setTimeZone((string)$cookie);
+		self::$name && ($cookie = Cookie::get(self::$name)) && self::setTimeZone((string)$cookie);
 
 		// GET POST
-		$this->name && !empty($_REQUEST[$this->name]) && $this->setTimeZone((string)$_REQUEST[$this->name]);
-	}
-
-	public function __invoke() {
-		return call_user_func_array([$this, 'format'], func_get_args());
+		self::$name && !empty($_REQUEST[self::$name]) && self::setTimeZone((string)$_REQUEST[self::$name]);
 	}
 
 
@@ -114,8 +110,8 @@ class Date extends Model{
 	*
 	*	返回值 译文
 	**/
-	public function __($d, $original = true) {
-		return $this->Lang($d, 'date', $original);
+	public static function lang($d, $original = true) {
+		return Lang::get($d, 'date', $original);
 	}
 
 
@@ -126,10 +122,10 @@ class Date extends Model{
 	*
 	*
 	**/
-	public function allTimezone() {
+	public static function allTimezone() {
 		$r = [];
-		foreach ($this->allTimezone as $v) {
-			$r[$v] = $this->Lang($v, 'date');
+		foreach (self::$allTimezone as $v) {
+			$r[$v] = self::lang($v);
 		}
 		return $r;
 	}
@@ -142,7 +138,7 @@ class Date extends Model{
 	*
 	*	返回值 false true
 	**/
-	public function setTimeZone($timezone, $cookie = false) {
+	public static function setTimeZone($timezone, $cookie = false) {
 		if (is_numeric($timezone)) {
 			$arr = explode('.', $timezone);
 			$arr[0] = ($arr[0] < 0 ? '-' : '+'). str_pad(intval($arr[0]), 2, '0',STR_PAD_LEFT);
@@ -155,11 +151,11 @@ class Date extends Model{
 		} elseif (substr($timezone, 0, 1) == ' ') {
 			$timezone = '+' . substr($timezone, 1);
 		}
-		if (!in_array($timezone, $this->allTimezone)) {
+		if (!in_array($timezone, self::$allTimezone)) {
 			return false;
 		}
-		$this->timezone = $timezone;
-		$cookie && $this->name && Cookie::set($this->name, $timezone, 86400 * 365);
+		self::$timezone = $timezone;
+		$cookie && self::$name && Cookie::set(self::$name, $timezone, 86400 * 365);
 		return true;
 	}
 
@@ -172,13 +168,13 @@ class Date extends Model{
 	*	4 参数 自定义时区
 	*
 	**/
-	public function format($format, $time = false, $lang = true, $timezone = false) {
-
+	public static function format($format, $time = false, $lang = true, $timezone = false) {
+		static $date;
 		// 时区
-		if ($timezone && !in_array($timezone, $this->allTimezone)) {
+		if ($timezone && !in_array($timezone, self::$allTimezone)) {
 			return false;
 		}
-		$timezone = $timezone ? $timezone : $this->timezone;
+		$timezone = $timezone ? $timezone : self::$timezone;
 
 		// 时间 时区 对象
 		if (empty($date) || $date->getTimezone()->getName() !== $timezone) {
@@ -208,7 +204,7 @@ class Date extends Model{
 		}
 
 		// 本地化格式
-		if ($tmep = $this->__('format_' . $format, false)) {
+		if ($tmep = self::lang('format_' . $format, false)) {
 			$format = $tmep;
 		}
 
@@ -218,7 +214,7 @@ class Date extends Model{
 		foreach($replace as $v) {
 			if (strpos($format, $v) !== false) {
 				$d = $date->format($v);
-				if ($tmep = $this->__($v == 'e'? $d : $v . '_' . $d, false)) {
+				if ($tmep = self::lang($v == 'e'? $d : $v . '_' . $d, false)) {
 					$d = $tmep;
 				}
 				$r = preg_replace('/([^\\\])'. $v .'/', '\\1' . preg_replace('/([a-z])/i', '\\\\\1', $d), $r);
@@ -237,36 +233,36 @@ class Date extends Model{
 	*	3 参数 是否显示差距时间
 	*
 	**/
-	public function human($from, $to = false) {
+	public static function human($from, $to = false) {
 		$to = $to === false ? time() : $to;
 		$diff = max($to, $from) - min($to, $from);
 
 		// 刚刚
 		if ($diff == 0) {
-			return $this->__('Now');
+			return self::lang('Now');
 		}
 
 		if ($diff < 60) {
 			// 秒
-			$since = $this->__([$diff == 1 ? '$1 second'  : '$1 seconds', $diff]);
+			$since = self::lang([$diff == 1 ? '$1 second'  : '$1 seconds', $diff]);
 		} elseif ($diff <= 3600 && ($min = round($diff / 60)) < 60) {
 			// 钟
-			$since = $this->__([$min == 1 ? '$1 min'  : '$1 mins', $min]);
+			$since = self::lang([$min == 1 ? '$1 min'  : '$1 mins', $min]);
 		} elseif (($diff <= 86400) && ($hour = round($diff / 3600)) < 24) {
 			// 时
-			$since = $this->__([$hour == 1 ? '$1 hour'  : '$1 hours', $hour]);
+			$since = self::lang([$hour == 1 ? '$1 hour'  : '$1 hours', $hour]);
 		} elseif ($diff <= 2592000 && ($min = round($diff / 86400)) < 30) {
 			// 天
-			$since = $this->__([$min == 1 ? '$1 day'  : '$1 days', $min]);
+			$since = self::lang([$min == 1 ? '$1 day'  : '$1 days', $min]);
 		} elseif ($diff <= 31536000 && ($min = round($diff / 2592000)) < 12) {
 			// 月
-			$since = $this->__([$min == 1 ? '$1 month'  : '$1 months', $min]);
+			$since = self::lang([$min == 1 ? '$1 month'  : '$1 months', $min]);
 		} else {
 			// 年
 			$year = round($diff / 31536000);
-			$since = $this->__([ $year == 1 ? '$1 year'  : '$1 years', $year]);
+			$since = self::lang([ $year == 1 ? '$1 year'  : '$1 years', $year]);
 		}
-		return $this->__(['$1 ' . ($from > $to ? 'later' : 'ago'), $since]);
+		return self::lang(['$1 ' . ($from > $to ? 'later' : 'ago'), $since]);
 	}
 
 
@@ -279,7 +275,7 @@ class Date extends Model{
 	*
 	*	返回值  00:01  这样的
 	**/
-	public function length($time, $n = 3, $i = 2) {
+	public static function length($time, $n = 3, $i = 2) {
 
 		// 转换成数组
 		$a = [60, 60, 24, 30, 12, 0];

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 16:02:54
-/*	Updated: UTC 2015-01-01 06:57:32
+/*	Updated: UTC 2015-01-03 12:20:14
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -53,7 +53,7 @@ class Cookie{
 if (!empty($_SERVER['LOLI']['COOKIE'])) {
 	foreach ($_SERVER['LOLI']['COOKIE'] as $key => $value) {
 		if (in_array($key, ['prefix', 'path', 'domain', 'secure', 'httponly'])) {
-			Cookie::$key = $value;
+			Cookie::$$key = $value;
 		}
 	}
 	unset($key, $value);

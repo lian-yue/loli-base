@@ -8,11 +8,10 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-03 10:42:27
+/*	Updated: UTC 2015-01-03 12:20:32
 /*
 /* ************************************************************************** */
 namespace Loli;
-
 class Lang{
 
 	// 全部语言
@@ -51,7 +50,7 @@ class Lang{
 			foreach ($_SERVER['LOLI']['LANG'] as $k => $v) {
 				if (in_array($k, ['all', 'default', 'replace', 'name', 'file'])) {
 					$k == 'file' ? '_file' : $k;
-					self::$k = $v;
+					self::$$k = $v;
 				}
 			}
 		}

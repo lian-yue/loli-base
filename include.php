@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-01-03 10:33:16
+/*	Updated: UTC 2015-01-03 12:35:39
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -102,12 +102,6 @@ if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 }
 
 
-// 时间
-Model::__reg('Date', ['file' => __DIR__ . '/Model/Date.php']);
-
-// 表格
-Model::__reg('Table', ['file' => __DIR__ . '/Model/Table.php']);
-
 // exit
 Model::__reg('Exit', ['file' => __DIR__ . '/Model/Exit.php']);
 
@@ -122,9 +116,6 @@ Model::__reg('DB', ['file' => __DIR__ . '/Model/DB.php']);
 
 // 查询对象
 Model::__reg('Query', ['file' => __DIR__ . '/Model/Query.php']);
-
-// 翻页
-Model::__reg('Page', ['file' => __DIR__ . '/Model/Page.php']);
 
 // session
 Model::__reg('Session', ['file' => __DIR__ . '/Model/Session.php']);

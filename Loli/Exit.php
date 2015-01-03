@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-10 10:53:37
-/*	Updated: UTC 2015-01-03 08:58:43
+/*	Updated: UTC 2015-01-03 12:34:54
 /*
 /* ************************************************************************** */
 namespace Model;
@@ -69,7 +69,7 @@ class Exit_ extends Model{
 		}
 
 		// ajax
-		$this->Ajax->is && $this->Ajax->run((array) $arr + ['msg' => $msg, 'msg_code' => $msg_code, 'msg_args' => $msg_args, 'err' => false, 'err_code' => false, 'err_args' => [], 'to' => $to]);
+		$this->Ajax->is && exit($this->Ajax->run((array) $arr + ['msg' => $msg, 'msg_code' => $msg_code, 'msg_args' => $msg_args, 'err' => false, 'err_code' => false, 'err_args' => [], 'to' => $to]));
 
 		// header
 		@header('location: '. $to);
@@ -108,7 +108,7 @@ class Exit_ extends Model{
 		}
 
 		// ajax
-		$this->Ajax->is && $this->Ajax->run((array) $arr + ['err' => $err, 'err_code' => $err_code, 'err_args' => $err_args, 'msg' => false, 'msg_code' => false, 'msg_args' => [], 'to' => $to]);
+		$this->Ajax->is && exit($this->Ajax->run((array) $arr + ['err' => $err, 'err_code' => $err_code, 'err_args' => $err_args, 'msg' => false, 'msg_code' => false, 'msg_args' => [], 'to' => $to]));
 
 		// 自动重定向的
 		if ($to && $to !== true) {
