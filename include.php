@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-01-04 07:28:33
+/*	Updated: UTC 2015-01-05 09:32:05
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -86,8 +86,7 @@ require __DIR__ . '/functions.php';
 
 // 自动加载
 spl_autoload_register(function($name) {
-	$name = strtr($name, '\\', '/');
-	if (is_file($file = __DIR__ . '/' . $name . '.php')) {
+	if (substr($name, 0, 5) == 'Loli\\' && is_file($file = __DIR__ . '/' . ($name = strtr($name, '\\', '/')) . '.php')) {
 		require $file;
 		do_call($name);
 		return true;

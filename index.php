@@ -8,11 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-03 10:27:12
-/*	Updated: UTC 2015-01-05 07:51:35
+/*	Updated: UTC 2015-01-05 15:05:32
 /*
 /* ************************************************************************** */
 require __DIR__ . '/include.php';
 
 
+
 $run = new Loli\Controller\Run;
 $run();
+

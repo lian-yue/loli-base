@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-01-05 08:54:28
+/*	Updated: UTC 2015-01-05 09:47:53
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
@@ -30,7 +30,7 @@ class Base{
 	public $method = 'index';
 
 	public $match = [];
-	//public $match = ['key' => ['pattern' => '正则表达 ^ = 绝对开头匹配 $ = 绝对尾部匹配 留空使用key匹配', 'class' => '匹配到对象留空就匹配到当前对象', 'HTTPMethod' => '允许的http方法数组默认是 POST +GET', 'method' => 匹配到方法留空就是默认方法, 'query' => '正则匹配到的数组', 'priority' => '排序', 'file' => 需要加载的文件地址];
+	//public $match = ['key' => ['pattern' => '正则表达 ^ = 绝对开头匹配 $ = 绝对尾部匹配 留空使用key匹配' => ['method' => 匹配的方法 默认的话GET + POST, 'query' => '匹配到的参数'], 'class' => '匹配到对象留空就匹配到当前对象', 'method' => 匹配到方法留空就是默认方法, 'priority' => '排序', 'file' => 需要加载的文件地址];
 
 	// 时间格式
 	public $dateFormat = 'F j, Y';

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-01-05 08:23:08
+/*	Updated: UTC 2015-01-05 16:12:38
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
@@ -16,10 +16,6 @@ use Loli\Ajax;
 class Run extends Base{
 
 	private $_is = false;
-
-	public $match = [
-		'qq' => ['pattern' => 'qq', 'method' => 'qq', 'query' => ['qwe']]
-	];
 
 	public function __construct() {
 		$style = __NAMESPACE__ . '\Resources\Style';
@@ -47,7 +43,6 @@ class Run extends Base{
 				if (!empty($value['file'])) {
 					require $value['file'];
 				}
-				$keys[] = $keys;
 				if (!empty($value['class'])) {
 					$class .= '\\' .  $value['class'];
 					$doKey .= '/' .  $value['class'];
@@ -69,11 +64,14 @@ class Run extends Base{
 				$arr = explode('/', $path, 2);
 				$break = false;
 				prioritysort($a->match);
-				foreach($a->match as $key => $value) {
-					if (!isset($value['pattern'])) {
-						$value['pattern'] = [preg_quote($key, '') => []];
+				foreach($a->match as $k => $v) {
+					if (!isset($v['pattern'])) {
+						$v['pattern'] = [preg_quote($k, '') => []];
 					}
-					foreach($value['pattern'] as $kk => $vv) {
+					foreach((array)$v['pattern'] as $kk => $vv) {
+						if (!in_array($_SERVER['REQUEST_METHOD'], empty($vv['method']) ? ['POST', 'GET'] : (array) $vv['method'])) {
+							continue;
+						}
 						if (!$reset = ($kk{0} == '^')) {
 							$kk = '^' . $kk;
 						}
@@ -91,72 +89,40 @@ class Run extends Base{
 						}
 						if (preg_match('/'. strtr($kk, ['/' => '\\/']) .'/', $subject, $matches)) {
 							foreach($matches as $kkk => $vvv) {
-								if (isset($vv[$kkk])) {
-									$this->rewrite[$vv[$kkk]] = $vvv;
+								if (isset($vv['query'][$kkk])) {
+									$this->rewrite[$vv['query'][$kkk]] = $vvv;
 								}
 							}
-							$this->path[] = $k;
-							$a = $a->$k;
+							$this->keys[] = $k;
+							empty($v['class']) && !$end && isset($arr[1]) && $this->err(404);
+							if (!empty($v['file'])) {
+								require $v['file'];
+							}
+							if (!empty($v['class'])) {
+								$class .= '\\' .  $v['class'];
+								$doKey .= '/' .  $v['class'];
+								$a = new $class;
+								do_array_call($doKey, [&$a]);
+							}
+							if (!empty($v['method'])) {
+								$method = $v['method'];
+							} else {
+								unset($method);
+							}
 							$break = true;
 							break 2;
 						}
 					}
 				}
-
 				if (!$break) {
 					break;
 				}
 				$path = isset($arr[1]) && empty($end) ? $arr[1] : false;
 				$parent .= $arr[0] . '/'. (isset($arr[1]) && !empty($end) ? $arr[1] . '/' : '');
 			}
-			if (empty($break)) {
-				foreach ($a->match as $k => $v) {
-					foreach($v as $kk => $vv) {
-						if (!$reset = ($kk{0} == '^')) {
-							$kk = '^' . $kk;
-						}
-						if (!$end = (substr($kk, -1, 1) == '$')){
-							$kk .= '$';
-						}
-						if ($reset && $end) {
-							$subject = $parent . $path . $slash;
-						} elseif ($reset) {
-							$subject = $parent . $path;
-						} elseif ($end) {
-							$subject = $path . $slash;
-						} else {
-							$subject = $arr[0];
-						}
-						if (preg_match('/'. strtr($kk, ['/' => '\\/']) .'/', $subject, $matches)) {
-							foreach($matches as $kkk => $vvv) {
-								if (isset($vv[$kkk])) {
-									$this->rewrite[$vv[$kkk]] = $vvv;
-								}
-							}
-							$this->name = $call = $k;
-							$this->path[] = $k;
-							$break = true;
-							break 2;
-						}
-					}
-				}
-			}
-			$break || $this->err(404);
-
-
-
-
-
-
-			/*do {
-				$run = false;
-				prioritysort($a->match);
-				foreach($a->match as $k => $V) {
-
-				}
-			} while($run);*/
+			empty($break) && $this->err(404);
 		}
-		}
+
 		$_REQUEST = array_merge($_GET, $_POST, $this->rewrite);
 		foreach ($a->variable as $v) {
 			$a->$v =& $this->$v;
