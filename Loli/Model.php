@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-08 08:27:43
-/*	Updated: UTC 2015-01-04 16:12:48
+/*	Updated: UTC 2015-01-05 06:52:34
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -95,7 +95,7 @@ trait Model{
 			if ($this->$key instanceof Model) {
 				$this->$key->__ID = $ID;
 			}
-			do_array_call('Model.' . $ID, [&$this->$key, $this]);
+			do_array_call('Model.' . $ID, [&$this->$key, &$this]);
 			if ($this->$key instanceof Model && !$this->$key->__ID) {
 				$this->$key->__ID = $ID;
 			}
@@ -129,7 +129,7 @@ trait Model{
 			if (self::$__DATA[$key]['value'] instanceof Model) {
 				self::$__DATA[$key]['value']->__ID = $key;
 			}
-			do_array_call('Model.' . $key, [&self::$__DATA[$key]['value'], $this]);
+			do_array_call('Model.' . $key, [&self::$__DATA[$key]['value'], &$this]);
 			if (self::$__DATA[$key]['value'] instanceof Model && !self::$__DATA[$key]['value']->__ID) {
 				 self::$__DATA[$key]['value']->__ID = $key;
 			}
