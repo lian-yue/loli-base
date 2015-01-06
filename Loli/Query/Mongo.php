@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-05 05:03:53
-/*	Updated: UTC 2015-01-03 15:02:10
+/*	Updated: UTC 2015-01-06 06:43:36
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -20,7 +20,7 @@ class Mongo extends Base{
 	];
 
 
-	private $compare = [
+	private $_compare = [
 		'=' => '$eq',
 		'!=' => '$ne',
 		'<>' => '$ne',
@@ -416,7 +416,7 @@ class Mongo extends Base{
 
 		// 逻辑运算符
 		$logical = trim($logical);
-		$logical = in_array(strtolower($logical), $this->logical) ? strtolower($logical) : (empty($this->logical[$logical = strtoupper($logical)]) ? reset($this->logical) : $this->logical[$logical]);
+		$logical = in_array(strtolower($logical), $this->_logical) ? strtolower($logical) : (empty($this->_logical[$logical = strtoupper($logical)]) ? reset($this->_logical) : $this->_logical[$logical]);
 
 
 		$_false = false;
@@ -441,7 +441,7 @@ class Mongo extends Base{
 			$v->not = !empty($v->not);
 
 			// 运算符
-			$v->compare = empty($v->compare) ? (isset($v->compare) && $v->compare === false ? false : '') : ($v->compare{0} == '$' ? '$' . preg_replace('/[^a-zA-Z]/', '', $v->compare) : (empty($this->compare[$compare = trim(strtoupper($v->compare))]) ? '$' . preg_replace('/[^a-zA-Z]/', '', $compare == trim($v->compare) ? strtolower($compare) : $v->compare) : $this->compare[$compare]));
+			$v->compare = empty($v->compare) ? (isset($v->compare) && $v->compare === false ? false : '') : ($v->compare{0} == '$' ? '$' . preg_replace('/[^a-zA-Z]/', '', $v->compare) : (empty($this->_compare[$compare = trim(strtoupper($v->compare))]) ? '$' . preg_replace('/[^a-zA-Z]/', '', $compare == trim($v->compare) ? strtolower($compare) : $v->compare) : $this->_compare[$compare]));
 
 			// 是否转义
 			$v->escape = !isset($v->escape) || $v->escape !== false;

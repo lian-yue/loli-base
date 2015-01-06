@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 09:43:36
-/*	Updated: UTC 2015-01-04 14:30:57
+/*	Updated: UTC 2015-01-06 11:07:05
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -16,6 +16,9 @@ use StdClass;
 class Query{
 	use Model;
 
+	public $ttl = 0;
+
+	// 缓存数据
 	public $data = [];
 
 	// table表
@@ -290,11 +293,11 @@ class Query{
 	*
 	*	返回值 true false
 	**/
-	public function result($w) {
+	public function results($w) {
 		$w['$count'] = null;
 		$r = [];
-		foreach($this->DB->result($this->str($w), $this->slave) as $v) {
-			$r[] = $this->_r($v);
+		foreach($this->DB->results($this->str($w), $this->slave) as $v) {
+			$r[] = $this->r($v);
 		}
 		return $r;
 	}
@@ -311,7 +314,7 @@ class Query{
 		$w['$count'] = null;
 		$w['$limit'] = 1;
 		if ($r = $this->DB->row($this->str($w), $this->slave)) {
-			return $this->_r($r);
+			return $this->r($r);
 		}
 		return false;
 	}
@@ -366,7 +369,9 @@ class Query{
 				break;
 		}
 
-
+		if ($this->ttl && ($r = $this->cache->get($count == 1? reset($a) : json_encode($a), get_class($this)))) {
+			return $this->r($r, false);
+		}
 		return $this->row($a);
 	}
 
@@ -387,7 +392,7 @@ class Query{
 			$this->lists['$found_rows'] = !isset($this->lists['$count']) || $this->lists['$count'] === true;
 
 			// 内容
-			$this->lists['$result'] = $this->result($this->lists);
+			$this->lists['$result'] = $this->results($this->lists);
 
 			// 数量
 			if ($this->lists['$found_rows']) {
@@ -477,7 +482,7 @@ class Query{
 
 
 		// 过滤 w
-		if (!$a = $this->_w($a, false, $args)) {
+		if (!$a = $this->w($a, false, $args)) {
 			return false;
 		}
 
@@ -492,7 +497,7 @@ class Query{
 		}
 
 		// 完成回调
-		$this->_c((object) $a, false, $a + $args);
+		$this->c((object) $a, false, $a + $args);
 		return $r;
 	}
 
@@ -521,7 +526,7 @@ class Query{
 		}
 
 		// 过滤 w
-		if (!$a = $this->_w($a, $old, $args)) {
+		if (!$a = $this->w($a, $old, $args)) {
 			return false;
 		}
 
@@ -536,7 +541,7 @@ class Query{
 		}
 
 		// 完成回调
-		$this->_c((object) ($a + ($old ? (array) $old : [])), $old, $a + $args);
+		$this->c((object) ($a + ($old ? (array) $old : [])), $old, $a + $args);
 
 		return $r;
 	}
@@ -594,7 +599,7 @@ class Query{
 		}
 
 
-		if (!$a = $this->_w($a, $old, $args)) {
+		if (!$a = $this->w($a, $old, $args)) {
 			return false;
 		}
 
@@ -604,7 +609,7 @@ class Query{
 		$a = $w + $a;
 
 		// 完成回调
-		$this->_c((object) ($a + (array) $old), $old, $a + $args);
+		$this->c((object) ($a + (array) $old), $old, $a + $args);
 
 		return $r;
 	}
@@ -635,7 +640,7 @@ class Query{
 		}
 
 		// 完成回调
-		$this->_c(false, $old, false);
+		$this->c(false, $old, false);
 		return $r;
 	}
 
@@ -690,7 +695,7 @@ class Query{
 
 			// 检测重复
 			if ($q) {
-				foreach($this->DB->result($this->Query->get($q, $this->table, '*', 'OR'), false) as $v) {
+				foreach($this->DB->results($this->Query->get($q, $this->table, '*', 'OR'), false) as $v) {
 					foreach($a as $kk => $vv) {
 						foreach($unique as $vvv) {
 							$exists = true;
@@ -715,7 +720,7 @@ class Query{
 
 		// 过滤
 		foreach ($a as $k => $v) {
-			if (!$a[$k] = $this->_w($v, false, $args[$k])) {
+			if (!$a[$k] = $this->w($v, false, $args[$k])) {
 				unset($a[$k]);
 			}
 		}
@@ -728,7 +733,7 @@ class Query{
 		// 完成回调
 		if (!$this->insert_id) {
 			foreach ($a as $k => $v) {
-				$this->_c((object) $v, false, $v + $args[$k]);
+				$this->c((object) $v, false, $v + $args[$k]);
 			}
 		}
 		return $r;
@@ -777,7 +782,7 @@ class Query{
 
 			// 取得存在的
 			if ($q) {
-				foreach($this->DB->result($this->Query->get($q, $this->table, '*', 'OR'), false) as $v) {
+				foreach($this->DB->results($this->Query->get($q, $this->table, '*', 'OR'), false) as $v) {
 					foreach($a as $kk => $vv) {
 						$exists = true;
 						foreach ($this->primary as $vvv) {
@@ -798,7 +803,7 @@ class Query{
 
 		// 过滤
 		foreach ($a as $k => $v) {
-			if (!$a[$k] = $this->_w($v, isset($old[$k]) ? $old[$k] : false, $args[$k])) {
+			if (!$a[$k] = $this->w($v, isset($old[$k]) ? $old[$k] : false, $args[$k])) {
 				unset($a[$k]);
 			}
 		}
@@ -811,7 +816,7 @@ class Query{
 		// 完成回调
 		if (!$this->insert_id) {
 			foreach ($a as $k => $v) {
-				$this->_c((object) ($v + (isset($old[$k]) ? (array) $old[$k] : [])), isset($old[$k]) ? $old[$k] : false, $v + $args[$k]);
+				$this->c((object) ($v + (isset($old[$k]) ? (array) $old[$k] : [])), isset($old[$k]) ? $old[$k] : false, $v + $args[$k]);
 			}
 		}
 
@@ -846,7 +851,7 @@ class Query{
 		$this->slave = false;
 
 		$old = [];
-		if (!$w || ($c && !($old = $this->DB->result($this->Query->get($w, $this->table), false)))) {
+		if (!$w || ($c && !($old = $this->DB->results($this->Query->get($w, $this->table), false)))) {
 			return false;
 		}
 
@@ -878,7 +883,7 @@ class Query{
 
 		// 写入过滤
 		foreach ($old as $v) {
-			if (!$a = $this->_w($a, $v, $args)) {
+			if (!$a = $this->w($a, $v, $args)) {
 				return false;
 			}
 		}
@@ -892,7 +897,7 @@ class Query{
 			foreach ($this->primary as $vv) {
 				$new[$vv] = $v->{$vv};
 			}
-			$this->_c((object) ($new + ((array) $v)), $v, $new + $args);
+			$this->c((object) ($new + ((array) $v)), $v, $new + $args);
 		}
 		return $r;
 	}
@@ -923,13 +928,13 @@ class Query{
 
 		//  读取 和 删除
 		$old = [];
-		if (!$w || ($c && !($old = $this->DB->result($this->Query->get($w, $this->table), false))) || !($r = $this->DB->delete($this->Query->delete($w, $this->table), false))) {
+		if (!$w || ($c && !($old = $this->DB->results($this->Query->get($w, $this->table), false))) || !($r = $this->DB->delete($this->Query->delete($w, $this->table), false))) {
 			return 0;
 		}
 
 		// 完成回调
 		foreach($old as $v) {
-			$this->_c(false, $v, false);
+			$this->c(false, $v, false);
 		}
 		return $r;
 	}
@@ -1003,7 +1008,7 @@ class Query{
 	*
 	*	回调
 	**/
-	protected function _r($r) {
+	protected function r($r, $c = true) {
 		$count = count($this->primary);
 		if ($count == 1) {
 			if (is_array($r->{$this->primary[0]}) || is_object($r->{$this->primary[0]})) {
@@ -1017,6 +1022,14 @@ class Query{
 		} elseif ($count == 4) {
 			$this->data[$r->{$this->primary[0]}][$r->{$this->primary[1]}][$r->{$this->primary[2]}][$r->{$this->primary[3]}] = $r;
 		}
+
+		if ($c && $this->ttl) {
+			$params = [];
+			foreach ($this->primary as $v) {
+				$params[$v] = $r->$v;
+			}
+			$this->slave ? $this->cache->add($r, $count == 1 ? reset($params) : json_encode($params), get_class($this), $this->ttl) : $this->cache->set($r, $count == 1 ? reset($params) : json_encode($params), get_class($this), $this->ttl);
+		}
 		return $r;
 	}
 
@@ -1026,7 +1039,7 @@ class Query{
 	*
 	*	回调
 	**/
-	protected function _w($w, $old, $args) {
+	protected function w($w, $old, $args) {
 		return $w;
 	}
 
@@ -1035,24 +1048,32 @@ class Query{
 	*
 	*	回调
 	**/
-	protected function _c($new, $old, $args) {
+	protected function c($new, $old, $args) {
 		$a = $new ? $new : $old;
-
-		switch(count($this->primary)) {
+		$count = count($this->primary);
+		switch($count) {
 			case 1:
-				$this->data[$a->{$this->primary[0]}] = null;
+				unset($this->data[$a->{$this->primary[0]}]);
 				break;
 			case 2:
-				$this->data[$a->{$this->primary[0]}][$a->{$this->primary[1]}] = null;
+				unset($this->data[$a->{$this->primary[0]}][$a->{$this->primary[1]}]);
 				break;
 			case 3:
-				$this->data[$a->{$this->primary[0]}][$a->{$this->primary[1]}][$a->{$this->primary[2]}] = null;
+				unset($this->data[$a->{$this->primary[0]}][$a->{$this->primary[1]}][$a->{$this->primary[2]}]);
 				break;
 			case 4:
-				$this->data[$a->{$this->primary[0]}][$a->{$this->primary[1]}][$a->{$this->primary[2]}][$a->{$this->primary[3]}] = null;
+				unset($this->data[$a->{$this->primary[0]}][$a->{$this->primary[1]}][$a->{$this->primary[2]}][$a->{$this->primary[3]}]);
 				break;
 			default:
 				$this->data = [];
+		}
+		$params = [];
+		foreach ($this->primary as $v) {
+			$params[$v] = $a->$v;
+		}
+		if ($params) {
+			$this->ttl && $this->cache->delete($count == 1 ? reset($params) : json_encode($params), get_class($this));
+			call_user_func_array([$this, 'get'], $params);
 		}
 	}
 }

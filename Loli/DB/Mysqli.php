@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2014-12-31 07:11:24
+/*	Updated: UTC 2015-01-06 09:29:51
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -136,7 +136,7 @@ class Mysqli extends Base{
 		}
 		return $count;
 	}
-	public function result($query, $call = false, $slave = true) {
+	public function results($query, $call = false, $slave = true) {
 		return ($r = $this->query($query, $slave)) ? $r : [];
 	}
 

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2014-12-31 07:12:14
+/*	Updated: UTC 2015-01-06 06:41:03
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -44,9 +44,8 @@ class Mysql extends Base{
 				// 布尔值
 				$q .= 'tinyint(4)';
 			} elseif ($v['type'] == 'int') {
-
 				// 整数类型
-				$length = empty($v['length']) ? 4 : absint($v['length']);
+				$length = empty($v['length']) ? 4 : intval($v['length']);
 				if ($length == 1) {
 					$q .= 'tinyint(' . ($unsigned ? 3 : 4) . ')';
 				} elseif ($length == 2) {
@@ -64,14 +63,15 @@ class Mysql extends Base{
 				$q .=  $v['type'];
 				if (!empty($v['length'])) {
 					$length = is_array($v['length']) ? array_slice($v['length'] , 0, 2): explode(',', $v['length'], 2);
-					$length = array_map('absint', $length);
+					$length = array_map('intval', $length);
 					$q .= '('. implode(',', $length) .')';
 				}
-			} elseif (in_array($v['type'], ['char', 'varchar'])) {
+			} elseif (in_array($v['type'], ['char', 'varchar']) || ($v['type'] == 'text' && ((!empty($vv['length']) && $vv['length'] <= 255) || isset($vv['primary']) || !empty($vv['unique']) || !empty($vv['key'])))) {
 				// 能索引的字符串
+				$v['type'] == 'text' ? 'varchar' : $v['type'];
 				$q .=  $v['type'];
-				if (!empty($v['length']) && ($length = absint($v['length']))) {
-					$q .= '('. $length .')';
+				if (!empty($v['length'])) {
+					$q .= '('. intval($v['length']) .')';
 				} else {
 					$q .= '(255)';
 				}
@@ -80,10 +80,10 @@ class Mysql extends Base{
 			} elseif ($v['type'] == 'text') {
 
 				// 不能索引的字符串
-				$length = empty($v['length'])  ? 1 : absint($v['length']);
-				if ($length == 1) {
+				$length = empty($v['length']) ? 0 : intval($v['length']);
+				if ($length <= 65535) {
 					$q .= 'text';
-				} elseif ($length == 2) {
+				} elseif ($length <= 16777215) {
 					$q .= 'mediumtext';
 				} else {
 					$q .= 'longtext';
@@ -103,7 +103,7 @@ class Mysql extends Base{
 				}
 
 				// 不能为空
-				if (empty($v['null'])) {
+				if (!isset($v['null']) || !$v['null']) {
 					$q .= ' NOT NULL ';
 				}
 
@@ -145,7 +145,7 @@ class Mysql extends Base{
 				}
 			} else {
 				// 不能为空
-				if (empty($v['null'])) {
+				if (!isset($v['null']) || !$v['null']) {
 					$q .= ' NOT NULL ';
 				}
 			}
