@@ -8,22 +8,16 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-05 16:44:04
-/*	Updated: UTC 2015-01-06 16:39:21
+/*	Updated: UTC 2015-01-07 05:29:17
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
-use Loli\Query;
-class User extends Query{
-
-
-
-
-
+trait User{
 
 	/**
 	 * 权限控制
 	 * @param  [type] $ID			用户id
-	 * @param  [type] $keys			keys[0] = 应用  然后是 路径
+	 * @param  [type] $keys			keys  ['Controller'的类名] +  Controller 的 路径
 	 * @param  string $column		可选 匹配附加字段
 	 * @param  string $value 		可选 匹配的值
 	 * @param  string $compare		可选 匹配运算符
@@ -33,9 +27,6 @@ class User extends Query{
 	public function permission($ID, $keys, $column = '', $value = '', $compare = '=', $logical = 'OR') {
 		static $r;
 		$ID = (int) $ID;
-		if (!is_array($keys)) {
-			$keys = explode('/', trim($keys, '/'));
-		}
 		$k = implode('/', $keys);
 		if (!isset($r[$ID][$k])) {
 			$permissions = $nodes = [];
@@ -117,5 +108,4 @@ class User extends Query{
 		}
 		return $ret;
 	}
-
 }

@@ -8,11 +8,28 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-01 15:44:57
-/*	Updated: UTC 2015-01-01 15:58:42
+/*	Updated: UTC 2015-01-07 13:49:38
 /*
 /* ************************************************************************** */
 namespace Loli;
 class Image{
+	const FLIP_HORIZONTAL = 1;
+
+	const FLIP_VERTICAL = 2;
+
+	const FLIP_BOTH = 3;
+
+
+
+	const TYPE_JPEG = 1;
+
+	const TYPE_GIF = 2;
+
+	const TYPE_PNG = 3;
+
+	const TYPE_WEBP = 4;
+
+
 	private $_link = '';
 	public function __construct($a = '', $type = false) {
 		$class = __NAMESPACE__ '\Image\\' . (empty($_SERVER['LOLI']['IMAGE']['mode']) ? 'GD' : $_SERVER['LOLI']['IMAGE']['mode']);

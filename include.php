@@ -8,15 +8,10 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-01-05 16:16:17
+/*	Updated: UTC 2015-01-07 05:40:01
 /*
 /* ************************************************************************** */
 namespace Loli;
-
-// 如果是网页 ICO 结束查询 或者 flash 请求
-if (!empty($_SERVER['REQUEST_URI']) && in_array(strtolower($_SERVER['REQUEST_URI']), ['/favicon.ico', '/crossdomain.xml', '/robots.txt'])) {
-	exit;
-}
 
 // PHP 版本检测
 version_compare('5.4', phpversion(), '>') && trigger_error('php version less than 5.4', E_USER_ERROR);

@@ -8,23 +8,35 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-04 09:53:39
+/*	Updated: UTC 2015-01-07 14:15:05
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
 
-
-define('IMAGE_FLIP_HORIZONTAL', 1);
-define('IMAGE_FLIP_VERTICAL', 2);
-define('IMAGE_FLIP_BOTH', 3);
-
-define('IMAGE_TYPE_JPEG', 1);
-define('IMAGE_TYPE_GIF', 2);
-define('IMAGE_TYPE_PNG', 3);
-define('IMAGE_TYPE_WEBP', 4);
-
-
 abstract class Base {
+
+	const FLIP_HORIZONTAL = 1;
+
+	const FLIP_VERTICAL = 2;
+
+	const FLIP_BOTH = 3;
+
+
+
+
+
+
+	const TYPE_JPEG = 1;
+
+	const TYPE_GIF = 2;
+
+	const TYPE_PNG = 3;
+
+	const TYPE_WEBP = 4;
+
+
+
+
 
 	// 处理 图片 最大宽度 0 = 不限制
 	public $maxWidth = 4096;
@@ -42,15 +54,15 @@ abstract class Base {
 	public $quality = 90;
 
 	// 图片
-	public $im;
+	protected $im;
 
 	// 处理图片内存限制
 	public $memory = '512M';
 
 	// 文件后缀
-	public $type = [IMAGE_TYPE_JPEG => ['jpg', 'jpeg', 'jpe', 'jfif', 'jif'], IMAGE_TYPE_GIF => ['gif'], IMAGE_TYPE_PNG => ['png'], IMAGE_TYPE_WEBP => ['webp']];
+	public $type = [1 => ['jpg', 'jpeg', 'jpe', 'jfif', 'jif'], 2 => ['gif'], 3 => ['png'], 4 => ['webp']];
 
-	public $mime = [IMAGE_TYPE_JPEG => 'image/jpeg', IMAGE_TYPE_GIF => 'image/gif', IMAGE_TYPE_PNG => 'image/png', IMAGE_TYPE_WEBP => 'image/webp'];
+	public $mime = [1 => 'image/jpeg', 2 => 'image/gif', 3 => 'image/png', 4 => 'image/webp'];
 	/**
 	*	init
 	*
@@ -133,32 +145,32 @@ abstract class Base {
 	/**
 	*	图像反转
 	*
-	*	1 参数 反转模式 IMAGE_FLIP_HORIZONTAL = 水平翻转 IMAGE_FLIP_VERTICAL = 垂直翻转图像 IMAGE_FLIP_BOTH = 水平和垂直翻转图像
+	*	1 参数 反转模式 self::FLIP_HORIZONTAL = 水平翻转 self::FLIP_VERTICAL = 垂直翻转图像 self::FLIP_BOTH = 水平和垂直翻转图像
 	*
 	*	返回值bool
 	*/
-	abstract public function flip($mode = IMAGE_FLIP_HORIZONTAL);
+	abstract public function flip($mode = self::FLIP_HORIZONTAL);
 
 	 /**
      * 图像添加文字
      * @param  string  $text   文字
-     * @param  integer $size   大小
      * @param  string  $font   字体路径
+     * @param  integer $size   大小
      * @param  string  $color  颜色
-     * @param  integer $top 上下位置
-     * @param  integer $left 左右位置
+     * @param  integer $top 上下位置 负数 = 下边开始 10% = 百分比
+     * @param  integer $left 左右位置 负数 = 右边开始 10% = 百分比
      * @param  integer $angle  倾斜角度
      */
-	//abstract public function text($text, $size,  $font, $color = '#000000', $top = 0, $left = 0, $angle = 0);
+	abstract public function text($text, $font, $size = 12, $color = '#000000', $x = 0, $y = 0, $angle = 0, $opacity = 1.0);
 
   /**
      * 图像添加图片
      * @param  string  $file   图片地址
-     * @param  integer $top 上下位置
-     * @param  integer $left 左右位置
+     * @param  integer $top 上下位置 负数 = 下边开始
+     * @param  integer $left 左右位置 负数 = 右边开始
      * @param  integer $alpha  透明度
      */
-  // abstract public function insert($file, $top = 0, $left = 0, $alpha = 100);
+   abstract public function insert($file, $x = 0, $y = 0, $opacity = 1.0);
 
 	/**
 	*	重采样拷贝部分图像并调整大小
@@ -202,7 +214,7 @@ abstract class Base {
 	public function resize($max_w, $max_h, $crop = false, $enlarge = false, $fill = false) {
 
 		// 强制控制大小
-		$this->maxMin($max_w, $max_h);
+		$this->_maxMin($max_w, $max_h);
 
 		// 处理尺寸
 		if (!$args = $this->resizeDimensions($max_w, $max_h, $crop, $enlarge, $fill)) {
@@ -390,7 +402,6 @@ abstract class Base {
 	}
 
 
-
 	/**
 	*	图像宽度高度检测
 	*
@@ -399,7 +410,7 @@ abstract class Base {
 	*
 	*	无返回值 直接引用
 	**/
-	private function maxMin(&$w, &$h) {
+	private function _maxMin(&$w, &$h) {
 
 		// 最大宽度检测
 		if ($w && $this->maxWidth && $this->maxWidth < $w) {

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-16 08:55:06
-/*	Updated: UTC 2014-12-31 07:11:41
+/*	Updated: UTC 2015-01-07 14:17:17
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -83,12 +83,12 @@ class GD extends Base {
 	}
 
 
-	public function flip($mode = IMAGE_FLIP_HORIZONTAL) {
+	public function flip($mode = self::FLIP_HORIZONTAL) {
 		if (!$this->im) {
 			return false;
 		}
 		if (function_exists ('imageflip')){
-			$arg =[ IMAGE_FLIP_HORIZONTAL => IMG_FLIP_HORIZONTAL, IMAGE_FLIP_VERTICAL => IMG_FLIP_VERTICAL, IMAGE_FLIP_BOTH => IMG_FLIP_BOTH];
+			$arg =[ self::FLIP_HORIZONTAL => IMG_FLIP_HORIZONTAL, self::FLIP_VERTICAL => IMG_FLIP_VERTICAL, self::FLIP_BOTH => IMG_FLIP_BOTH];
 			return imageflip($this->im , isset($arg[$mode]) ? $arg[$mode] : IMG_FLIP_BOTH);
 		}
 		$width = $this->width();
@@ -100,11 +100,11 @@ class GD extends Base {
 		$src_height = $height;
 
 		switch ($mode) {
-			case IMAGE_FLIP_HORIZONTAL:
+			case self::FLIP_HORIZONTAL:
 				$src_y = $height -1;
 				$src_height = -$height;
 				break;
-			case IMAGE_FLIP_VERTICAL:
+			case self::FLIP_VERTICAL:
 				$src_x = $width -1;
 				$src_width = -$width;
 				break;
@@ -122,6 +122,106 @@ class GD extends Base {
 
 		imagedestroy($this->im);
 		$this->im = $image;
+		return true;
+	}
+
+
+	public function text($text, $font, $size = 12, $color = '#000000', $x = 0, $y = 0, $angle = 0,  $opacity = 1.0) {
+		if (!$this->im) {
+			return false;
+		}
+		$angle = $angle % 360;
+        $info = imagettfbbox($size, $angle, $font, $text);
+
+
+        if ($color && is_array($color)) {
+			foreach (['red', 'green', 'blue'] as $v) {
+				$$v = empty($color[$v]) ? 0 : $color[$v];
+			}
+		} elseif ($color && is_string($color) && strlen($color) >= 6) {
+			if ($color{0} == '#') {
+				$color =  substr($color, 1);
+			}
+			$red = hexdec(substr($color, 0, 2));
+			$green = hexdec(substr($color, 2, 2));
+			$blue = hexdec(substr($color, 4, 2));
+		} else {
+			$blue  = $green = $red = 0;
+		}
+
+
+		$xN = $x < 0 || ($x && is_string($x) && $x{0} == '-');
+		$w = abs(max($info[0], $info[2], $info[4], $info[6]) - min($info[0], $info[2], $info[4], $info[6]));
+		if (is_string($x) && substr($x, -1, 1) == '%') {
+			$x = ($this->width() - $w) * (($xN ? 100 + $x : $x) / 100);
+		} elseif ($xN) {
+			$x += $this->width() - $w;
+		}
+
+		if ($angle <= 90) {
+			$x -= $info[6];
+		} elseif ($angle <= 180) {
+			$x -= $info[4];
+		} elseif ($angle <= 270) {
+			$x -= $info[2];
+		} else {
+			$x -= $info[0];
+		}
+
+
+		$yN = $y < 0 || ($y && is_string($y) && $y{0} == '-');
+		$h = abs(max($info[1], $info[3], $info[5], $info[7]) - min($info[1], $info[3], $info[5], $info[7]));
+		if (is_string($y) && substr($y, -1, 1) == '%') {
+			$y = ($this->height() - $h) * (($yN ? 100 + $y : $y) / 100);
+		} elseif ($yN) {
+			$y += $this->height() - $h;
+		}
+
+		if ($angle <= 90) {
+			$y -= $info[5];
+		} elseif ($angle <= 180) {
+			$y -= $info[3];
+		} elseif ($angle <= 270) {
+			$y -= $info[1];
+		} else {
+			$y -= $info[7];
+		}
+
+		imagealphablending($this->im, true);
+		$color = imagecolorallocatealpha($this->im, $red, $green, $blue, 127 - $opacity * 127);
+		imagettftext($this->im, $size, $angle, $x, $y, $color, $font, $text);
+		imagealphablending($this->im, false);
+		return true;
+	}
+
+	public function insert($file, $x = 0, $y = 0, $opacity = 1.0) {
+		if (!$file || !is_file($file) || !($info = @getimagesize($file)) || !($data = file_get_contents($file)) || !($im = @imagecreatefromstring($data))) {
+			return false;
+		}
+		unset($data);
+
+		$xN = $x < 0 || ($x && is_string($x) && $x{0} == '-');
+		if (is_string($x) && substr($x, -1, 1) == '%') {
+			$x = ($this->width() - $info[0]) * (($xN ? 100 + $x : $x) / 100);
+		} elseif ($xN) {
+			$x += $this->width() - $info[0];
+		}
+
+		$yN = $y < 0 || ($y && is_string($y) && $y{0} == '-');
+		if (is_string($y) && substr($y, -1, 1) == '%') {
+			$y = ($this->height() - $info[1]) * (($yN ? 100 + $y : $y) / 100);
+		} elseif ($yN) {
+			$y += $this->height() - $info[1];
+		}
+
+        imagealphablending($im, true);
+		$src =  $this->_create($info[0], $info[1]);
+		imagealphablending($src, true);
+		imagecopy($src, $this->im, 0, 0, $x, $y, $info[0], $info[1]);
+		imagecopy($src, $im, 0, 0, 0, 0, $info[0], $info[1]);
+		imagecopymerge($this->im, $src, $x, $y, 0, 0, $info[0], $info[1], $opacity * 100);
+		imagedestroy($src);
+		imagedestroy($im);
 		return true;
 	}
 
@@ -153,16 +253,16 @@ class GD extends Base {
 			}
 		}
 
-		if (IMAGE_TYPE_WEBP == $type) {
+		if (self::TYPE_WEBP == $type) {
 			if (!imagewebp($this->im, $save)) {
 				return false;
 			}
-		} elseif (IMAGE_TYPE_GIF == $type) {
+		} elseif (self::TYPE_GIF == $type) {
 			$this->stotal();
 			if (!imagegif($this->im, $save)) {
 				return false;
 			}
-		} elseif (IMAGE_TYPE_PNG == $type) {
+		} elseif (self::TYPE_PNG == $type) {
 			$this->stotal();
 			if (!imagepng($this->im, $save)) {
 				return false;
@@ -191,14 +291,14 @@ class GD extends Base {
 		}
 		$type = $type ? $type : $this->type();
 		@header('Content-Type: ' . (empty($this->mime[$type]) ? reset($$this->mime) : $this->mime[$type]));
-		if (IMAGE_TYPE_WEBP == $type) {
+		if (self::TYPE_WEBP == $type) {
 			if (!imagewebp($this->im)) {
 				return false;
 			}
-		} elseif (IMAGE_TYPE_GIF == $type) {
+		} elseif (self::TYPE_GIF == $type) {
 			$this->stotal();
 			imagegif ($this->im);
-		} elseif (IMAGE_TYPE_PNG == $type) {
+		} elseif (self::TYPE_PNG == $type) {
 			$this->stotal();
 			imagepng ($this->im);
 		} else {
