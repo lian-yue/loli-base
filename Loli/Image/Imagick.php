@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-12 15:00:16
-/*	Updated: UTC 2015-01-07 15:28:47
+/*	Updated: UTC 2015-01-08 17:33:19
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -91,7 +91,7 @@ class Imagick extends Base{
 	}
 
 
-	public function length(){
+	public function length() {
 		if (!$this->im) {
 			return false;
 		}
@@ -147,7 +147,8 @@ class Imagick extends Base{
 	}
 
 
-	public function text($text, $font, $size = 30, $color = '#FFFFFF', $x = 0, $y = 200, $angle = 150,  $opacity = 1.0) {
+	public function text($text, $font, $size = 30, $color = '#FFFFFF', $x = '0%', $y = '-0%', $angle = 0,  $opacity = 1.0) {
+		$angle = $angle % 360;
 
 		if (is_array($color)) {
 			$color = '#';
@@ -155,6 +156,7 @@ class Imagick extends Base{
 				 $color .= str_pad($rgba[$key], 2, '0', STR_PAD_LEFT);
 			}
 		}
+
 
 		$draw = new ImagickDraw();
 		$draw->setFont($font);
@@ -164,35 +166,25 @@ class Imagick extends Base{
 		$draw->setTextAntialias(true);
 		$draw->setStrokeAntialias(true);
 		$metrics = $this->im->queryFontMetrics($draw, $text);
-
-
-
-		//$y = $metrics['ascender'];
-        $w = $metrics['textWidth'];
+		$w = $metrics['textWidth'];
         $h = $metrics['textHeight'];
-		if (r('info')) {
-			print_r($metrics);
-			die;
-		}
-		echo $w;die;
-		$diagonal = sqrt($w * $w + $h * $h);
-		echo $diagonal;die;
-
 		$xN = $x < 0 || ($x && is_string($x) && $x{0} == '-');
-		if (is_string($x) && substr($x, -1, 1) == '%') {
+        if (is_string($x) && substr($x, -1, 1) == '%') {
 			$x = ($this->width() - $w) * (($xN ? 100 + $x : $x) / 100);
 		} elseif ($xN) {
 			$x += $this->width() - $w;
 		}
-//		$xx = ($h + $w)  $angle % 45 ? 1 : 1;
-		if ($angle <= 90) {
-		} elseif ($angle <= 180) {
-			$x += ($w * (($angle - 90) / 90));
-		} elseif ($angle <= 270) {
-			$x += $h / (($angle - 180) / 90);
-		} else {
-			$x -= $info[0];
+
+
+
+		$yN = $y < 0 || ($y && is_string($y) && $y{0} == '-');
+		if (is_string($y) && substr($y, -1, 1) == '%') {
+			$y = ($this->height() - $h) * (($yN ? 100 + $y : $y) / 100);
+		} elseif ($yN) {
+			$y += $this->height() - $h;
 		}
+		$y += $metrics['ascender'];
+
 
 		if ($this->type() == self::TYPE_GIF) {
 			$im = $this->im->coalesceImages();
@@ -210,8 +202,48 @@ class Imagick extends Base{
 	}
 
 	public function insert($file, $x = 0, $y = 0, $opacity = 1.0) {
+		if (!$file || !is_file($file)) {
+			return false;
+		}
+		try{
+			$src = new \Imagick($file);
+			$src->setImageOpacity($opacity);
+		} catch(ImagickException $e) {
+			return false;
+		}
+		$info = $src->getImagePage();
 
+		$xN = $x < 0 || ($x && is_string($x) && $x{0} == '-');
+		if (is_string($x) && substr($x, -1, 1) == '%') {
+			$x = ($this->width() - $info['width']) * (($xN ? 100 + $x : $x) / 100);
+		} elseif ($xN) {
+			$x += $this->width() - $info['width'];
+		}
+
+		$yN = $y < 0 || ($y && is_string($y) && $y{0} == '-');
+		if (is_string($y) && substr($y, -1, 1) == '%') {
+			$y = ($this->height() - $info['height']) * (($yN ? 100 + $y : $y) / 100);
+		} elseif ($yN) {
+			$y += $this->height() - $info['height'];
+		}
+
+
+		$draw = new ImagickDraw();
+		$draw->composite($src->getImageCompose(), $x, $y, $info['width'], $info['height'], $src);
+		if ($this->type() == self::TYPE_GIF) {
+			$im = $this->im->coalesceImages();
+			$this->im->destroy();
+			do{
+				$im->drawImage($draw);
+				} while ($im->nextImage());
+			$this->im = $im->deconstructImages();
+			$im->destroy();
+		} else {
+			$this->im->drawImage($draw);
+		}
+		return true;
 	}
+
 
 
 
