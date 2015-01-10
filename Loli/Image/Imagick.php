@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-12 15:00:16
-/*	Updated: UTC 2015-01-08 17:33:19
+/*	Updated: UTC 2015-01-08 17:41:31
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -157,7 +157,7 @@ class Imagick extends Base{
 			}
 		}
 
-
+		//sqrt(50*50 + 50*50)
 		$draw = new ImagickDraw();
 		$draw->setFont($font);
 		$draw->setFontSize($size);

@@ -8,27 +8,28 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 16:30:57
-/*	Updated: UTC 2015-01-06 13:34:01
+/*	Updated: UTC 2015-01-10 16:31:06
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
 use Loli\Query;
 class Join extends Query{
 	public $args = [
-		'user' => '',
-		'role' => '',
+		'userID' => '',
+		'roleID' => '',
 	];
 
 	public $defaults = [
-		'user' => 0,
-		'role' => 0,
+		'userID' => 0,
+		'roleID' => 0,
 	];
 
-	public $primary = ['user', 'role'];
+	public $primary = ['userID', 'roleID'];
 
 	public $create = [
-		'user' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0]],
-		'role' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 1]],
+		'userID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0]],
+		'roleID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 1]],
+		'expires' => ['type' => 'datetime']],			// 过期如果 是 0000-00-00 00:00:00 的话永不过期 gmt 时间
 	];
 
 	public $add = true;
@@ -44,20 +45,20 @@ class Join extends Query{
 	public $deletes = true;
 
 	// 读某个用户的所有角色
-	public function role($user) {
-		$user = (int) $user;
-		if (!is_array($results = $this->cache->get($user, get_class($this)))) {
-			$results = $this->results(['user' => $user]);
-			$this->slave ? $this->cache->add($results, $user, get_class($this), $this->ttl) : $this->cache->set($results, $user, get_class($this), $this->ttl);
+	public function role($userID) {
+		$userID = (int) $userID;
+		if (!is_array($results = $this->cache->get($userID, get_class($this)))) {
+			$results = $this->results(['userID' => $userID]);
+			$this->slave ? $this->cache->add($results, $userID, get_class($this), $this->ttl) : $this->cache->set($results, $userID, get_class($this), $this->ttl);
 		}
 		return $results;
 	}
 
 	// 更新了刷缓存
 	public function c($new, $old, $args) {
-		$user = $old->user ? $old->user : $new->user;
-		$this->cache->delete($user, get_class($this));
+		$userID = $old->userID ? $old->userID : $new->userID;
+		$this->cache->delete($userID, get_class($this));
 		parent::c($new, $old, $args);
-		$this->role($user);
+		$this->role($userID);
 	}
 }

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-03 07:09:40
-/*	Updated: UTC 2015-01-06 13:34:09
+/*	Updated: UTC 2015-01-09 09:12:35
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -24,7 +24,7 @@ class Node extends Query{
 		'parent' => 0,
 		'key' => '',
 		'name' => '',
-		'order' => 0,
+		'sort' => 0,
 		'description' => '',
 	];
 
@@ -40,11 +40,11 @@ class Node extends Query{
 	public $unique = [['parent', 'key']];
 
 	public $create = [
-		'ID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0]],
-		'parent' => ['type' => 'int', 'unsigned' => true, 'unique' => ['parent_key' => 0]]],
-		'key' => ['type' => 'varchar', 'length' => 64, 'unique' => ['parent_key' => 0]]],
+		'ID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0],
+		'parent' => ['type' => 'int', 'unsigned' => true, 'unique' => ['parent_key' => 0]],
+		'key' => ['type' => 'text', 'length' => 64, 'unique' => ['parent_key' => 0]],
 		'name' => ['type' => 'text', 'length' => 32],
-		'order' => ['type' => 'int', 'length' => 1],
+		'sort' => ['type' => 'int', 'length' => 1],
 		'description' => ['type' => 'text', 'length' => 65535],
 	];
 

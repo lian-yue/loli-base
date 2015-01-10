@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-04 07:30:16
+/*	Updated: UTC 2015-01-09 10:07:21
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -30,32 +30,32 @@ class Lang{
 	public static $name = '';
 
 	// 浏览器有的语言
-	public static $user = [];
+	public static $userAll = [];
 
 	// 翻译语言包
-	private static $_lang = [];
+	private static $_langs = [];
 
 	// 语言包目录
-	private static $_file = [];
+	private static $_files = [];
 
 	// 载入过的文件
-	private static $_load = [];
+	private static $_loads = [];
 
 	// 载入过的列表
-	private static $_list = [];
+	private static $_lists = [];
 
 
 	public static function init() {
 		if (!empty($_SERVER['LOLI']['LANG'])) {
 			foreach ($_SERVER['LOLI']['LANG'] as $k => $v) {
 				if (in_array($k, ['all', 'default', 'replace', 'name', 'file'])) {
-					$k == 'file' ? '_file' : $k;
+					$k == 'file' ? '_files' : $k;
 					self::$$k = $v;
 				}
 			}
 		}
 
-		self::_user();
+		self::_userAll();
 
 		// COOKIE
 		self::$name && ($cookie = Cookie::get(self::$name)) && self::set((string)$cookie);
@@ -64,34 +64,34 @@ class Lang{
 		self::$name && !empty($_REQUEST[self::$name]) && self::set((string)$_REQUEST[self::$name]);
 	}
 
-	private static function _user() {
-		self::$user = [];
+	private static function _userAll() {
+		self::$userAll = [];
 
  		// 正则表达提取语言
 		if (preg_match_all("/(([a-z]{2})[a-z_\-]{0,8})/i", empty($_SERVER["HTTP_ACCEPT_LANGUAGE"]) ? '' : $_SERVER["HTTP_ACCEPT_LANGUAGE"], $arr)) {
 			foreach ($arr[1] as $k => $v) {
-				self::$user[] = $v;
+				self::$userAll[] = $v;
 				if ($v != $arr[2][$k]) {
-					self::$user[] = $arr[2][$k];
+					self::$userAll[] = $arr[2][$k];
 				}
 			}
 		}
 
 		// 2. 整理语言
 		$lang_all = [];
-		foreach (self::$user as $k => &$lang) {
+		foreach (self::$userAll as $k => &$lang) {
 			if (!$lang = self::format($lang)) {
-				unset(self::$user[$k]);
+				unset(self::$userAll[$k]);
 			}
 		}
 
 		// 默认语言写到最后
-		self::$user[] = self::$default;
+		self::$userAll[] = self::$default;
 
 		// 过滤 重复数组 返回交集 重置下标
-		self::$user = array_values(array_intersect(array_unique(self::$user), array_keys(self::$all)));
-		self::$current = reset(self::$user);
-		return self::$user;
+		self::$userAll = array_values(array_intersect(array_unique(self::$userAll), array_keys(self::$all)));
+		self::$current = reset(self::$userAll);
+		return self::$userAll;
 	}
 
 	/**
@@ -157,14 +157,14 @@ class Lang{
 			return false;
 		}
 		if ($end) {
-			self::$user[] = $lang;
+			self::$userAll[] = $lang;
 		} else {
-			array_unshift(self::$user, $lang);
+			array_unshift(self::$userAll, $lang);
 		}
 
 		// 过滤 重复数组 返回交集 重置下标
-		self::$user = array_values(array_intersect(array_unique(self::$user), array_keys(self::$all)));
-		self::$current = reset(self::$user);
+		self::$userAll = array_values(array_intersect(array_unique(self::$userAll), array_keys(self::$all)));
+		self::$current = reset(self::$userAll);
 
 		$cookie && self::$name && Cookie::set(self::$name, self::$current, 86400 * 365);
 		return self::$current;
@@ -193,17 +193,17 @@ class Lang{
 		}
 		foreach ((array) $lists as $v) {
 			// 如果已经有了直接返回
-			if (isset(self::$_lang[self::$current][$v][$text])) {
-				return self::$_lang[self::$current][$v][$text];
+			if (isset(self::$_langs[self::$current][$v][$text])) {
+				return self::$_langs[self::$current][$v][$text];
 			}
 			// 加载 php 文件
-			if (self::$_file && (empty(self::$_list[self::$current]) || !in_array($v, self::$_list[self::$current]))) {
-				self::$_list[self::$current][] = $v;
-				foreach (self::$_file as $vv) {
+			if (self::$_files && (empty(self::$_lists[self::$current]) || !in_array($v, self::$_lists[self::$current]))) {
+				self::$_lists[self::$current][] = $v;
+				foreach (self::$_files as $vv) {
 					self::load($vv, self::$current, $v);
 				}
-				if (isset(self::$_lang[self::$current][$v][$text])) {
-					return self::$_lang[self::$current][$v][$text];
+				if (isset(self::$_langs[self::$current][$v][$text])) {
+					return self::$_langs[self::$current][$v][$text];
 				}
 			}
 		}
@@ -212,8 +212,8 @@ class Lang{
 
 	// 添加个语言目录
 	public static function file($file) {
-		self::$_list = [];
-		self::$_file[] = $file;
+		self::$_lists = [];
+		self::$_files[] = $file;
 		return true;
 	}
 
@@ -228,15 +228,15 @@ class Lang{
 	**/
 	public static function load($file, $lang,  $list = 'default') {
 		$file = sprintf($file, $lang, $list);
-		if (in_array($file, self::$_load)) {
+		if (in_array($file, self::$_loads)) {
 			return false;
 		}
-		self::$_load[] = $file;
-		if (!isset(self::$_lang[$lang][$list])) {
-			self::$_lang[$lang][$list] = [];
+		self::$_loads[] = $file;
+		if (!isset(self::$_langs[$lang][$list])) {
+			self::$_langs[$lang][$list] = [];
 		}
-		if (is_file($file)) {
-			self::$_lang[$lang][$list] = ((array) require $file) + self::$_lang[$lang][$list];
+		if (is_files($file)) {
+			self::$_langs[$lang][$list] = ((array) require $file) + self::$_langs[$lang][$list];
 		}
 		return true;
 	}

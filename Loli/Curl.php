@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 12:09:10
-/*	Updated: UTC 2014-12-31 08:03:10
+/*	Updated: UTC 2015-01-09 14:58:46
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -25,6 +25,9 @@ class Curl{
 
 	// curl
 	public $curl = [];
+
+	// 资源
+	public $resources = [];
 
 	// 自动加载
 	public function __construct($a = [], $cookie = false) {
@@ -111,6 +114,21 @@ class Curl{
 		return true;
 	}
 
+	public function opt($key, $curl) {
+		if (empty($this->curl[$key])) {
+			return false;
+		}
+		foreach ($curl as $k => $v) {
+			$this->curl[$key]['curl'][$k] = $v;
+		}
+		if (!empty($this->resources[$key])) {
+			foreach ($curl as $k => $v) {
+				$v === null || curl_setopt($this->resources[$key], $k, $v);
+			}
+		}
+		return true;
+	}
+
 	/**
 	*	移除 curl
 	*
@@ -124,8 +142,7 @@ class Curl{
 		if (empty($this->curl[$key])) {
 			return false;
 		}
-		unset($this->curl[$key]);
-		unset($this->info[$key]);
+		unset($this->curl[$key], $this->info[$key], $this->resources[$key]);
 		return true;
 	}
 
@@ -133,6 +150,7 @@ class Curl{
 	public function flush() {
 		$this->info = [];
 		$this->curl = [];
+		$this->resources = [];
 		return true;
 	}
 
@@ -141,9 +159,9 @@ class Curl{
 		if (!$this->curl) {
 			return false;
 		}
-		$a = [];
+		$this->resources = [];
 		foreach ($this->curl as $k => $v) {
-			$a[$k] = curl_init();
+			$this->resources[$k] = curl_init();
 			$curl = [];
 			$curl[CURLOPT_URL] = $v['url'];
 			$curl += $this->defaults;
@@ -158,7 +176,7 @@ class Curl{
  					continue;
  				}
 				if ($kk == CURLOPT_PROGRESSFUNCTION && !isset($curl[CURLOPT_NOPROGRESS])) {
-					curl_setopt($a[$k], CURLOPT_NOPROGRESS, false);
+					curl_setopt($this->resources[$k], CURLOPT_NOPROGRESS, false);
 				} elseif ($kk == CURLOPT_COOKIEJAR ) {
 					$vv = $this->cookie($vv);
 				} elseif ($kk == CURLOPT_COOKIEFILE || $kk == CURLOPT_COOKIEFILE ) {
@@ -168,9 +186,9 @@ class Curl{
 						$downloads[$k]['file'] = $vv;
 						$downloads[$k]['temp'] = $vv = tmpfile();
 					}
-					curl_setopt($a[$k], CURLOPT_RETURNTRANSFER, false);
+					curl_setopt($this->resources[$k], CURLOPT_RETURNTRANSFER, false);
 				}
-				curl_setopt($a[$k], $kk, $vv);
+				curl_setopt($this->resources[$k], $kk, $vv);
 			}
 
 			if (!$all) {
@@ -182,7 +200,7 @@ class Curl{
 
 		// 单个获取的
 		if (!$all) {
-			foreach ($a as $k => &$_v) {
+			foreach ($this->resources as $k => &$_v) {
 				// 结果
 				$r = curl_exec($_v);
 
@@ -218,7 +236,7 @@ class Curl{
 		$mh = curl_multi_init();
 
 		// 创建并句柄
-		foreach ($a as $k => $v) {
+		foreach ($this->resources as $k => $v) {
 			curl_multi_add_handle($mh, $v);
 		}
 
@@ -231,7 +249,7 @@ class Curl{
 
 		// 遍历返回值
 		$r = [];
-		foreach ($a as $k => $v) {
+		foreach ($this->resources as $k => $v) {
 
 			// 结果
 			$r[$k] = curl_multi_getcontent($v);
@@ -260,5 +278,3 @@ class Curl{
 		return $r;
 	}
 }
-
-

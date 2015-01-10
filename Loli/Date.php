@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-03 12:27:41
+/*	Updated: UTC 2015-01-09 10:07:06
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -95,10 +95,10 @@ class Date{
 		//self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
 
 		// COOKIE
-		self::$name && ($cookie = Cookie::get(self::$name)) && self::setTimeZone((string)$cookie);
+		self::$name && ($cookie = Cookie::get(self::$name)) && self::setTimezone((string)$cookie);
 
 		// GET POST
-		self::$name && !empty($_REQUEST[self::$name]) && self::setTimeZone((string)$_REQUEST[self::$name]);
+		self::$name && !empty($_REQUEST[self::$name]) && self::setTimezone((string)$_REQUEST[self::$name]);
 	}
 
 
@@ -138,7 +138,7 @@ class Date{
 	*
 	*	返回值 false true
 	**/
-	public static function setTimeZone($timezone, $cookie = false) {
+	public static function setTimezone($timezone, $cookie = false) {
 		if (is_numeric($timezone)) {
 			$arr = explode('.', $timezone);
 			$arr[0] = ($arr[0] < 0 ? '-' : '+'). str_pad(intval($arr[0]), 2, '0',STR_PAD_LEFT);

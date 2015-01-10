@@ -8,14 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-01-05 09:47:53
+/*	Updated: UTC 2015-01-10 09:13:07
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
-use Loli\Model, Loli\Date, Loli\Lang, Loli\Form, Loli\Exit_;
-class Base{
+use Loli\Model, Loli\Date, Loli\Lang, Loli\Form, Loli\Exit_, Loli\Token;
+abstract class Base{
 	use Model;
-
 
 	// URL 地址
 	public $url = '';
@@ -41,20 +40,16 @@ class Base{
 	// 返回的数据
 	public $data = ['title' => [], 'menu' => []];
 
-	// 是否用 ajax
-	public $ajax = false;
-
-	public $Style;
-
-	public $Script;
-
 	// 引用的变量
-	public $variable = ['url', 'dir', 'keys', 'rewrite', 'data', 'ajax'];
+	public $variable = ['url', 'dir', 'keys', 'rewrite', 'data'];
 
 	// 默认执行
 	public function init() {
 
 	}
+
+	// 权限执行
+	abstract public function permission($keys, $column = '', $value = '', $compare = '=', $logical = 'OR');
 
 	// 载入文件
 	public function load($file, $once = true) {
@@ -102,6 +97,7 @@ class Base{
 		return $url;
 	}
 
+
 	public function path() {
 		return url_path();
 	}
@@ -122,9 +118,13 @@ class Base{
 		return call_user_func_array([$this, 'isNonce'], func_get_args()) || $this->err();
 	}
 
+	public function lang() {
+		return call_user_func_array(['Lang', 'get'], func_get_args());
+	}
+
 	/**
 	 *	消息结束
-	 * @param  string $a 消息结束
+	 * @param string $a 消息结束
 	 * @return 无返回值直接结束
 	 */
 	public function msg($msg = '', $to = true, $args = []) {
@@ -134,11 +134,11 @@ class Base{
 
 	/**
 	 *	错误结束
-	 * @param  string $a 错误消息
+	 * @param string $a 错误消息
 	 * @return 无返回值直接结束
 	 */
 	public function err($err = '', $to = true, $args = []) {
-		$this->data += ['err' =>  $err ? $err : 403, 'to' => $to && $to !== true ? to([$to, 'referer'], [$this->url()]) : $to, 'args' => $args];
+		$this->data += ['err' => $err ? $err : 403, 'to' => $to && $to !== true ? to([$to, 'referer'], [$this->url()]) : $to, 'args' => $args];
 		$this->load('err.php') || Exit_::err($this->data['err'], $this->data['to'], $this->data['args']);
 	}
 	public function title($sep = ' _ ') {
@@ -186,7 +186,7 @@ class Base{
 				$aa[$kk] = '<li class="' . implode(' ', $vv['class']) . '"><a href="'. $this->url($this->path(), $vv['query']) . '">'. $vv['name'] . (isset($vv['count']) ? '<span class="count">('.$vv['count'].')</span>' : '') . '</a></li>';
 			}
 
-			$a[] = ['name' => $v['name'] ? $this->__(['$1:', $v['name']]) : '', 'class' => implode(' ', (array) $v['class']), 'value' => implode(' ', $aa)];
+			$a[] = ['name' => $v['name'] ? $this->lang(['$1:', $v['name']]) : '', 'class' => implode(' ', (array) $v['class']), 'value' => implode(' ', $aa)];
 
 		}
 

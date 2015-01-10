@@ -8,27 +8,21 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-01-05 16:36:32
+/*	Updated: UTC 2015-01-10 09:11:55
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
 use Loli\Ajax;
-class Run extends Base{
+trait Run{
 
 	private $_is = false;
 
-	public function __construct() {
-		$style = __NAMESPACE__ . '\Resources\Style';
-		$script = __NAMESPACE__ . '\Resources\Script';
-		$this->Style = new $style;
-		$this->Script = new $script;
-	}
-	public function __invoke() {
+	protected function get() {
 		if ($this->_is) {
 			return false;
 		}
 		$this->_is = true;
-		$this->load('/include.php');
+		$this->load('include.php');
 		$class = get_class($this);
 		$doKey = $class . '.';
 		do_array_call($class, [&$this]);
@@ -37,9 +31,9 @@ class Run extends Base{
 			$keys = $a->keys;
 			while($keys) {
 				$key = array_shift($keys);
-				empty($a->match[$key]) && $this->err(404);
+				empty($a->match[$key]) && $a->err(404);
 				$value = $a->match[$key];
-				empty($value['class']) && $keys && $this->err(404);
+				empty($value['class']) && $keys && $a->err(404);
 				if (!empty($value['file'])) {
 					require $value['file'];
 				}
@@ -54,7 +48,7 @@ class Run extends Base{
 				}
 			}
 		} elseif (!$a->match) {
-
+			$value = [];
 		} else {
 			$path = $this->path();
 			$slash = $path != '/' && substr($path, -1, 1) == '/' ? '/' : '';
@@ -64,11 +58,11 @@ class Run extends Base{
 				$arr = explode('/', $path, 2);
 				$break = false;
 				prioritysort($a->match);
-				foreach($a->match as $k => $v) {
-					if (!isset($v['pattern'])) {
-						$v['pattern'] = [preg_quote($k, '') => []];
+				foreach($a->match as $key => $value) {
+					if (!isset($value['pattern'])) {
+						$value['pattern'] = [preg_quote($key, '') => []];
 					}
-					foreach((array)$v['pattern'] as $kk => $vv) {
+					foreach((array)$value['pattern'] as $kk => $vv) {
 						if (!in_array($_SERVER['REQUEST_METHOD'], empty($vv['method']) ? ['POST', 'GET'] : (array) $vv['method'])) {
 							continue;
 						}
@@ -93,19 +87,19 @@ class Run extends Base{
 									$this->rewrite[$vv['query'][$kkk]] = $vvv;
 								}
 							}
-							$this->keys[] = $k;
-							empty($v['class']) && !$end && isset($arr[1]) && $this->err(404);
-							if (!empty($v['file'])) {
-								require $v['file'];
+							$this->keys[] = $key;
+							empty($value['class']) && !$end && isset($arr[1]) && $a->err(404);
+							if (!empty($value['file'])) {
+								require $value['file'];
 							}
-							if (!empty($v['class'])) {
-								$class .= '\\' .  $v['class'];
-								$doKey .= '/' .  $v['class'];
+							if (!empty($value['class'])) {
+								$class .= '\\' .  $value['class'];
+								$doKey .= '/' .  $value['class'];
 								$a = new $class;
 								do_array_call($doKey, [&$a]);
 							}
-							if (!empty($v['method'])) {
-								$method = $v['method'];
+							if (!empty($value['method'])) {
+								$method = $value['method'];
 							} else {
 								unset($method);
 							}
@@ -117,10 +111,10 @@ class Run extends Base{
 				if (!$break) {
 					break;
 				}
-				$path = isset($arr[1]) && empty($end) ? $arr[1] : false;
+				$path = isset($arr[1]) && empty($end) ? $arr[1] : ($arr[0] === '' ? false : '');
 				$parent .= $arr[0] . '/'. (isset($arr[1]) && !empty($end) ? $arr[1] . '/' : '');
 			}
-			empty($break) && $this->err(404);
+			!$break && ($arr[0] !== '' || isset($arr[1])) && $a->err(404);
 		}
 
 		$_REQUEST = array_merge($_GET, $_POST, $this->rewrite);
@@ -128,14 +122,12 @@ class Run extends Base{
 			$a->$v =& $this->$v;
 		}
 		$method = empty($method) ? $a->method : $method;
-		method_exists($a, $method) || $this->err(404);
+		method_exists($a, $method) || $a->err(404);
+		$a->permission($this->keys);
 		$a->init();
 		$file = $a->$method();
-
-		$this->ajax && Ajax::$is && $this->msg(1);
-
-		$this->load($file);
-		return true;
+		$a->ajax && Ajax::$is && $a->msg(1);
+		return $file;
 	}
 
 	public function index() {

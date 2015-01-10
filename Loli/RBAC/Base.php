@@ -8,11 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-05 16:44:04
-/*	Updated: UTC 2015-01-07 05:29:17
+/*	Updated: UTC 2015-01-10 10:29:54
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
-trait User{
+trait Base{
 
 	/**
 	 * 权限控制
@@ -25,7 +25,10 @@ trait User{
 	 * @return [type]				返回值匹配成功的数组
 	 */
 	public function permission($ID, $keys, $column = '', $value = '', $compare = '=', $logical = 'OR') {
-		static $r;
+		static $r, $date;
+		if (empty($date)) {
+			$date = gmtdate('Y-m-d H:i:s');
+		}
 		$ID = (int) $ID;
 		$k = implode('/', $keys);
 		if (!isset($r[$ID][$k])) {
@@ -39,6 +42,13 @@ trait User{
 				$nodes[] = $node;
 			}
 			foreach ($this->Join->role($ID) as $role) {
+
+				// 已过期的用户组
+				if (!empty($role->expires) && $role->expires != '0000-00-00 00:00:00' $role->expires < $date) {
+					continue;
+				}
+
+				// 判断权限
 				$break = false;
 				foreach ($nodes as $node) {
 					if (!($permission = $this->Permission->get($node->ID, $role->ID)) || !$permission->status) {

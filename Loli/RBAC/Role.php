@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 16:30:57
-/*	Updated: UTC 2015-01-06 11:11:16
+/*	Updated: UTC 2015-01-10 16:55:25
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -28,9 +28,9 @@ class Role extends Query{
 	public $primary = ['ID'];
 
 	public $create = [
-		'ID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0]],
-		'name' => ['type' => 'text', 'length' => 64]],
-		'status' => ['type' => 'bool', 'key' => ['status' => 0]],
+		'ID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0],
+		'name' => ['type' => 'text', 'length' => 64],
+		'status' => ['type' => 'bool', 'key' => ['status' => 0],
 		'description' => ['type' => 'text', 'length' => 65535],
 	];
 

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-03 07:09:40
-/*	Updated: UTC 2015-01-06 15:47:03
+/*	Updated: UTC 2015-01-10 17:04:41
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -17,36 +17,37 @@ class Permission extends Query{
 	public $ttl = 0;
 
 	public $args = [
-		'role' => '',
-		'node' => '',
-		'status' => '',
+		'roleID' => '',
+		'nodeID' => '',
 	];
 
 	public $defaults = [
-		'role' => 0,
-		'node' => 0,
+		'roleID' => 0,
+		'nodeID' => 0,
 		'status' => false,
+		'private' => false,		// false = 公众 true = 私人 不能被继承
 		'args' => [],	// 其他 limit 等参数 比如每天最多发帖多少次
 	];
 
-	public $primary = ['role', 'node'];
+	public $primary = ['roleID', 'nodeID'];
 
 	public $create = [
-		'role' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0]],
-		'node' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 1]],
+		'roleID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0],
+		'nodeID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 1],
 		'status' => ['type' => 'bool'],
+		'private' => ['type' => 'bool'],
 		'args' => ['type' => 'array'],
 	];
 
 	public function r($r, $c = true) {
 		if ($c && $this->ttl) {
-			$key = json_encode(['role' => $r->role, 'node' => $r->node]);
+			$key = json_encode(['roleID' => $r->roleID, 'nodeID' => $r->nodeID]);
 			$this->slave ? $this->cache->add($r, $key, get_class($this), $this->ttl) : $this->cache->set($r, $key, get_class($this), $this->ttl);
 		}
 		if (!is_array($r->args)) {
 			$r->args = $r->args && ($args = @unserialize($r->args)) ? $args : [];
 		}
-		$this->data[$r->role][$r->node] = $r;
+		$this->data[$r->roleID][$r->nodeID] = $r;
 		return $r;
 	}
 }

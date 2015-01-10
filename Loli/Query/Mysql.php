@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-06 06:41:03
+/*	Updated: UTC 2015-01-09 07:53:38
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -57,7 +57,7 @@ class Mysql extends Base{
 				} else {
 					$q .= 'bigint(20)';
 				}
-			} elseif (in_array($v['type'], ['double', 'float'])) {
+			} elseif (in_array($v['type'], ['double', 'float', 'decimal'])) {
 
 				// 浮点类型
 				$q .=  $v['type'];

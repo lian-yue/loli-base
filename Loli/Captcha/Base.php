@@ -8,12 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-07 05:50:20
-/*	Updated: UTC 2015-01-07 14:05:31
+/*	Updated: UTC 2015-01-10 06:01:49
 /*
 /* ************************************************************************** */
 namespace Loli\Captcha;
 
-class Base {
+abstract class Base {
 
 	// 验证码值
 	public $code = '1234';
@@ -60,7 +60,7 @@ class Base {
 		}
 	}
 
-	//abstract public function display();
+	abstract public function display();
 
 
 	// 随机小数

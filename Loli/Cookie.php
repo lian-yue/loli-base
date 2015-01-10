@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 16:02:54
-/*	Updated: UTC 2015-01-03 12:20:14
+/*	Updated: UTC 2015-01-09 10:42:42
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -33,18 +33,18 @@ class Cookie{
 		return true;
 	}
 
-	public static function add($name, $value, $expire = 0, $httponly = null, $secure = null) {
+	public static function add($name, $value, $ttl = 0, $httponly = null, $secure = null) {
 		return self::$get($name) && self::set($name, $value, $httponly, $secure);
 	}
 
-	public static function set($name, $value, $expire = 0, $httponly = null, $secure = null) {
+	public static function set($name, $value, $ttl = 0, $httponly = null, $secure = null) {
 		if (is_array($value) || is_object($value)) {
 			foreach ($value as $k => $v) {
-				self::set($name . '[' . rawurlencode($k) . ']', $value, $expire, $httponly, $secure);
+				self::set($name . '[' . rawurlencode($k) . ']', $value, $ttl, $httponly, $secure);
 			}
 		} else {
 			$_COOKIE[self::$prefix .$name] = $value;
-			@setcookie(self::$prefix .$name, $value, $expire ? time() + $expire : $expire, self::$path, self::$domain, $secure == null ? self::$secure : $secure, $httponly == null ? self::$httponly : $httponly);
+			@setcookie(self::$prefix .$name, $value, $ttl ? time() + $ttl : $ttl, self::$path, self::$domain, $secure == null ? self::$secure : $secure, $httponly == null ? self::$httponly : $httponly);
 		}
 		return true;
 	}
