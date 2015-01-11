@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-05 16:44:04
-/*	Updated: UTC 2015-01-10 10:29:54
+/*	Updated: UTC 2015-01-11 14:16:16
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -25,7 +25,7 @@ trait Base{
 	 * @return [type]				返回值匹配成功的数组
 	 */
 	public function permission($ID, $keys, $column = '', $value = '', $compare = '=', $logical = 'OR') {
-		static $r, $date;
+		static $r, $date, $static;
 		if (empty($date)) {
 			$date = gmtdate('Y-m-d H:i:s');
 		}
@@ -41,17 +41,66 @@ trait Base{
 				$parent = $node->ID;
 				$nodes[] = $node;
 			}
-			foreach ($this->Join->role($ID) as $role) {
 
-				// 已过期的用户组
-				if (!empty($role->expires) && $role->expires != '0000-00-00 00:00:00' $role->expires < $date) {
+			if (empty($static[$ID])) {
+				// 当前角色
+				$roles = [];
+				foreach ($this->Join->gets($ID) as $role) {
+					// 已过期的角色
+					if (!empty($role->expires) && $role->expires != '0000-00-00 00:00:00' $role->expires < $date) {
+						continue;
+					}
+					$roles[] = $role->roleID;
+				}
+
+				// 互相排斥的角色
+				if (count($roles) > 1 && (isset($this->Role->Constraint) || $this->Role->_has('Constraint'))) {
+					$values = [];
+					foreach($this->Role->Constraint->gets($roles) as $constraint) {
+						$values[$constraint->priority][] = $constraint;
+					}
+					ksort($values);
+					$constraints = [];
+					foreach ($values as $constraint) {
+						$constraints[] = $constraint;
+					}
+
+					// 互相排斥
+					$unset = [];
+					foreach ($constraints as $constraint) {
+						if ( !in_array($unset, $constraint->roleID) && ($key = array_search($constraint->constraint, $roles)) !== false) {
+							// 已移除的
+							$unset[] = $constraint->constraint;
+							unset($roles[$key]);
+						}
+					}
+				}
+
+				// 继承的角色
+				$inherits = [];
+				if (isset($this->Role->Inherit) || $this->Role->_has('Inherit')) {
+					foreach($this->Role->Inherit->gets($roles) as $inherit) {
+						$inherits[] = $inherit->inherit;
+					}
+				}
+				$static[$ID] = [$roles, $inherits];
+			} else {
+				list($roles, $inherits) = $static[$ID];
+			}
+
+
+			// 判断权限
+			foreach (array_merge($roles, $inherits) as $roleID) {
+
+				// 角色不存在或者 角色停用
+				if (!($role = $this->role($roleID)) || !$role->status) {
 					continue;
 				}
 
-				// 判断权限
+				// 判断某个角色是否有权限 不能2个角同时使用
 				$break = false;
 				foreach ($nodes as $node) {
-					if (!($permission = $this->Permission->get($node->ID, $role->ID)) || !$permission->status) {
+					if (!($permission = $this->Permission($node->ID, $roleID)) || !$permission->status || ($permission->private && !in_array($roleID, $roles))) {
 						$break = true;
 						break;
 					}
@@ -60,7 +109,6 @@ trait Base{
 					$permissions[$ID][] = $permission;
 				}
 			}
-			$r[$ID][$k] = $permissions;
 		}
 		if (!$column) {
 			return $r[$ID][$k];

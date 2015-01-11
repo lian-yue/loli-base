@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-03 07:09:40
-/*	Updated: UTC 2015-01-10 17:04:41
+/*	Updated: UTC 2015-01-11 12:42:48
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -25,8 +25,8 @@ class Permission extends Query{
 		'roleID' => 0,
 		'nodeID' => 0,
 		'status' => false,
-		'private' => false,		// false = 公众 true = 私人 不能被继承
-		'args' => [],	// 其他 limit 等参数 比如每天最多发帖多少次
+		'private' => false,			// false = 公众 true = 私人 不能被继承
+		'args' => [],				// 其他 limit 等参数 比如每天最多发帖多少次 某个板块什么的能发帖
 	];
 
 	public $primary = ['roleID', 'nodeID'];
@@ -49,5 +49,11 @@ class Permission extends Query{
 		}
 		$this->data[$r->roleID][$r->nodeID] = $r;
 		return $r;
+	}
+
+	public function w($new, $old, $args) {
+		if (isset($new['args'])) {
+			$new['args'] = empty($new['args']) ? '' : $new['args'];
+		}
 	}
 }

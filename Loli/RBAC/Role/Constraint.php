@@ -7,28 +7,30 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2015-01-10 16:52:24
-/*	Updated: UTC 2015-01-11 13:45:56
+/*	Created: UTC 2015-01-11 12:29:46
+/*	Updated: UTC 2015-01-11 13:52:00
 /*
 /* ************************************************************************** */
-namespace Loli\RBAC\Role;
+namespace Loli\RBAC;
 use Loli\Query;
-class Inherit extends Query{
+class Constraint extends Query{
 	public $args = [
 		'roleID' => '',
-		'inherit' => '',
+		'constraint' => '',
 	];
 
 	public $defaults = [
 		'roleID' => 0,
-		'inherit' => 0,
+		'constraint' => 0,
+		'priority' => 0,
 	];
 
-	public $primary = ['roleID', 'inherit'];
+	public $primary = ['ID'];
 
 	public $create = [
 		'roleID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0],
-		'inherit' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 1],
+		'constraint' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 1],
+		'priority' => ['type' => 'int', 'length' => 1],
 	];
 
 	public $add = true;
@@ -43,28 +45,20 @@ class Inherit extends Query{
 
 	public $deletes = true;
 
-	// 角色继承
+
+	// 角色约束 // 不约束继承的角色
 	public function gets($roles) {
 		$ret = [];
 		foreach ((array) $roles as $roleID) {
 			if (!is_array($results = $this->cache->get($roleID, get_class($this)))) {
-				$results = [];
-				$query = $roleID;
-				while($query && ($inherits = $this->results(['roleID' => $query]))) {
-					$query = [];
-					foreach ($inherits as $inherit) {
-						if (empty($results[$inherit->inherit])) {
-							$query[] = $inherit->inherit;
-							$results[$inherit->inherit] = $inherit;
-						}
-					}
-				}
+				$results = $this->results(['roleID' => $roleID]);
 				$this->slave ? $this->cache->add($results, $roleID, get_class($this), $this->ttl) : $this->cache->set($results, $roleID, get_class($this), $this->ttl);
 			}
-			$ret += $results;
+			$ret = array_merge($ret, $results);
 		}
 		return $ret;
 	}
+
 
 	// 更新了刷缓存
 	public function c($new, $old, $args) {
@@ -73,4 +67,5 @@ class Inherit extends Query{
 		parent::c($new, $old, $args);
 		$this->gets($roleID);
 	}
+
 }

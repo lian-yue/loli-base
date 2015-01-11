@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-03 07:09:40
-/*	Updated: UTC 2015-01-09 09:12:35
+/*	Updated: UTC 2015-01-11 13:05:50
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -31,7 +31,7 @@ class Node extends Query{
 
 	public $add = true;
 
-	public $update = true;
+	public $update = ['name', 'sort', 'description'];
 
 	public $delete = true;
 

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 16:30:57
-/*	Updated: UTC 2015-01-10 16:31:06
+/*	Updated: UTC 2015-01-11 09:34:40
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -45,7 +45,7 @@ class Join extends Query{
 	public $deletes = true;
 
 	// 读某个用户的所有角色
-	public function role($userID) {
+	public function gets($userID) {
 		$userID = (int) $userID;
 		if (!is_array($results = $this->cache->get($userID, get_class($this)))) {
 			$results = $this->results(['userID' => $userID]);
