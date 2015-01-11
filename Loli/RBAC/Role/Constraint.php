@@ -8,9 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-11 12:29:46
-/*	Updated: UTC 2015-01-11 13:52:00
+/*	Updated: UTC 2015-01-11 14:21:58
 /*
 /* ************************************************************************** */
+/**
+*	角色互相排斥 RBAC2
+*
+*/
 namespace Loli\RBAC;
 use Loli\Query;
 class Constraint extends Query{

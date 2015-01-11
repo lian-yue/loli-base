@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-05 16:44:04
-/*	Updated: UTC 2015-01-11 14:16:16
+/*	Updated: UTC 2015-01-11 14:52:57
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -68,7 +68,7 @@ trait Base{
 					// 互相排斥
 					$unset = [];
 					foreach ($constraints as $constraint) {
-						if ( !in_array($unset, $constraint->roleID) && ($key = array_search($constraint->constraint, $roles)) !== false) {
+						if ( !in_array($unset, $constraint->roleID) && $constraint->roleID != $constraint->constraint && ($key = array_search($constraint->constraint, $roles)) !== false) {
 							// 已移除的
 							$unset[] = $constraint->constraint;
 							unset($roles[$key]);
@@ -80,7 +80,9 @@ trait Base{
 				$inherits = [];
 				if (isset($this->Role->Inherit) || $this->Role->_has('Inherit')) {
 					foreach($this->Role->Inherit->gets($roles) as $inherit) {
-						$inherits[] = $inherit->inherit;
+						if (!in_array($inherit->inherit, $roles)) {
+							$inherits[] = $inherit->inherit;
+						}
 					}
 				}
 				$static[$ID] = [$roles, $inherits];
@@ -100,7 +102,7 @@ trait Base{
 				// 判断某个角色是否有权限 不能2个角同时使用
 				$break = false;
 				foreach ($nodes as $node) {
-					if (!($permission = $this->Permission($node->ID, $roleID)) || !$permission->status || ($permission->private && !in_array($roleID, $roles))) {
+					if (!($permission = $this->Permission($node->ID, $roleID)) || !$permission->status || (!empty($permission->private) && !in_array($roleID, $roles))) {
 						$break = true;
 						break;
 					}

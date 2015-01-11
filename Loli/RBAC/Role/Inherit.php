@@ -8,9 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-10 16:52:24
-/*	Updated: UTC 2015-01-11 13:45:56
+/*	Updated: UTC 2015-01-11 14:37:44
 /*
 /* ************************************************************************** */
+/**
+ * 用户继承 RBAC1
+ */
 namespace Loli\RBAC\Role;
 use Loli\Query;
 class Inherit extends Query{
@@ -45,8 +48,9 @@ class Inherit extends Query{
 
 	// 角色继承
 	public function gets($roles) {
+		$roles = (array) $roles;
 		$ret = [];
-		foreach ((array) $roles as $roleID) {
+		foreach ($roles as $roleID) {
 			if (!is_array($results = $this->cache->get($roleID, get_class($this)))) {
 				$results = [];
 				$query = $roleID;
