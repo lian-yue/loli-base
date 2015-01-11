@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-01-10 09:13:07
+/*	Updated: UTC 2015-01-11 15:49:16
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
@@ -29,7 +29,7 @@ abstract class Base{
 	public $method = 'index';
 
 	public $match = [];
-	//public $match = ['key' => ['pattern' => '正则表达 ^ = 绝对开头匹配 $ = 绝对尾部匹配 留空使用key匹配' => ['method' => 匹配的方法 默认的话GET + POST, 'query' => '匹配到的参数'], 'class' => '匹配到对象留空就匹配到当前对象', 'method' => 匹配到方法留空就是默认方法, 'priority' => '排序', 'file' => 需要加载的文件地址];
+	//public $match = ['key' => ['pattern' => '正则表达 ^ = 绝对开头匹配 $ = 绝对尾部匹配 留空使用key匹配' => ['method' => 匹配的方法 默认的话 GET + POST, 'query' => '匹配到的参数'],, 'class' => '匹配到对象留空就匹配到当前对象', 'method' => '匹配到方法留空就是默认方法', 'key' => 如果存在用key的回调方法覆盖 键名, 如果没传入参数的话就是返回所有可用的key, 'priority' => '排序', 'file' => 需要加载的文件地址,  'permission' => 是否验证权限  === false  不验证];
 
 	// 时间格式
 	public $dateFormat = 'F j, Y';
@@ -43,14 +43,15 @@ abstract class Base{
 	// 引用的变量
 	public $variable = ['url', 'dir', 'keys', 'rewrite', 'data'];
 
-	// 默认执行
-	public function init() {
 
-	}
 
 	// 权限执行
 	abstract public function permission($keys, $column = '', $value = '', $compare = '=', $logical = 'OR');
 
+	// 默认执行
+	public function init() {
+
+	}
 	// 载入文件
 	public function load($file, $once = true) {
 		foreach ((array)$file as $v) {
@@ -79,6 +80,7 @@ abstract class Base{
 		}
 	}
 
+	// url地址
 	public function url($path = '', $query = [], $ssl = null) {
 		if (is_array($path)) {
 			$path = '/' . implode('/', $path);
@@ -97,7 +99,7 @@ abstract class Base{
 		return $url;
 	}
 
-
+	// 路径
 	public function path() {
 		return url_path();
 	}

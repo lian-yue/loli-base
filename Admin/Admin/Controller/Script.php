@@ -8,10 +8,10 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-09 11:04:19
-/*	Updated: UTC 2015-01-09 15:08:12
+/*	Updated: UTC 2015-01-11 15:02:15
 /*
 /* ************************************************************************** */
-namespace Admin\\Resources;
+namespace Admin\Resources;
 use Loli\Controller\Resources\Script as _Script;
 
 class Script extends _Script {

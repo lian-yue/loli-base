@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-01-10 09:11:55
+/*	Updated: UTC 2015-01-11 15:56:21
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
@@ -82,29 +82,33 @@ trait Run{
 							$subject = $arr[0];
 						}
 						if (preg_match('/'. strtr($kk, ['/' => '\\/']) .'/', $subject, $matches)) {
+							$rewrite = [];
 							foreach($matches as $kkk => $vvv) {
 								if (isset($vv['query'][$kkk])) {
-									$this->rewrite[$vv['query'][$kkk]] = $vvv;
+									$rewrite[$vv['query'][$kkk]] = $vvv;
 								}
 							}
-							$this->keys[] = $key;
-							empty($value['class']) && !$end && isset($arr[1]) && $a->err(404);
-							if (!empty($value['file'])) {
-								require $value['file'];
+							if (empty($value['key']) || ($key = $this->$value['key']($rewrite + $this->rewrite))) {
+								$this->keys[] = $key;
+								$this->rewrite = $rewrite + $this->rewrite;
+								empty($value['class']) && !$end && isset($arr[1]) && $a->err(404);
+								if (!empty($value['file'])) {
+									require $value['file'];
+								}
+								if (!empty($value['class'])) {
+									$class .= '\\' .  $value['class'];
+									$doKey .= '/' .  $value['class'];
+									$a = new $class;
+									do_array_call($doKey, [&$a]);
+								}
+								if (!empty($value['method'])) {
+									$method = $value['method'];
+								} else {
+									unset($method);
+								}
+								$break = true;
+								break 2;
 							}
-							if (!empty($value['class'])) {
-								$class .= '\\' .  $value['class'];
-								$doKey .= '/' .  $value['class'];
-								$a = new $class;
-								do_array_call($doKey, [&$a]);
-							}
-							if (!empty($value['method'])) {
-								$method = $value['method'];
-							} else {
-								unset($method);
-							}
-							$break = true;
-							break 2;
 						}
 					}
 				}
@@ -123,7 +127,11 @@ trait Run{
 		}
 		$method = empty($method) ? $a->method : $method;
 		method_exists($a, $method) || $a->err(404);
-		$a->permission($this->keys);
+
+		// 权限
+		if (!isset($value['permission']) || $value['permission'] !== false) {
+			$a->permission($this->keys) || $this->err(401);
+		}
 		$a->init();
 		$file = $a->$method();
 		$a->ajax && Ajax::$is && $a->msg(1);

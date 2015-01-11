@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-05 16:44:04
-/*	Updated: UTC 2015-01-10 09:21:54
+/*	Updated: UTC 2015-01-11 15:00:32
 /*
 /* ************************************************************************** */
 namespace Model\Admin;
@@ -156,7 +156,6 @@ class User extends Query{
 			$_COOKIE[$key] = implode('|', [$ID, $key, String::encode($time, $this->login)]);
 			@setcookie($key, $_COOKIE[$key], $time + $this->timeout, \admin\PATH, \admin\HOST, (bool) \admin\SSL, true);
 		}
-		//$this->admin->nonce .= md5($user->user_id);
 		return $this->current = $user;
 	}
 
