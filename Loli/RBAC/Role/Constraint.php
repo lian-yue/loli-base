@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-11 12:29:46
-/*	Updated: UTC 2015-01-11 14:21:58
+/*	Updated: UTC 2015-01-12 08:16:19
 /*
 /* ************************************************************************** */
 /**
@@ -18,6 +18,10 @@
 namespace Loli\RBAC;
 use Loli\Query;
 class Constraint extends Query{
+
+	// 不能被排斥的
+	public $not = [];
+
 	public $args = [
 		'roleID' => '',
 		'constraint' => '',
@@ -71,5 +75,4 @@ class Constraint extends Query{
 		parent::c($new, $old, $args);
 		$this->gets($roleID);
 	}
-
 }

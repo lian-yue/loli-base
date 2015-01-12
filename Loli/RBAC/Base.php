@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-05 16:44:04
-/*	Updated: UTC 2015-01-11 14:52:57
+/*	Updated: UTC 2015-01-12 08:37:42
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -21,10 +21,9 @@ trait Base{
 	 * @param  string $column		可选 匹配附加字段
 	 * @param  string $value 		可选 匹配的值
 	 * @param  string $compare		可选 匹配运算符
-	 * @param  string $logical		AND 还是 OR 运算
 	 * @return [type]				返回值匹配成功的数组
 	 */
-	public function permission($ID, $keys, $column = '', $value = '', $compare = '=', $logical = 'OR') {
+	public function permission($ID, $keys, $column = '', $value = '', $compare = '=') {
 		static $r, $date, $static;
 		if (empty($date)) {
 			$date = gmtdate('Y-m-d H:i:s');
@@ -68,7 +67,7 @@ trait Base{
 					// 互相排斥
 					$unset = [];
 					foreach ($constraints as $constraint) {
-						if ( !in_array($unset, $constraint->roleID) && $constraint->roleID != $constraint->constraint && ($key = array_search($constraint->constraint, $roles)) !== false) {
+						if ( !in_array($unset, $constraint->roleID) && $constraint->roleID != $constraint->constraint && !in_array($this->Role->Constraint->not, $constraint->constraint) && ($key = array_search($constraint->constraint, $roles)) !== false) {
 							// 已移除的
 							$unset[] = $constraint->constraint;
 							unset($roles[$key]);
@@ -128,7 +127,7 @@ trait Base{
 						break;
 					case '<=':
 					case '=<':
-						$is = $v <= $value;
+						$is = (is_array($v) ? count($v) : $v) <= $value;
 						break;
 					case '=':
 					case '==':
@@ -139,7 +138,7 @@ trait Base{
 						break;
 					case '=>':
 					case '>=':
-						$is = $v < $value;
+						$is = (is_array($v) ? count($v) : $v) < $value;
 						break;
 					case '>':
 						$is = $v <= $value;
@@ -158,11 +157,7 @@ trait Base{
 				}
 			}
 			if (!$is) {
-				if ($logical == 'OR') {
-					continue;
-				}
-				$ret = [];
-				break;
+				continue;
 			}
 			$ret[] = $permission;
 		}

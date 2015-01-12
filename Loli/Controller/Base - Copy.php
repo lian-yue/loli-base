@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-01-12 17:06:18
+/*	Updated: UTC 2015-01-12 09:32:04
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
@@ -25,38 +25,38 @@ abstract class Base{
 	// 路径
 	public $keys = [];
 
+	// 默认方法
+	public $method = 'index';
+
+	public $match = [];
+	//public $match = ['key' => ['pattern' => '正则表达 ^ = 绝对开头匹配 $ = 绝对尾部匹配 留空使用key匹配' => ['method' => 匹配的方法 默认的话 GET + POST, 'query' => '匹配到的参数'], 'class' => '匹配到对象留空就匹配到当前对象', 'method' => '匹配到方法留空就是默认方法', 'key' => 存在就是回调方法 如果留空 keys 也是空 那就用 键名, 'keys' => 当前层次的全部keys 如果是数组就in否则就是当前的方法, 'priority' => '排序', 'file' => 需要加载的文件地址, 'form' => '参数表单',  'permission' => 是否验证权限  === false  不验证];
+
 	// 时间格式
 	public $dateFormat = 'F j, Y';
 
-	// all
-	public $all = [];
-	//public $all = ['key' => ['pattern' => '正则表达 ^ = 绝对开头匹配 $ = 绝对尾部匹配 留空使用key匹配' => ['method' => 匹配的方法 默认的话 GET + POST, 'query' => '匹配到的参数'], 'class' => '匹配到对象留空就匹配到当前对象', 'method' => '匹配到方法留空就是默认方法', 'priority' => '排序', 'file' => 需要加载的文件地址, 'form' => '参数表单',  'permission' => 是否验证权限  === false  不验证];
+	// 重写url取得的变量
+	public $rewrite = [];
 
 	// 返回的数据
 	public $data = ['title' => [], 'menu' => []];
 
-	public function key($before, $current, $after) {
+	// 引用的变量
+	public $variable = ['url', 'dir', 'keys', 'rewrite', 'data'];
 
-	}
-	public function get($key) {
-		return empty($this->match[$key]) ? false : $this->match[$key];
-	}
-	public function has($key) {
-		return !empty($this->match[$key]);
-	}
-	public function all() {
-		return $this->match[$key];
-	}
 
-	abstract public function permission($keys, $column = '', $value = '', $compare = '=');
+
+	// 权限执行
+	abstract public function permission($keys, $column = '', $value = '', $compare = '=', $logical = 'OR');
+	abstract public function matchKey($key);
+	abstract public function getKey($key);
+	abstract public function hasKey($key);
+	abstract public function allKey();
+
 
 	// 默认执行
 	public function init() {
 
 	}
-
-
-
 
 	// 载入文件
 	public function load($file, $once = true) {

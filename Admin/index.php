@@ -7,15 +7,9 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2015-01-10 06:34:32
-/*	Updated: UTC 2015-01-12 08:44:29
+/*	Created: UTC 2015-01-12 08:42:37
+/*	Updated: UTC 2015-01-12 08:43:45
 /*
 /* ************************************************************************** */
-namespace Model;
-use Loli\Model;
-class Admin{
-	use Model;
-	public function __construct() {
-		$this->_reg('User', ['file' => __CLASS__ .'/Admin/User.php']);
-	}
-}
+
+require dirname(__DIR__) . '/include.php';

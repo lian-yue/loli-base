@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-08 08:27:43
-/*	Updated: UTC 2015-01-09 08:25:05
+/*	Updated: UTC 2015-01-12 12:24:18
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -86,10 +86,10 @@ trait Model{
 			} elseif (!empty($this->_DATA[$key]['call'])) {
 				$this->$key = call_user_func_array($this->_DATA[$key]['call'], $this, $key);
 			} elseif (!empty($this->_DATA[$key]['class'])) {
-				$this->$key = isset($this->_DATA[$key]['arg']) ? new $this->_DATA[$key]['class']($this->_DATA[$key]['arg']) : new $this->_DATA[$key]['class'];
+				$this->$key = new $this->_DATA[$key]['class'];
 			} elseif (!isset($this->$key) || $this->$key === 1 || $this->$key === true) {
 				$class = 'Model\\' . $ID;
-				$this->$key = isset($this->_DATA[$key]['arg']) ? new $class($this->_DATA[$key]['arg']) : new $class;
+				$this->$key = new $class;
 			}
 
 			if ($this->$key instanceof Model) {
@@ -119,10 +119,10 @@ trait Model{
 				if (!empty(self::$__DATA[$key]['call'])) {
 					self::$__DATA[$key]['value'] = call_user_func_array(self::$_DATA[$key]['call'], $this, $key);
 				} elseif (!empty(self::$__DATA[$key]['class'])) {
-					self::$__DATA[$key]['value'] = isset(self::$__DATA[$key]['arg']) ? new self::$__DATA[$key]['class'](self::$__DATA[$key]['arg']) : new self::$__DATA[$key]['class'];;
+					self::$__DATA[$key]['value'] = new self::$__DATA[$key]['class'];;
 				} elseif (!isset(self::$__DATA[$key]['value']) || self::$__DATA[$key]['value'] === 1 || self::$__DATA[$key]['value'] === true) {
 					$class = 'Model\\' . $key;
-					self::$__DATA[$key]['value'] = isset(self::$__DATA[$key]['arg']) ? new $class(self::$__DATA[$key]['arg']) : new $class;
+					self::$__DATA[$key]['value'] = new $class;
 				}
 			}
 
