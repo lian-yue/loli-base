@@ -8,16 +8,16 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-01-12 17:07:54
+/*	Updated: UTC 2015-01-13 15:45:21
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
 use Loli\Ajax;
-class Run{
+trait Run{
 
 	private $_is = false;
 
-	protected function run() {
+	public function get() {
 		if ($this->_is) {
 			return false;
 		}
@@ -26,87 +26,50 @@ class Run{
 		$class = get_class($this);
 		$doKey = strtr($class, '\\', '/');
 		do_array_call($doKey, [&$this]);
-		$rewrite = [];
 		$doKey .= '.';
 		$a = $this;
-		if ($a->keys) {
-			$keys = $a->keys;
-			while($keys) {
-				$key = array_shift($keys);
-				$a->has($key) && $a->err(404);
-				$value = $a->get($key);
-				if (empty($value['rewrite'])) {
-					$rewrite = array_merge($rewrite, $value['rewrite']);
-				}
-				if (!empty($value['file'])) {
-					require $value['file'];
-				}
-				if (!empty($value['class'])) {
-					$class .= '\\' .  $value['class'];
-					$a = new $class;
-					$doKey .=  $value['class'] . '/';
-					do_array_call(rtrim($doKey, '/'), [&$a]);
-					$this->data = array_merge($this->data, $a->data);
-				}
-				if (!empty($value['method'])) {
-					$method = $value['method'];
-					$keys && $a->err(404);
-				}
+		$rewrite = [];
+		$before = '/';
+		$after =  substr($a->path(), 1);
+		while($after !== false) {
+			list($current, $arg3) = explode('/', $after, 2) + [1 => false];
+			($value = $a->getNode($before, $current, $arg3)) || $a->err(404);
+			$this->nodes[] = $value['node'];
+
+			empty($value['class']) && empty($value['method']) && $a->err(500);
+			if (empty($value['rewrite'])) {
+				$rewrite = array_merge($rewrite, $value['rewrite']);
 			}
-		} else {
-			$path = $a->path();
-			$slash = $path != '/' && substr($path, -1, 1) == '/' ? '/' : '';
-			$before = '';
-			$after = trim($after, '/');
-			while($after !== false) {
-				$arr = explode('/', $after, 2);
-				if (!isset($arr[1]) && $arr[0] === '') {
-					break;
-				}
-				$current = $arr[0]
-				$after = isset($arr[1]) ? $arr[1] : '';
-				($key = $a->key($before, $current, $after . $slash)) || $a->err(404);
-				$before .= $before === '' ? $arr[0] : '/' . $arr[0];
-				$value = $a->get($key);
-				if (empty($value['rewrite'])) {
-					$rewrite = array_merge($rewrite, $value['rewrite']);
-				}
-				if (!empty($value['file'])) {
-					require $value['file'];
-				}
-				if (!empty($value['class'])) {
-					$class .= '\\' .  $value['class'];
-					$a = new $class;
-					$doKey .=  $value['class'] . '/';
-					do_array_call(rtrim($doKey, '/'), [&$a]);
-					$this->data = array_merge($this->data, $a->data);
-				}
-				if (!empty($value['method'])) {
-					$method = $value['method'];
-					break;
-				}
+
+			if (!empty($value['class'])) {
+				$class .= '\\' .  $value['class'];
+				$a = new $class;
+				$doKey .=  $value['class'] . '/';
+				do_array_call(rtrim($doKey, '/'), [&$a]);
+			}
+			if (!empty($value['method'])) {
+				$method = $value['method'];
+				break;
+			}
+			if (empty($value['skip'])) {
+				$after = $arg3;
+				$before .= $before == '/' ? $current : '/' . $current;
 			}
 		}
-		empty($method) && $a->err(404);
+		if (empty($method) || !method_exists($a, $method)) {
+			$a->err(404);
+		}
+
 		$_REQUEST = array_merge($_GET, $_POST, $rewrite);
-		foreach (['url', 'dir', 'keys', 'data'] as $v) {
+		foreach (['url', 'dir', 'nodes'] as $v) {
 			$a->$v =& $this->$v;
 		}
-		$method = empty($method) ? $a->method : $method;
-		method_exists($a, $method) || $a->err(404);
 
-		// 权限
-		//if (!isset($value['permission']) || $value['permission'] !== false) {
-		//	$a->permission($this->keys) || $this->err(401);
-		//}
-		$a->permission($a->keys);
+		if (!isset($value['permission']) || $value['permission'] !== false) {
+			$a->permission($a->nodes) || $a->err(401);
+		}
+		$a->permission($a->nodes);
 		$a->init();
-		$file = $a->$method();
-		$a->ajax && Ajax::$is && $a->msg(1);
-		return $file;
-	}
-
-	public function index() {
-		return '/index.php';
+		return $a->$method();
 	}
 }

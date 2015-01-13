@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-01-12 17:06:18
+/*	Updated: UTC 2015-01-13 17:00:05
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
@@ -22,41 +22,54 @@ abstract class Base{
 	// dir 载入
 	public $dir = './';
 
-	// 路径
-	public $keys = [];
+	// 节点
+	public $nodes = [];
+
+	// 全部节点
+	public $allNode = [];
 
 	// 时间格式
 	public $dateFormat = 'F j, Y';
 
-	// all
-	public $all = [];
-	//public $all = ['key' => ['pattern' => '正则表达 ^ = 绝对开头匹配 $ = 绝对尾部匹配 留空使用key匹配' => ['method' => 匹配的方法 默认的话 GET + POST, 'query' => '匹配到的参数'], 'class' => '匹配到对象留空就匹配到当前对象', 'method' => '匹配到方法留空就是默认方法', 'priority' => '排序', 'file' => 需要加载的文件地址, 'form' => '参数表单',  'permission' => 是否验证权限  === false  不验证];
-
 	// 返回的数据
 	public $data = ['title' => [], 'menu' => []];
 
-	public function key($before, $current, $after) {
+	public function getNode($before, $current, $after) {
+		foreach($this->allNode as $value) {
+			if (empty($value['pattern'])) {
+				$value['pattern'] = ['^' . preg_quote(empty($value['method'])?$value['node'] : $value['node'] . '/', '') . '$' => []];
+			}
+			foreach($value['pattern'] as $pattern => $vv) {
+				if (!in_array($_SERVER['REQUEST_METHOD'], empty($vv['method']) ? ['POST', 'GET'] : (array) $vv['method']) && !empty($value['method'])) {
+					continue;
+				}
+				if (!preg_match('/'. strtr($pattern, ['/' => '\\/']) .'/', empty($value['method']) ? $current . ($after !== false ? '' : '/'. $after) : $current, $matches)) {
+					continue;
+				}
+				foreach($matches as $kkk => $vvv) {
+					if (isset($vv['query'][$kkk])) {
+						$value['rewrite'][$vv['query'][$kkk]] = $vvv;
+					}
+				}
+				return array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'rewrite' => '', 'permission' => '', 'form' => '', 'skip' => '']);
+			}
+		}
+		return false;
+	}
+	public function allNode() {
+		$r = [];
+		foreach ($this->allNode as $key => $value) {
+			$r[] = array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'rewrite' => '', 'permission' => '', 'form' => '', 'skip' => '']);;
+		}
+		return $r;
+	}
 
-	}
-	public function get($key) {
-		return empty($this->match[$key]) ? false : $this->match[$key];
-	}
-	public function has($key) {
-		return !empty($this->match[$key]);
-	}
-	public function all() {
-		return $this->match[$key];
-	}
-
-	abstract public function permission($keys, $column = '', $value = '', $compare = '=');
+	abstract public function permission($nodes, $column = '', $value = '', $compare = '=');
 
 	// 默认执行
 	public function init() {
 
 	}
-
-
-
 
 	// 载入文件
 	public function load($file, $once = true) {
@@ -105,11 +118,6 @@ abstract class Base{
 		return $url;
 	}
 
-	// 路径
-	public function path() {
-		return url_path();
-	}
-
 	public function getNonce() {
 		return Token::get();
 	}
@@ -128,6 +136,10 @@ abstract class Base{
 
 	public function lang() {
 		return call_user_func_array(['Lang', 'get'], func_get_args());
+	}
+
+	public function path() {
+		return url_path();
 	}
 
 	/**
