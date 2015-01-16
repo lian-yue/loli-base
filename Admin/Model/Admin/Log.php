@@ -8,11 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-10 06:55:46
-/*	Updated: UTC 2015-01-10 07:11:03
+/*	Updated: UTC 2015-01-16 08:08:59
 /*
 /* ************************************************************************** */
 namespace Model\Admin;
 use Loli\Query;
+class_exists('Loli\Query') || exit;
 class Log extends Query{
 	public $table = 'admin_log';
 

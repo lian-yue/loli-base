@@ -8,10 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 09:34:24
-/*	Updated: UTC 2014-12-31 07:49:52
+/*	Updated: UTC 2015-01-16 08:07:20
 /*
 /* ************************************************************************** */
 namespace Model;
+class_exists('Loli\Query\Base') || exit;
 if (empty($_SERVER['LOLI']['DB'])) {
 	trigger_error('Variables $_SERVER[\'LOLI\'][\'DB\'] does not exist', E_USER_ERROR);
 }

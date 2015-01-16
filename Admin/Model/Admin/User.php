@@ -8,17 +8,16 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-05 16:44:04
-/*	Updated: UTC 2015-01-11 15:00:32
+/*	Updated: UTC 2015-01-16 17:46:46
 /*
 /* ************************************************************************** */
 namespace Model\Admin;
 use Loli\RBAC\Base, Loli\Date, Loli\Lang, Loli\String;
+class_exists('Loli\Query') || exit;
 class User extends Query{
 	use Base;
 
 	// 登录附加
-	public $login = __CLASS__;
-
 	public $timeout = 2592000;
 
 	public $request = 604800;
@@ -74,9 +73,18 @@ class User extends Query{
 	// 允许 删除
 	public $delete = true;
 
-	public function __construct() {
-		$this->login .= current_ip();
 
+	public $create = [
+		'ID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0],
+		'account' => ['type' => 'text', 'length' => 64, 'unique' => ['account' => 1]],
+		'password' => ['type' => 'text', 'length' => 70],
+		'lang' => ['type' => 'text', 'length' => 10],
+		'timezone' => ['type' => 'text', 'length' => 64],
+		'loginIP' => ['type' => 'text', 'length' => 40],
+		'loginDate' => ['type' => 'int', 'unsigned' => true, 'key' => ['loginDate' => 0]],
+	];
+
+	public function __construct() {
 		$this->_reg('Log', ['file' => __CLASS__ .'/User/Log.php']);
 		$this->_reg('Join', ['file' => __CLASS__ .'/User/Join.php']);
 		$this->_reg('Node', ['file' => __CLASS__ .'/User/Node.php']);
@@ -136,12 +144,12 @@ class User extends Query{
 			return false;
 		}
 
-		if ($key !== String::key($this->login . $user->ID . $user->password . $user->loginDate , 80)) {
+		if ($key !== String::key(__CLASS__ . $user->ID . $user->password . $user->loginDate , 80)) {
 			return false;
 		}
 
 		// 太久没访问了
-		if (!($time = String::decode($time, $this->login)) || !($time = absint($time)) || $time > time() || ($time + $this->request) < time()) {
+		if (!($time = String::decode($time, __CLASS__)) || !($time = absint($time)) || $time > time() || ($time + $this->request) < time()) {
 			return false;
 		}
 
@@ -153,9 +161,39 @@ class User extends Query{
 		// time 超过 10 分之一 然后自动写入 新的
 		if (($time + ($this->request / 10)) < time()) {
 			$time = time();
-			$_COOKIE[$key] = implode('|', [$ID, $key, String::encode($time, $this->login)]);
+			$_COOKIE[$key] = implode('|', [$ID, $key, String::encode($time, __CLASS__)]);
 			@setcookie($key, $_COOKIE[$key], $time + $this->timeout, \admin\PATH, \admin\HOST, (bool) \admin\SSL, true);
 		}
+
+
+		// 如果换了 ip 就写入登录日志 记录最近 10 个 IP 防止多网的
+		if (!is_array($in = $this->Cache->get('l'. $user->ID, __CLASS__))) {
+			$in = [];
+			foreach ($this->Log->results(['userID' => $user->ID, 'type' => 'login', '$order' => 'DESC', '$orderby' => 'dateline']) as $log) {
+				$in[] = $log->IP;
+			}
+		}
+		if (!in_array(current_ip(), $in)) {
+			$this->Log->add(['userID' => $user->ID, 'type' => 'login', 'IP' => current_ip(), 'value' => 'Automatic']);
+			$this->Cache->delete('l' . $user->ID, __CLASS__);
+		}
+
+
+		// 语言
+		if (Lang::$name && Cookie::get(Lang::$name) && Lang::$current != $user->lang) {
+			$this->update(['lang' => Lang::$current], $user->ID);
+		} elseif (!r(Lang::$name)) {
+			$user->lang == Lang::$current || Lang::set($user->lang);
+		}
+
+
+		// 时间
+		if (Date::$name && Cookie::get(Date::$name) && Date::$timezone != $user->timezone) {
+			$this->update(['timezone' => Date::$timezone], $user->ID);
+		} elseif (!r(Date::$name)) {
+			$user->timezone == Date::$timezone || Date::setTimezone($user->timezone);
+		}
+
 		return $this->current = $user;
 	}
 
@@ -177,8 +215,8 @@ class User extends Query{
 		$key = 'admin_' . String::key('admin', 10);
 
 		$_COOKIE[$key] = [$user->ID];
-		$_COOKIE[$key] = String::key($this->login . $user->ID . $user->password . $user->loginDate , 80);
-		$_COOKIE[$key] = String::encode($time, $this->login);
+		$_COOKIE[$key] = String::key(__CLASS__ . $user->ID . $user->password . $user->loginDate , 80);
+		$_COOKIE[$key] = String::encode($time, __CLASS__);
 		$_COOKIE[$key] = implode('|', $_COOKIE[$key]);
 		@setcookie($key, $_COOKIE[$key], $time + $this->timeout, \Admin\PATH, \Admin\HOST, (bool) \Admin\SSL, true);
 		return true;

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-01-09 13:26:39
+/*	Updated: UTC 2015-01-16 13:29:27
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -69,8 +69,6 @@ if (empty($_SERVER['PHP_SELF'])) {
 }
 
 
-
-
 // Loli 目录
 const DIR = __DIR__;
 
@@ -79,13 +77,27 @@ const DIR = __DIR__;
 require __DIR__ . '/functions.php';
 
 
-// 自动加载
+// 自动加载配置
+$_SERVER['LOLI']['LIBRARY']['Loli/'] = __DIR__ . '/Library';
 spl_autoload_register(function($name) {
+	static $call;
+	if (empty($call)) {
+		$call = function($a, $b) {
+			if (($a = strlen($a)) == ($b = strlen($b))) {
+				return 0;
+			}
+			return ($a < $b) ? 1 : -1;
+		};
+	}
+	uksort($_SERVER['LOLI']['LIBRARY'], $call);
 	$name = strtr($name, '\\', '/');
-	if ((isset($_SERVER['LOLI']['LIBRARY'][$name]) && ($file = $_SERVER['LOLI']['LIBRARY'][$name])) || (substr($name, 0, 5) == 'Loli/' && ($file = __DIR__ . '/' . $name. '.php'))) {
-		require $file;
-		do_call($name);
-		return true;
+	foreach ($_SERVER['LOLI']['LIBRARY'] as $key => $value) {
+		$length = strlen($key);
+		if (($key == $name || (substr($key, -1, 1) == '/' && substr($name, 0, $length) == $key)) && is_file($file = $value . ($key == $name ? '' : '/'. substr($name, $length) . '.php'))) {
+			require $file;
+			do_call('Library.'. $name);
+			return true;
+		}
 	}
 	return false;
 });
@@ -108,7 +120,6 @@ Model::__reg('Query', ['file' => __DIR__ . '/Model/Query.php']);
 
 // session
 Model::__reg('Session', ['file' => __DIR__ . '/Model/Session.php']);
-
 
 
 
