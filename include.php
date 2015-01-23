@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-01-16 13:29:27
+/*	Updated: UTC 2015-01-23 12:31:58
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -93,7 +93,7 @@ spl_autoload_register(function($name) {
 	$name = strtr($name, '\\', '/');
 	foreach ($_SERVER['LOLI']['LIBRARY'] as $key => $value) {
 		$length = strlen($key);
-		if (($key == $name || (substr($key, -1, 1) == '/' && substr($name, 0, $length) == $key)) && is_file($file = $value . ($key == $name ? '' : '/'. substr($name, $length) . '.php'))) {
+		if (($key == $name || (substr($key, -1, 1) == '/' && substr($name, 0, $length) == $key)) && is_file($file = $value . ($key == $name ? '' : '/'. substr($name, $length)) .  '.php')) {
 			require $file;
 			do_call('Library.'. $name);
 			return true;
@@ -102,26 +102,31 @@ spl_autoload_register(function($name) {
 	return false;
 });
 
-
 // debug
 if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 	new Debug($_SERVER['LOLI']['DEBUG']);
 }
 
 
+
+$func = function($key) {
+	return require __DIR__ . '/Model/'.$key.'.php';
+};
+
 // 缓存
-Model::__reg('Cache', ['file' => __DIR__ . '/Model/Cache.php']);
+Model::__reg('Cache', $func);
 
 // 静态
-Model::__reg('DB', ['file' => __DIR__ . '/Model/DB.php']);
+Model::__reg('DB', $func);
 
 // 查询对象
-Model::__reg('Query', ['file' => __DIR__ . '/Model/Query.php']);
+Model::__reg('Query', $func);
 
-// session
-Model::__reg('Session', ['file' => __DIR__ . '/Model/Session.php']);
+// Session
+Model::__reg('Session', $func);
 
 
+unset($func);
 
 
 // 自定义协议

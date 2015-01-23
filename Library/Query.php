@@ -8,11 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 09:43:36
-/*	Updated: UTC 2015-01-16 11:17:07
+/*	Updated: UTC 2015-01-22 15:20:58
 /*
 /* ************************************************************************** */
 namespace Loli;
 use StdClass;
+trait_exists('Loli\Model', true) || exit;
 class Query{
 	use Model;
 
@@ -30,20 +31,13 @@ class Query{
 	// 选择字段
 	public $fields = ['*'];
 
-	// 选择字段 手动的 需要 orderby 出现 才会 使用的
+	// 选择字段 手动的 需要 orderby 出现 才会 使用的 优先级高于 fields
 	public $as = [];
 
-	// 默认 唯一值
-	public $groupby = [];
 
-	// 默认 排序字段
-	public $orderby = [];
+	// 默认查询数组
+	public $query = [];
 
-	// 默认 排序 正序倒序
-	public $order = [];
-
-	// 默认 查询数量
-	public $limit;
 
 	// lists 查询数组
 	public $lists = [];
@@ -51,7 +45,7 @@ class Query{
 
 	//  关联 joins
 	public $joins = [
-	//	'关联的key的id' ['this' => $this->key 中的key位置支持 a.b.c, 'type' => 'join类型', 'on' => ['自己id', 别人id], 'auto' => 是否自动加载, 'escape' => 是否转义, 'where' => 嵌套运行的附加的,   .... 然后这是覆盖上面 除了 lists 和 data 的变量覆盖];
+	//	'关联的key的id' ['this' => $this->key 中的key位置支持 a.b.c, 'type' => 'join类型', 'on' => ['自己id', 别人id], 'auto' => 是否自动加载, 'use' => 是否使用, 'table' => '表' 'args' => '查询数组',  'fields' => '附加值段' 'as' => '排序自动添加' 'query' => '附加查询' '注意' 附加查询如果写了可能会附加到 其他表上面去哦 按照 优先级顺序的 如果没写的话读对象里面的查询会过滤掉全局的];
 	];
 
 
@@ -103,16 +97,18 @@ class Query{
 	public $create = [];
 
 	// 数据库引擎
-	public $engine = '';
+	public $engine = false;
 
 	// 是否使用从数据库
 	public $slave = true;
-
 
 	public function __invoke() {
 		return call_user_func_array([$this, 'get'], func_get_args());
 	}
 
+	public function table($args = [], $do = 0) {
+		return $this->table;
+	}
 	/**
 	*	取得查询字符串
 	*
@@ -120,18 +116,19 @@ class Query{
 	*
 	*	返回值 字符串
 	**/
-	public function str($w) {
-		foreach (['limit', 'groupby', 'orderby', 'order'] as $v) {
-			if (!isset($w['$'.$v]) && !empty($this->$v)) {
-				$w['$'.$v] = $this->$v;
-			}
-		}
+	public function str($query) {
+		$query += $this->query;
+
 
 		if (!$this->joins) {
-			$w = $this->Query->parse($w, $this->args);
+			$tableW = $query;
+			$query = $this->Query->parse($query, $this->args);
 			$fields = (array) $this->fields;
-			if (!empty($w['$orderby'])) {
-				foreach ($w['$orderby'] as $k => $v) {
+			foreach (['$orderby', '$groupby'] as $key) {
+				if (empty($query[$key])) {
+					continue;
+				}
+				foreach ($query[$key] as $k => $v) {
 					foreach($v->column as $vv) {
 						if ( empty($fields[$vv]) && !empty($this->as[$vv])) {
 							$fields[$vv] = $this->as[$vv];
@@ -139,34 +136,40 @@ class Query{
 					}
 				}
 			}
-			return $this->Query->get($w, $this->table, $fields);
+			return $this->Query->get($query, $this->table($tableW), $fields);
 		}
 
 
 
-		$w = array_unnull($w);
-		$orderbyFlip = array_flip(empty($w['$orderby'])? [] : (array) $w['$orderby']);
-
+		$query = array_unnull($query);
+		$by = [];
+		foreach (['$orderby', '$groupby'] as $key) {
+			if (empty($query[$key]) || is_object($query[$key])) {
+				continue;
+			}
+			foreach ((array) $query[$key] as $v) {
+				if (is_object($v)) {
+					$by[$v->column] = true;
+				} elseif (is_string($v)) {
+					$by[$v] = true;
+				}
+			}
+		}
 
 		// 多层次支持
 		foreach($this->joins as $k => $v) {
 			if (empty($v['this'])) {
 				$this->joins[$k]['this'] = (object) [
-					'auto' => false,
 					'table' => '',
-					'escape' => false,
+					'type' => [],
+					'on' => [],
 					'args' => [],
 					'fields' => [],
 					'as' => [],
-					'groupby' => [],
-					'orderby' => [],
-					'order' => [],
-					'limit' => null,
-					'type' => [],
-					'on' => [],
+					'query' => [],
 				];
-			} elseif (is_string($v['this'])) {
-				$t = explode('.', $v['this']);
+			} elseif (!is_object($v['this'])) {
+				$t = (array) $v['this'];
 				$a = $this;
 				while ($key = array_shift($t)) {
 					$a = $a->$key;
@@ -174,115 +177,109 @@ class Query{
 				$this->joins[$k]['this'] = $a;
 			}
 		}
-		$join = ['_this' => ['this' => $this]] + $this->joins;
+		$joins = ['_this' => ['this' => $this]] + $this->joins;
 
-		// 需要使用的
-		$use = ['_this'];
-		foreach ($join as $k => $v) {
-			if (in_array($k, $use)) {
-				continue;
+
+		// 取字段
+		$arrays = $useKeys = [];
+		foreach ($joins as $id => $j) {
+			$args = isset($j['args']) ? $j['args'] : $j['this']->args;
+			$as = isset($j['as']) ? $j['as'] : $j['this']->as;
+			$fields = (array) (isset($j['fields']) ? $j['fields'] : $j['this']->fields);
+
+			$fields2 = [];
+			foreach ($fields as $field => $value) {
+				if (is_int($field)) {
+					$fields2[$field] = $value;
+					unset($fields[$field]);
+				}
 			}
-			if (empty($v['auto'])) {
-				$a = isset($v['args']) ? $v['args'] : array_diff_key($v['this']->args, empty($v['parent']) ? $this->args : (empty($join[$v['parent']]) ?  [] : (empty($join[$v['parent']]['args']) ? $join[$v['parent']]['this']->args : $join[$v['parent']]['args'])));
-				$as = isset($v['as']) ? $v['as'] : $v['this']->as;
-				$fields = (array)(isset($v['fields']) ? $v['fields'] : $v['this']->fields);
-				foreach ($fields as $kk => $vv) {
-					if (is_int($v)) {
-						unset($fields[$kk]);
-					}
-				}
-				if (empty($v['auto']) && !array_intersect_key($a, $w) && !array_intersect_key($a + $as + $fields, $orderbyFlip)) {
-					continue;
-				}
+			$arrays[$id]['args'] = array_diff_key($args, $useKeys);
+			$arrays[$id]['fields'] = array_diff_key($fields, $useKeys);
+			$arrays[$id]['as'] = array_diff_key($as, $useKeys);
+			$arrays[$id]['fields2'] = $fields2;
+
+			$useKeys += $arrays[$id]['args'] + $arrays[$id]['fields'] + $arrays[$id]['as'];
+		}
+		unset($useKeys);
+
+		// 取使用
+		$use = [];
+		foreach($arrays as $id => $a) {
+			$j = $joins[$id];
+			if (empty($j['auto']) && $id != '_this' && !array_intersect_key($query, $a['args']) && !array_intersect_key($a['args'] + $a['fields'] + $a['as'], $by)) {
+				continue;
 			}
 
 			// 父级
+			$parent = $id;
 			do {
-				$while = !empty($v['parent']) && !in_array($v['parent'], $use) && !empty($join[$v['parent']]);
+				$while = !empty($joins[$parent]['parent']) && $joins[$parent]['parent'] != $id && !empty($joins[$joins[$parent]['parent']]) && (!isset($j['use']) || $j['use']) && !in_array($joins[$parent]['parent'], $ids);
 				if ($while) {
-					$use[] = $v['parent'];
+					$use[] = $parent = $joins[$parent]['parent'];
 				}
 			} while($while);
-
-			$use[] = $k;
+			$use[] = $id;
 		}
 
-		// 表和字段
+
+		// 查询
 		$args = $table = $fields = [];
 		foreach ($use as $id) {
-			$j = $join[$id];
-			$escape = isset($j['escape']) && $j['escape'] === true;
+			$j = $joins[$id];
+			$a = $arrays[$id];
+
 
 			// 表
-			$table[$id]['escape'] = $escape;
 			$table[$id]['type'] = empty($j['type']) ? '' : $j['type'];
-			if ($escape) {
-				// 需要运行的
-				if ($j['this']->args) {
-					$ww = [];
-					foreach ($j['this']->args as $kk => $vv) {
-						if (isset($w[$kk])) {
-							$ww[$kk] = $w[$kk];
-						}
-					}
-				} else {
-					$ww = $w;
-				}
-				foreach (['limit', 'groupby', 'orderby', 'order'] as $vv) {
-					$ww['$'.$vv] = empty($j[$kk]) ? '' : $j[$kk];
-				}
-				if (!empty($j['where'])) {
-					$ww = $j['where'] + $ww;
-				}
-				$table[$id]['name'] = $j['this']->str($ww);
-			} else {
-				$table[$id]['name'] = empty($j['table']) ? $j['this']->table : $j['table'];
-			}
+			$table[$id]['name'] = empty($j['table']) ? $j['this']->table(array_intersect_key($query, $a['args']) + (isset($j['query']) ? $j['query'] : $j['this']->query)) : $j['table'];
 
+			// 关联
 			if ($id != '_this') {
 				$table[$id]['on'] = [];
 				if (!empty($j['on'])) {
-					foreach (array_values($j['on']) as $kk => $vv) {
-						$table[$id]['on'][] = strpos($vv,'.') || strpos($vv,'\'') !== false || strpos($vv,'"') !== false ? $vv : ($kk % 2 ? $id . '.' . $vv : ((empty($j['parent']) ? '_this' : $j['parent']) . '.' . $vv));
+					foreach (array_values($j['on']) as $k => $v) {
+						$table[$id]['on'][] = strpos($v,'.') || strpos($v,'\'') !== false || strpos($v,'"') !== false ? $v : ($k % 2 ? $id . '.' . $v : ((empty($j['parent']) ? '_this' : $j['parent']) . '.' . $v));
 					}
 				}
 			}
 
 
-			$f = isset($j['fields'])? (array) $j['fields'] : ($escape ? [] : (array)$j['this']->fields);
-
-			// AS 排序允许
-			$f += array_intersect_key((isset($j['as'])?$j['as'] : ($escape ? [] : $j['this']->as)), $orderbyFlip);
 
 			// 表头
-			foreach ($f as $kk => $vv) {
-				if ($vv == '*') {
+			foreach ($a['fields'] + $a['fields2'] + array_intersect_key($a['as'], $by) as $k => $v) {
+				if ($v == '*') {
 					if ($id == '_this') {
 						$fields[] = '_this.*';
 					}
 					continue;
 				}
-				if (is_int($kk)) {
-					$fields[] = strpos($vv, '.') ? $vv : $id . '.' . $vv;
-				} elseif (is_string($vv)) {
-					$fields[$kk] = strpos($vv, '.') ? $vv : $id . '.' . $vv;
-				} elseif (is_array($vv)) {
-					foreach ($vv as $kkk => $vvv) {
-						$fields[$kk][$kkk] = in_array($kkk, ['column', 'true', 'false']) && is_string($vvv) ? $id . '.' . $vvv : $vvv;
+				if (is_int($k)) {
+					$fields[] = strpos($v, '.') ? $v : $id . '.' . $v;
+				} elseif (is_string($v)) {
+					$fields[$k] = strpos($v, '.') ? $v : $id . '.' . $v;
+				} elseif (is_array($v)) {
+					foreach ($v as $kk => $vv) {
+						$fields[$k][$kk] = in_array($kk, ['column', 'true', 'false']) && is_string($vv) ? $id . '.' . $vv : $vv;
 					}
 				}
 			}
 
+
 			// 字段
-			foreach ( isset($j['args']) ? $j['args'] : ($escape ? [] : $j['this']->args) as $kk => $vv ) {
-				if (!isset($args[$kk])) {
-					$vv = is_array($vv) ? $vv : ['column' => $kk, 'compare' => $vv];
-					$vv['column'] = $id . '.' . (empty($vv['column']) ? $kk : $vv['column']);
-					$args[$kk] = $vv;
+			foreach ($a['args'] as $k => $v) {
+				if (!isset($args[$k])) {
+					$v = is_array($v) ? $v : ['column' => $k, 'compare' => $v];
+					$v['column'] = $id . '.' . (empty($v['column']) ? $k : $v['column']);
+					$args[$k] = $v;
 				}
 			}
+
+			// 附加字段
+			$query += isset($j['query']) ? $j['query'] : array_intersect_key($j['this']->query, $a['args']);
 		}
-		return $this->Query->get($this->Query->parse($w, $args), $table, $fields, 'AND');
+
+		return $this->Query->get($this->Query->parse($query, $args), $table, $fields, 'AND');
 	}
 
 	/**
@@ -293,10 +290,10 @@ class Query{
 	*
 	*	返回值 true false
 	**/
-	public function results($w) {
-		$w['$count'] = null;
+	public function results($query) {
+		$query['$count'] = null;
 		$r = [];
-		foreach($this->DB->results($this->str($w), $this->slave) as $v) {
+		foreach($this->DB->results($this->str($query), $this->slave) as $v) {
 			$r[] = $this->r($v);
 		}
 		return $r;
@@ -310,10 +307,10 @@ class Query{
 	*
 	*	返回值 true false
 	**/
-	public function row($w) {
-		$w['$count'] = null;
-		$w['$limit'] = 1;
-		if ($r = $this->DB->row($this->str($w), $this->slave)) {
+	public function row($query) {
+		$query['$count'] = null;
+		$query['$limit'] = 1;
+		if ($r = $this->DB->row($this->str($query), $this->slave)) {
 			return $this->r($r);
 		}
 		return false;
@@ -328,9 +325,9 @@ class Query{
 	*
 	*	返回值 数量和
 	*/
-	public function count($w) {
-		$w['$count'] = true;
-		return $this->DB->count($this->str($w), $this->slave);
+	public function count($query) {
+		$query['$count'] = true;
+		return $this->DB->count($this->str($query), $this->slave);
 	}
 
 
@@ -444,7 +441,7 @@ class Query{
 	**/
 	public function add($args) {
 		// 过滤数组
-		if (!$a = $this->defaults($args, ['add'], true)) {
+		if (!($a = $this->defaults($args, ['add'], true)) || !($table = $this->table($a + $args, 1))) {
 			return false;
 		}
 
@@ -467,19 +464,18 @@ class Query{
 		// 唯一值检测
 		if ($this->unique) {
 			foreach ($this->unique as $unique) {
-				$q = [];
+				$qq = [];
 				foreach($unique as $k) {
 					if (!$get = isset($a[$k])) {
 						break;
 					}
-					$q[$k] = $a[$k];
+					$qq[$k] = $a[$k];
 				}
-				if ($get && $this->DB->row($this->Query->get(['$limit' => 1] + $q, $this->table), false)) {
+				if ($get && $this->DB->row($this->Query->get(['$limit' => 1] + $qq, $table), false)) {
 					return false;
 				}
 			}
 		}
-
 
 		// 过滤 w
 		if (!$a = $this->w($a, false, $args)) {
@@ -487,7 +483,7 @@ class Query{
 		}
 
 		// 添加进去
-		if (!$r = $this->DB->insert($this->Query->add($a, $this->table), false)) {
+		if (!$r = $this->DB->insert($this->Query->add($a, $table), false)) {
 			return false;
 		}
 
@@ -504,7 +500,7 @@ class Query{
 
 	public function set($args) {
 		// 过滤数组
-		if (!$a = $this->defaults($args, ['set'], true)) {
+		if (!($a = $this->defaults($args, ['set'], true)) || !($table = $this->table($a + $args, 1))) {
 			return false;
 		}
 
@@ -520,7 +516,7 @@ class Query{
 				$q[$k] = $a[$k];
 			}
 
-			if ($get && ($old = $this->DB->row($this->Query->get(['$limit' => 1] + $q, $this->table)))) {
+			if ($get && ($old = $this->DB->row($this->Query->get(['$limit' => 1] + $q, $table)))) {
 				$a = array_intersect_key($a + (array) $old, (array) $old);
 			}
 		}
@@ -531,7 +527,7 @@ class Query{
 		}
 
 		// 写入
-		if (($r = $this->DB->replace($this->Query->set($a, $this->table), false)) === false) {
+		if (($r = $this->DB->replace($this->Query->set($a, $table), false)) === false) {
 			return false;
 		}
 
@@ -553,6 +549,10 @@ class Query{
 		}
 		$this->slave = false;
 
+		if (!$a = $this->defaults($args, ['update'])) {
+			return false;
+		}
+
 		$q = [];
 		foreach ($this->primary as $i => $k) {
 			if (is_array($q[$k] = func_get_arg($i+1)) || is_object($q[$k])) {
@@ -560,14 +560,14 @@ class Query{
 			}
 		}
 
-		if (!$old =  $this->DB->row($this->Query->get(['$limit' => 1] + $q, $this->table))) {
+		if (!$table = $this->table($q + $a + $args, 1)) {
 			return false;
 		}
 
-		// 过滤数组
-		if (!$a = $this->defaults($args, ['update'])) {
+		if (!$old =  $this->DB->row($this->Query->get(['$limit' => 1] + $q, $table))) {
 			return false;
 		}
+
 
 		$w = [];
 		foreach ($this->primary as $v) {
@@ -591,7 +591,7 @@ class Query{
 					foreach($unique as $k) {
 						$q[$k] = isset($q[$k]) ? $q[$k] : $old->{$k};
 					}
-					if ($this->DB->row($this->Query->get(['$limit' => 1] + $q, $this->table), false)) {
+					if ($this->DB->row($this->Query->get(['$limit' => 1] + $q, $table), false)) {
 						return false;
 					}
 				}
@@ -603,8 +603,7 @@ class Query{
 			return false;
 		}
 
-
-		$r = $this->DB->update($this->Query->update($a, ['$limit' => 1] + $w, $this->table), false);
+		$r = $this->DB->update($this->Query->update($a, ['$limit' => 1] + $w, $table), false);
 
 		$a = $w + $a;
 
@@ -627,7 +626,12 @@ class Query{
 				return false;
 			}
 		}
-		if (!$old = $this->DB->row($this->Query->get(['$limit' => 1] + $q, $this->table))) {
+
+		if (!$table = $this->table($q, 1)) {
+			return false;
+		}
+
+		if (!$old = $this->DB->row($this->Query->get(['$limit' => 1] + $q, $table))) {
 			return false;
 		}
 
@@ -635,7 +639,7 @@ class Query{
 		foreach ($this->primary as $v) {
 			$w[$v] = $old->{$v};
 		}
-		if (!$r = $this->DB->delete($this->Query->delete(['$limit' => 1] + $w, $this->table), false)) {
+		if (!$r = $this->DB->delete($this->Query->delete(['$limit' => 1] + $w, $table), false)) {
 			return $r;
 		}
 
@@ -654,13 +658,21 @@ class Query{
 	**/
 	public function adds($args) {
 		$a = [];
+		$table = false;
 		foreach ($args as $k => $v) {
-			if (!$a[$k] = $this->defaults($v, ['adds','add'], true)){
+			if (!$a[$k] = $this->defaults($v, ['adds','add'], true)) {
 				return false;
 			}
+			if (!$t = $this->table($a[$k] + $v, 1)) {
+				return false;
+			}
+			if ($table && $t != $table) {
+				return false;
+			}
+			$table = $t;
 		}
-		$this->slave = false;
 
+		$this->slave = false;
 		// 主要 字段检测 和唯值检测
 		$unique = $this->unique ? $this->unique : [];
 		if ($this->primary) {
@@ -695,7 +707,7 @@ class Query{
 
 			// 检测重复
 			if ($q) {
-				foreach($this->DB->results($this->Query->get($q, $this->table, '*', 'OR'), false) as $v) {
+				foreach($this->DB->results($this->Query->get($q, $table, '*', 'OR'), false) as $v) {
 					foreach($a as $kk => $vv) {
 						foreach($unique as $vvv) {
 							$exists = true;
@@ -726,7 +738,7 @@ class Query{
 		}
 
 		// 添加进去
-		if (!$a || !($r = $this->DB->insert($this->Query->add(array_values($a), $this->table), false))) {
+		if (!$a || !($r = $this->DB->insert($this->Query->add(array_values($a), $table), false))) {
 			return false;
 		}
 
@@ -747,13 +759,21 @@ class Query{
 	*	返回值 false 或者 影响的数量  带有自增ID的能使用
 	**/
 	public function sets($args) {
-
 		$a = [];
+		$table = false;
 		foreach ($args as $k => $v) {
 			if (!$a[$k] = $this->defaults($v, ['sets', 'set'], true)) {
 				return false;
 			}
+			if (!$t = $this->table($a[$k] + $v, 1)) {
+				return false;
+			}
+			if ($table && $t != $table) {
+				return false;
+			}
+			$table = $t;
 		}
+
 		$this->slave = false;
 		// 旧数据取得
 		$old = [];
@@ -782,7 +802,7 @@ class Query{
 
 			// 取得存在的
 			if ($q) {
-				foreach($this->DB->results($this->Query->get($q, $this->table, '*', 'OR'), false) as $v) {
+				foreach($this->DB->results($this->Query->get($q, $table, '*', 'OR'), false) as $v) {
 					foreach($a as $kk => $vv) {
 						$exists = true;
 						foreach ($this->primary as $vvv) {
@@ -809,7 +829,7 @@ class Query{
 		}
 
 		// 修改
-		if (!$a || ($r = $this->DB->replace($this->Query->set(array_values($a), $this->table), false)) === false) {
+		if (!$a || ($r = $this->DB->replace($this->Query->set(array_values($a), $table), false)) === false) {
 			return false;
 		}
 
@@ -829,6 +849,9 @@ class Query{
 			return false;
 		}
 		if (!$a = $this->defaults($args, ['updates', 'update'])) {
+			return false;
+		}
+		if (!$table = $this->table($b + $a + $args, 1)) {
 			return false;
 		}
 
@@ -889,7 +912,7 @@ class Query{
 		}
 
 		// 更新
-		$r = $this->DB->update($this->Query->update($a, $w, $this->table), false);
+		$r = $this->DB->update($this->Query->update($a, $w, $table), false);
 
 		// 完成回调
 		foreach ($old as $v) {
@@ -906,6 +929,10 @@ class Query{
 
 	public function deletes($a, $c = true) {
 		if (!$a || !$this->deletes || !is_array($a)) {
+			return false;
+		}
+
+		if (!$table = $this->table($a, 1)) {
 			return false;
 		}
 
@@ -928,7 +955,7 @@ class Query{
 
 		//  读取 和 删除
 		$old = [];
-		if (!$w || ($c && !($old = $this->DB->results($this->Query->get($w, $this->table), false))) || !($r = $this->DB->delete($this->Query->delete($w, $this->table), false))) {
+		if (!$w || ($c && !($old = $this->DB->results($this->Query->get($w, $table), false))) || !($r = $this->DB->delete($this->Query->delete($w, $table), false))) {
 			return 0;
 		}
 
@@ -943,12 +970,24 @@ class Query{
 
 	public function create() {
 		$this->slave = false;
-		return $this->create && $this->DB->create($this->Query->create($this->create, $this->table, $this->engine), false);
+		$r = 0;
+		foreach ((array) $this->table([], -1) as $table) {
+			if ($this->create && $this->DB->create($this->Query->create($this->create, $table, $this->engine), false)) {
+				++$r;
+			}
+		}
+		return $r;
 	}
 
 	public function drop() {
 		$this->slave = false;
-		return $this->DB->drop($this->Query->drop($this->table), false);
+		$r = 0;
+		foreach ((array) $this->table([], -1) as $table) {
+			if ($this->DB->drop($this->Query->drop($table), false)) {
+				++$r;
+			}
+		}
+		return $r;;
 	}
 
 

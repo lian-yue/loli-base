@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-10 10:24:36
-/*	Updated: UTC 2015-01-04 07:30:26
+/*	Updated: UTC 2015-01-21 06:52:08
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -60,7 +60,7 @@ class Ajax{
 	 * @return exit 结束掉
 	 */
 	public static function get($data) {
-		@header('Content-Ajax: true');
+		@header('X-Ajax: true');
 		$type = strtolower(self::$type);
 		if ($type == 'query') {
 			$data = merge_string($data);

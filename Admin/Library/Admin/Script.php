@@ -8,13 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-09 11:04:19
-/*	Updated: UTC 2015-01-16 15:21:11
+/*	Updated: UTC 2015-01-21 14:43:06
 /*
 /* ************************************************************************** */
-namespace Admin\Resources;
-use Loli\Controller\Resources\Base, Loli\Model;
-class_exists('Loli\Controller\Resources\Base') || exit;
-class Script extends Base {
+namespace Admin;
+use Loli\Controller\Resources, Loli\Model;
+class_exists('Loli\Controller\Resources') || exit;
+class Script extends Resources {
 	use Model;
 	public $default = ['type' => 'text/javascript', 'priority' => 10, 'global' => true, 'login' => true];
 

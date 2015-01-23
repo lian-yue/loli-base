@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 12:09:10
-/*	Updated: UTC 2015-01-09 14:58:46
+/*	Updated: UTC 2015-01-19 13:21:23
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -42,6 +42,11 @@ class Curl{
 			CURLOPT_ENCODING => 'gzip,deflate',
 			CURLOPT_CONNECTTIMEOUT => 6,
 			CURLOPT_TIMEOUT => 6,
+
+
+			// 限制协议
+			CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS | CURLPROTO_FTP | CURLPROTO_FTPS,
+			CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS | CURLPROTO_FTP | CURLPROTO_FTPS,
 		];
 	}
 

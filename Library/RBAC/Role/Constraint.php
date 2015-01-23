@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-11 12:29:46
-/*	Updated: UTC 2015-01-16 08:05:28
+/*	Updated: UTC 2015-01-22 15:02:41
 /*
 /* ************************************************************************** */
 /**
@@ -19,9 +19,6 @@ namespace Loli\RBAC;
 use Loli\Query;
 class_exists('Loli\Query') || exit;
 class Constraint extends Query{
-
-	// 不能被排斥的
-	public $not = [];
 
 	public $args = [
 		'roleID' => '',

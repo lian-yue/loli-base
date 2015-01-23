@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-15 14:00:37
-/*	Updated: UTC 2015-01-02 08:37:12
+/*	Updated: UTC 2015-01-21 15:04:21
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -112,7 +112,7 @@ class Debug {
 
 		// ajax 的
 		if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-			@header( 'Content-Type: application/json; charset=UTF-8');
+			@header('Content-Type: application/json; charset=UTF-8');
 
 			$a = [];
 			foreach ($trace as $k => $v) {

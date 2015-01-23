@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-16 11:15:40
+/*	Updated: UTC 2015-01-22 13:00:20
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -548,12 +548,8 @@ class Mysql extends Base{
 				if (empty($v['name'])) {
 					return false;
 				}
-				if (empty($v['escape']) || $v['escape'] !== true) {
-					if (!$t[$k]['name'] = $this->key($v['name'])) {
-						return false;
-					}
-				} else {
-					$t[$k]['name'] = ' (' . $v['name'] . ') ';
+				if (!$t[$k]['name'] = $this->key($v['name'])) {
+					return false;
 				}
 			}
 		} else {

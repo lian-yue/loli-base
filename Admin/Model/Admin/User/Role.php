@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-09 07:29:23
-/*	Updated: UTC 2015-01-16 08:09:16
+/*	Updated: UTC 2015-01-22 08:38:41
 /*
 /* ************************************************************************** */
 namespace Model\Admin\User;
@@ -17,7 +17,7 @@ class_exists('Loli\RBAC\Role') || exit;
 class Role extends Role_{
 	public $table = 'admin_user_role';
 	public function __construct() {
-		$this->_reg('Constraint', ['file' => __CLASS__ .'/Role/Constraint.php']);
-		$this->_reg('Inherit', ['file' => __CLASS__ .'/Role/Inherit.php']);
+		$this->_reg('Constraint');
+		$this->_reg('Inherit');
 	}
 }

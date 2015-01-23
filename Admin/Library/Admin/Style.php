@@ -8,13 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-09 11:04:31
-/*	Updated: UTC 2015-01-16 15:21:58
+/*	Updated: UTC 2015-01-21 14:43:01
 /*
 /* ************************************************************************** */
-namespace Admin\Resources;
-use Loli\Controller\Resources\Base, Loli\Model;
-class_exists('Loli\Controller\Resources\Base') || exit;
-class Style extends Base{
+namespace Admin;
+use Loli\Controller\Resources, Loli\Model;
+class_exists('Loli\Controller\Resources') || exit;
+class Style extends Resources{
 	use Model;
 	public $default = ['type' => 'text/css', 'media' => 'all', 'priority' => 10, 'global' => true, 'login' => true];
 

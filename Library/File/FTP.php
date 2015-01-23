@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-05-12 18:03:40
-/*	Updated: UTC 2015-01-16 08:03:11
+/*	Updated: UTC 2015-01-19 07:07:33
 /*
 /* ************************************************************************** */
 namespace Loli\File;
@@ -92,7 +92,7 @@ class FTP extends Base{
 		if (!($remote = $this->filter($remote)) || !$this->exists($remote)) {
 			return false;
 		}
-		return 'ftps://' . ( $this->user || $this->pass ?  $this->user . ':' . $this->pass. '@' ) . $this->host . ':' . $this->port . '/' .$this->dir . '/' . $remote;
+		return 'ftps://' . ($this->user || $this->pass ?  $this->user . ':' . $this->pass. '@' : '') . $this->host . ':' . $this->port . '/' .$this->dir . '/' . $remote;
 	}
 
 

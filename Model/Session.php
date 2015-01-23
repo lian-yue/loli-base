@@ -8,11 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-10 05:18:47
-/*	Updated: UTC 2015-01-04 14:31:44
+/*	Updated: UTC 2015-01-22 08:32:05
 /*
 /* ************************************************************************** */
 namespace Model;
 use Loli\Model, Loli\Token;
+trait_exists('Loli\Model', true) || exit;
 class Session{
 	use Model;
 	public function __invoke() {
@@ -31,3 +32,5 @@ class Session{
 		return $this->Cache->delete($key, __CLASS__);
 	}
 }
+
+return new Session;

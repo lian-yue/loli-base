@@ -8,13 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-05 05:03:53
-/*	Updated: UTC 2015-01-16 08:04:27
+/*	Updated: UTC 2015-01-20 05:53:18
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
 class_exists('Loli\Query\Base') || exit;
 class Mongo extends Base{
-	private $logical = [
+	private $_logical = [
 		'AND' => '$and',
 		'OR' => '$or',
 		'XOR' => '$nor',
@@ -279,8 +279,8 @@ class Mongo extends Base{
 
 			return ['command' => 'aggregate'] + array_intersect_key($args, ['aggregate' => '', 'pipeline' => '']);
 		}
-		return ['command' => 'find'] + $args;
-	}*/
+		return ['command' => 'find'] + $args;*/
+	}
 
 
 

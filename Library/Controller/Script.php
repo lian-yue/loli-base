@@ -8,12 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:16:16
-/*	Updated: UTC 2015-01-16 08:33:49
+/*	Updated: UTC 2015-01-21 14:43:38
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
-use Loli\Resources;
-class_exists('Loli\Resources') || exit;
+class_exists('Loli\Controller\Resources') || exit;
 class Script extends Resources{
 	public $default = ['type' => 'text/javascript', 'priority' => 10];
 	public function call($value, $args, $key) {

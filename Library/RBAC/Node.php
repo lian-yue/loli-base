@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-03 07:09:40
-/*	Updated: UTC 2015-01-16 08:05:08
+/*	Updated: UTC 2015-01-22 15:03:01
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -19,16 +19,17 @@ class Node extends Query{
 		'ID' => '',
 		'parent' => '',
 		'key' => '',
+		'type' => '',
 	];
 
 	public $defaults = [
 		'parent' => 0,
 		'key' => '',
+		'type' => 0,		// 0 = 导航父节点不可点击的可包含 1			1 = 访问节点 可包含0, 1, 2				2 = 请求(动作节点)节点 不可包含
 		'name' => '',
 		'sort' => 0,
 		'description' => '',
 	];
-
 
 	public $add = true;
 
@@ -44,6 +45,7 @@ class Node extends Query{
 		'ID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0],
 		'parent' => ['type' => 'int', 'unsigned' => true, 'unique' => ['parent_key' => 0]],
 		'key' => ['type' => 'text', 'length' => 64, 'unique' => ['parent_key' => 0]],
+		'type' => ['type' => 'int', 'length' => 1],
 		'name' => ['type' => 'text', 'length' => 32],
 		'sort' => ['type' => 'int', 'length' => 1],
 		'description' => ['type' => 'text', 'length' => 65535],
@@ -64,7 +66,7 @@ class Node extends Query{
 
 	public function c($new, $old, $args) {
 		$a = $new ? $new : $old;
-		$this->cache->delete($a->parent . '.' $a->key, get_class($this));
+		$this->cache->delete($a->parent . '.' . $a->key, get_class($this));
 		parent::c($new, $old, $args);
 		$this->key($a->key, $a->parent);
 	}

@@ -8,12 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-05 16:44:04
-/*	Updated: UTC 2015-01-16 17:46:46
+/*	Updated: UTC 2015-01-22 15:00:39
 /*
 /* ************************************************************************** */
 namespace Model\Admin;
-use Loli\RBAC\Base, Loli\Date, Loli\Lang, Loli\String;
+use Loli\RBAC\Base, Loli\Date, Loli\Lang, Loli\String, Loli\Query;
 class_exists('Loli\Query') || exit;
+
 class User extends Query{
 	use Base;
 
@@ -23,7 +24,6 @@ class User extends Query{
 	public $request = 604800;
 
 	public $current;
-
 
 
 
@@ -41,7 +41,10 @@ class User extends Query{
 		'account' => '',
 		'loginIP' => '>=',
 		'loginDate' => '',
+		'eee' => '',
 	];
+
+	public $as = ['eee' => ['function' => 'count']];
 
 
 	// 默认值
@@ -84,14 +87,17 @@ class User extends Query{
 		'loginDate' => ['type' => 'int', 'unsigned' => true, 'key' => ['loginDate' => 0]],
 	];
 
-	public function __construct() {
-		$this->_reg('Log', ['file' => __CLASS__ .'/User/Log.php']);
-		$this->_reg('Join', ['file' => __CLASS__ .'/User/Join.php']);
-		$this->_reg('Node', ['file' => __CLASS__ .'/User/Node.php']);
-		$this->_reg('Role', ['file' => __CLASS__ .'/User/Role.php']);
-		$this->_reg('Permission', ['file' => __CLASS__ .'/User/Permission.php']);
-	}
+	public $joins = [
+		'relationship' => ['this' => 'Relationship']
+	];
 
+	public function __construct() {
+		$this->_reg('Log');
+		$this->_reg('Relationship');
+		$this->_reg('Node');
+		$this->_reg('Role');
+		$this->_reg('Permission');
+	}
 
 	public function w($w, $old, $args) {
 		// 无效账号

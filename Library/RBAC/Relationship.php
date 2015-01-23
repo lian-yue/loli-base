@@ -8,13 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 16:30:57
-/*	Updated: UTC 2015-01-16 08:05:00
+/*	Updated: UTC 2015-01-22 15:03:48
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
 use Loli\Query;
 class_exists('Loli\Query') || exit;
-class Join extends Query{
+class Relationship extends Query{
 	public $args = [
 		'userID' => '',
 		'roleID' => '',
@@ -28,9 +28,9 @@ class Join extends Query{
 	public $primary = ['userID', 'roleID'];
 
 	public $create = [
-		'userID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0]],
-		'roleID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 1]],
-		'expires' => ['type' => 'datetime']],			// 过期如果 是 0000-00-00 00:00:00 的话永不过期 gmt 时间
+		'userID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 0],
+		'roleID' => ['type' => 'int', 'unsigned' => true, 'increment' => true, 'primary' => 1],
+		'expires' => ['type' => 'datetime'],			// 过期如果 是 0000-00-00 00:00:00 的话永不过期 gmt 时间
 	];
 
 	public $add = true;

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-10 07:27:20
-/*	Updated: UTC 2015-01-16 17:48:35
+/*	Updated: UTC 2015-01-21 14:23:35
 /*
 /* ************************************************************************** */
 namespace Admin;
@@ -17,10 +17,10 @@ class_exists('Loli\Controller\Base') || exit;
 class Base extends Base_{
 	public $Style;
 	public $Script;
-	public $quotes = ['url', 'nodes', 'data', 'Style', 'Script', 'userID'];
+	public $quotes = ['url', 'node', 'data', 'Style', 'Script', 'userID'];
 	public $userID = 0;
-	public function permission($nodes, $column = '', $value = '', $compare = '=') {
-		return $this->userID && $this->Admin->User->permission($this->userID, $nodes, $column, $value, $compare);
+	public function permission($node, $column = '', $value = '', $compare = '=') {
+		return $this->userID && $this->Admin->User->permission($this->userID, $node, $column, $value, $compare);
 	}
 
 	public function path() {
@@ -48,7 +48,7 @@ class Base extends Base_{
 		}
 		return $url;
 	}
-	public function getNonce($nodes = []) {
-		return  String::key(Token::get() . ($nodes === false ? '' : $this->userID . '/' . implode('/', $nodes ? $nodes : $this->nodes) . current_ip()));
+	public function getNonce($node = []) {
+		return  String::key(Token::get() . ($node === false ? '' : $this->userID . '/' . implode('/', $node ? $node : $this->node) . current_ip()));
 	}
 }

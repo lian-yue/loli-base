@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-09 07:33:20
-/*	Updated: UTC 2015-01-16 08:09:42
+/*	Updated: UTC 2015-01-22 14:58:00
 /*
 /* ************************************************************************** */
 namespace Model\Admin\User;
@@ -49,6 +49,7 @@ class Log extends Query{
 		'dateline' =>  ['type' => 'int', 'unsigned' => true, 'key' => ['IPDateType' => 2, 'userDateType' => 2]],
 		'value' => ['type' => 'text', 'length' => 255],
 	];
+
 
 	public function w($w, $old, $args) {
 		if (!$w['userID']) {

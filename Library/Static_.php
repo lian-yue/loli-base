@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-16 13:06:33
+/*	Updated: UTC 2015-01-19 06:59:05
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -33,7 +33,7 @@ class Static_{
 
 
 
-	public static function __construct() {
+	public static function init() {
 		if (!empty($_SERVER['LOLI']['STATIC'])) {
 			self::$_linkArgs = $_SERVER['LOLI']['STATIC'];
 			foreach ( $_SERVER['LOLI']['STATIC'] as $k => $v) {
@@ -165,6 +165,5 @@ class Static_{
 		return $r;
 
 	}
-
 }
 Static_::init();

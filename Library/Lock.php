@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 20:41:33
-/*	Updated: UTC 2015-01-01 15:39:20
+/*	Updated: UTC 2015-01-19 07:05:16
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -16,7 +16,7 @@ class Lock{
 
 	private static $_all = [];
 
-	public  $dir = './';
+	public static $dir = './';
 
 
 	public function add($key, $wait = false) {

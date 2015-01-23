@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-07 06:18:55
+/*	Updated: UTC 2015-01-23 09:30:20
 /*
 /* ************************************************************************** */
 
@@ -384,14 +384,17 @@ function domain_match($match, $domain) {
 		return false;
 	}
 	if (!preg_match('/^(https?|ftp)\:\/\//i', $domain)) {
-		$domain = substr($domain,0,2) == '//' ? 'http:' . $domain : 'http://' . $domain;
+		$domain = substr($domain, 0, 2) == '//' ? 'http:' . $domain : 'http://' . $domain;
+	}
+	if (substr($match, 0, 2) == '//') {
+		$match = 'http:' . $match;
 	}
 	if (!($match = parse_url($match)) || empty($match['host']) || !($domain = parse_url($domain)) || empty($domain['host'])) {
 		return false;
 	}
-
 	return $match['host'] == $domain['host'] || preg_match('/(^|\.)'. preg_quote($domain['host'], '/') .'$/i', $match['host']);
 }
+
 
 
 /**

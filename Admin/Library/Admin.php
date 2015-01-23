@@ -8,10 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-10 07:48:14
-/*	Updated: UTC 2015-01-16 17:48:54
+/*	Updated: UTC 2015-01-23 09:37:02
 /*
 /* ************************************************************************** */
-use Admin\Base, Loli\Controller\Run, Admin\Script, Admin\Style, Loli\Ajax, Loli\Lang, Loli\Date, Loli\Static_;
+use Admin\Base, Loli\Controller\Run, Admin\Script, Admin\Style, Loli\Ajax, Loli\Message, Loli\Lang, Loli\Date, Loli\Static_;
+
 class_exists('Admin\Base') || exit;
 class Admin extends Base{
 	use Run;
@@ -22,7 +23,7 @@ class Admin extends Base{
 
 
 		// 用户
-		if (!$user = $this->Admin->User->current()) {
+		if ($user = $this->Admin->User->current()) {
 			$this->userID = $user->ID;
 		}
 
@@ -45,8 +46,8 @@ class Admin extends Base{
 		$this->Script->add('juqery.end', function(){ echo '})' ."\n"; }, ['priority' => 99, 'login' => false]);
 
 		//主题内嵌的资源必须的
-		$this->Style->add('default', $dir . '/style.css', ['call' => true, 'priority' => 6]);
-		$this->Script->add('default', $dir . '/script.js', ['call' => true, 'priority' => 6]);
+		$this->Style->add('default', $this->dir . '/style.css', ['call' => true, 'priority' => 6]);
+		$this->Script->add('default', $this->dir . '/script.js', ['call' => true, 'priority' => 6]);
 
 		// 回调函数
 		do_array_call('Admin', [&$this]);
@@ -54,7 +55,7 @@ class Admin extends Base{
 
 	public function get() {
 		$__F = parent::get();
-		Ajax::$is && $this->isNonce() && $this->msg(true, false, $this->data);
+		Ajax::$is && $this->isNonce() && Message::run(true, $this->data);
 		if ($__F) {
 			require $__F;
 		}

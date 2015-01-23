@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2014-12-31 07:53:52
+/*	Updated: UTC 2015-01-19 07:09:40
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -837,7 +837,7 @@ class Attr{
 	];
 
 	// css 图片
-	public $styleUrl = ['background', 'background-attachment'],
+	public $styleUrl = ['background', 'background-attachment'];
 
 	// 允许 name  class id 的前缀
 	public $prefix = '';
@@ -1366,5 +1366,3 @@ class Attr{
 		return preg_replace('/^[^0-9a-z_:% -]$/i', '', $value);
 	}
 }
-
-return __NAMECPACE__ . '\HTML';

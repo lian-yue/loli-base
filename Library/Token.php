@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-17 14:51:45
-/*	Updated: UTC 2015-01-01 15:24:18
+/*	Updated: UTC 2015-01-19 06:58:28
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -20,7 +20,7 @@ class Token{
 	public static $name = '';
 
 	public static function set($token, $cookie = false) {
-		if (!is_string($token) || strlen($token) != 32 || String::key(substr($token, 0, 16) __CLASS__, 16) != substr($token, 16)) {
+		if (!is_string($token) || strlen($token) != 32 || String::key(__CLASS__ . substr($token, 0, 16), 16) != substr($token, 16)) {
 			return false;
 		}
 		$cookie && self::$name && Cookie::set(self::$name, $token, 86400 * 365, true);
@@ -32,7 +32,7 @@ class Token{
 			if (self::$name && !self::set(Cookie::get(self::$name))) {
 				$token = uniqid();
 				$token .= String::rand(16 - strlen($token), '0123456789qwertyuiopasdfghjklzxcvbnm');
-				$token .= String::key($token __CLASS__, 16);
+				$token .= String::key(__CLASS__ . $token, 16);
 				self::set($token, true);
 			}
 		}

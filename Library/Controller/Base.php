@@ -8,11 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-01-16 13:32:04
+/*	Updated: UTC 2015-01-23 09:35:30
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
-use Loli\Model, Loli\Date, Loli\Lang, Loli\Form, Loli\Exit_, Loli\Token;
+use Loli\Model, Loli\Date, Loli\Lang, Loli\Form, Loli\Message, Loli\Token;
+trait_exists('Loli\Model', true) || exit;
+
 abstract class Base{
 	use Model;
 
@@ -23,7 +25,7 @@ abstract class Base{
 	public $dir = './';
 
 	// 节点
-	public $nodes = [];
+	public $node = [];
 
 	// 全部节点
 	public $allNode = [];
@@ -35,7 +37,7 @@ abstract class Base{
 	public $data = ['title' => [], 'menu' => []];
 
 	// 需要引用的数据
-	public $quotes = ['url', 'dir', 'nodes', 'data'];
+	public $quotes = ['url', 'dir', 'node', 'data'];
 
 	public function getNode($before, $current, $after, &$rewrite) {
 		foreach($this->allNode as $value) {
@@ -73,7 +75,7 @@ abstract class Base{
 		return $r;
 	}
 
-	abstract public function permission($nodes, $column = '', $value = '', $compare = '=');
+	abstract public function permission($node, $column = '', $value = '', $compare = '=');
 
 	// 默认执行
 	public function init() {
@@ -141,7 +143,10 @@ abstract class Base{
 	}
 
 	public function exitNonce() {
-		return call_user_func_array([$this, 'isNonce'], func_get_args()) || $this->err();
+		if (!call_user_func_array([$this, 'isNonce'], func_get_args())) {
+			Message::set(403);
+			Message::run();
+		}
 	}
 
 	public function lang() {
@@ -152,25 +157,6 @@ abstract class Base{
 		return url_path();
 	}
 
-	/**
-	 *	消息结束
-	 * @param string $a 消息结束
-	 * @return 无返回值直接结束
-	 */
-	public function msg($msg = '', $to = true, $args = []) {
-		$this->data += ['msg' => $msg, 'to' => $to ? to([$to, 'referer'], [$this->url()]) : $to, 'args' => $args];
-		$this->load('msg.php') || Exit_::msg($this->data['msg'], $this->data['to'], $this->data['args']);
-	}
-
-	/**
-	 *	错误结束
-	 * @param string $a 错误消息
-	 * @return 无返回值直接结束
-	 */
-	public function err($err = '', $to = true, $args = []) {
-		$this->data += ['err' => $err ? $err : 403, 'to' => $to && $to !== true ? to([$to, 'referer'], [$this->url()]) : $to, 'args' => $args];
-		$this->load('err.php') || Exit_::err($this->data['err'], $this->data['to'], $this->data['args']);
-	}
 	public function title($sep = ' _ ') {
 		if (empty($this->data['title'])) {
 			return $sep ? false : [];

@@ -8,15 +8,22 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-05 16:44:04
-/*	Updated: UTC 2015-01-13 10:03:50
+/*	Updated: UTC 2015-01-22 15:04:13
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
 trait Base{
 
+	// 超级管理员用户
+	public $superUsers = [];
+
+	// 超级管理员角色
+	public $superRoles = [];
+
+
 	/**
 	 * 权限控制
-	 * @param  [type] $ID			用户id
+	 * @param  [type] $ID			用户ID
 	 * @param  [type] $keys			keys  ['Controller'的类名] +  Controller 的 路径
 	 * @param  string $column		可选 匹配附加字段
 	 * @param  string $value 		可选 匹配的值
@@ -44,12 +51,17 @@ trait Base{
 			if (empty($static[$ID])) {
 				// 当前角色
 				$roles = [];
-				foreach ($this->Join->gets($ID) as $role) {
+				foreach ($this->Relationship->gets($ID) as $role) {
 					// 已过期的角色
-					if (!empty($role->expires) && $role->expires != '0000-00-00 00:00:00' $role->expires < $date) {
+					if (!empty($role->expires) && $role->expires != '0000-00-00 00:00:00' && $role->expires < $date) {
 						continue;
 					}
 					$roles[] = $role->roleID;
+				}
+
+				// 超级管理员的
+				if (in_array($ID, $this->superUsers) && !array_intersect($this->superRoles, $roles)) {
+					$roles[] = end($this->superRoles);
 				}
 
 				// 互相排斥的角色
@@ -67,7 +79,7 @@ trait Base{
 					// 互相排斥
 					$unset = [];
 					foreach ($constraints as $constraint) {
-						if ( !in_array($unset, $constraint->roleID) && $constraint->roleID != $constraint->constraint && !in_array($this->Role->Constraint->not, $constraint->constraint) && ($key = array_search($constraint->constraint, $roles)) !== false) {
+						if ( !in_array($unset, $constraint->roleID) && $constraint->roleID != $constraint->constraint && !in_array($this->superRoles, $constraint->constraint) && ($key = array_search($constraint->constraint, $roles)) !== false) {
 							// 已移除的
 							$unset[] = $constraint->constraint;
 							unset($roles[$key]);
@@ -94,7 +106,7 @@ trait Base{
 			foreach (array_merge($roles, $inherits) as $roleID) {
 
 				// 角色不存在或者 角色停用
-				if (!($role = $this->role($roleID)) || !$role->status) {
+				if (!($role = $this->Role($roleID)) || !$role->status) {
 					continue;
 				}
 
@@ -115,7 +127,7 @@ trait Base{
 			return $r[$ID][$k];
 		}
 
-		$ret = []
+		$ret = [];
 		$compare = strtolower($compare);
 		foreach ($r[$ID][$k] as $permission) {
 			$is = false;
