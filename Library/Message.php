@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-21 09:17:20
-/*	Updated: UTC 2015-01-23 11:00:45
+/*	Updated: UTC 2015-01-24 12:37:03
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -133,7 +133,6 @@ class Message {
 				$parse['query'] = merge_string($parse['query']);
 				$to = merge_url($parse);
 			}
-			echo $to;die;
 			$arrays['to'] = $to;
 		}
 
@@ -153,8 +152,10 @@ class Message {
 
 
 		// 无错误
-		@header('location: '. $to);
-		exit;
+		if (!self::$_errors) {
+			@header('location: '. $arrays['to']);
+			exit;
+		}
 
 
 		// 错误消息
@@ -187,10 +188,10 @@ class Message {
 		$e .= '<div id="errors">';
 		foreach ($arrays['errors'] as $code => $value) {
 			is_int($code) && $code >= 400 && $code < 600 && http_response_code($code);
-			$e .= '<p>' . $value['name'] . '</p>';
+			$e .= '<p>' . $value['message'] . '</p>';
 		}
 		if (!empty($arrays['to'])) {
-			$e .= '<p id="to"><a href="'. $arrays['to'] .'">'. Lang::get('Return', ['message', 'default']) '</a></p>';
+			$e .= '<p id="to"><a href="'. $arrays['to'] .'">'. Lang::get('Return', ['message', 'default']). '</a></p>';
 		}
 		$e .= "</div>";
 		$e .= "</body>";

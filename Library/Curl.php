@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 12:09:10
-/*	Updated: UTC 2015-01-19 13:21:23
+/*	Updated: UTC 2015-01-24 06:29:29
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -213,6 +213,8 @@ class Curl{
 				$this->info[$k] = curl_getinfo($_v);
 				$this->info[$k]['error'] = curl_error($_v);
 				$this->info[$k]['errno'] = curl_errno($_v);
+				$this->info[$k]['content'] = $r;
+
 				// 关闭
 				curl_close($_v);
 
@@ -263,6 +265,7 @@ class Curl{
 			$this->info[$k] = curl_getinfo($v);
 			$this->info[$k]['error'] = curl_error($v);
 			$this->info[$k]['errno'] = curl_errno($v);
+			$this->info[$k]['content'] = $r[$k];
 
 			// 移出列队
 			curl_multi_remove_handle($mh, $v);
