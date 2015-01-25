@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-01-16 08:02:50
+/*	Updated: UTC 2015-01-24 13:53:44
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -54,7 +54,7 @@ class Mysql extends Base{
 		}
 
 		$q = mysql_query($query, $link);
-		++self::$queryNum;
+		++self::$querySum;
 
 		if ($q === false) {
 			// 如果是 false 就不继续执行
@@ -73,7 +73,7 @@ class Mysql extends Base{
 
 				// 插入 替换 [字段]
 				$this->insert_id = mysql_insert_id($link);
-				++self::$queryNum;
+				++self::$querySum;
 
 			}
 		} else {

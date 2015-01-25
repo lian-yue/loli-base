@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-01-23 12:31:58
+/*	Updated: UTC 2015-01-24 13:36:10
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -69,8 +69,36 @@ if (empty($_SERVER['PHP_SELF'])) {
 }
 
 
+
+
+
+
+
+
+
 // Loli 目录
 const DIR = __DIR__;
+
+const VERSION = '1.0.2';
+
+const SUPPORT = 'Loli.Net';
+
+// 版本号
+@header( 'X-Version: ' . VERSION);
+
+// 技术支持
+@header( 'X-Support: ' . SUPPORT);
+
+
+
+
+
+
+
+
+
+
+
 
 
 // 载入函数

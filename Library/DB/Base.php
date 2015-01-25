@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2014-12-31 07:38:27
+/*	Updated: UTC 2015-01-24 13:53:22
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -49,7 +49,7 @@ abstract class Base{
 
 
 	// 数据查询次数
-	public static $queryMum = 0;
+	public static $querySum = 0;
 
 	// 查询行
 	public static $queryRow = 0;
@@ -61,6 +61,7 @@ abstract class Base{
 			}
 			unset($args['slave']);
 		}
+		$this->debug = !empty($args['debug']);
 		if (!empty($args['master'])) {
 			foreach ($args['master'] as $v) {
 				$this->addMaster($v);

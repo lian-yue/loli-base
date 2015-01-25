@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-21 09:17:20
-/*	Updated: UTC 2015-01-24 12:37:03
+/*	Updated: UTC 2015-01-24 16:45:21
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -96,7 +96,7 @@ class Message {
 		@ob_clean();
 
 		// 消息
-		$message = $message ? (array) $message : (self::$_errors? ['Error Messages'] : [1]);
+		$message = $message && ($message !== true || !self::$_errors) ? (array) $message : (self::$_errors? ['Error Messages'] : [1]);
 		if ($message) {
 			$arrays['message'] = Lang::get($message, ['message', 'default']);
 		}

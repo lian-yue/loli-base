@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-01-16 08:02:41
+/*	Updated: UTC 2015-01-24 13:53:38
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -134,7 +134,7 @@ class Mongo extends Base{
 			$writeConcern['continueOnError'] = !$args['ordered'];
 		}
 
-		++self::$queryNum;
+		++self::$querySum;
 		try {
 			$r = $this->data[$query_str = $args['insert'].'.batchInsert('. json_encode($args['documents']) . ', ' .  json_encode($writeConcern).')'] = $link->{$args['insert']}->batchInsert($args['documents'], $writeConcern);
 		} catch (MongoException $e) {
@@ -199,7 +199,7 @@ class Mongo extends Base{
 		$r = 0;
 		$row = false;
 		foreach ($args['documents'] as $v) {
-			++self::$queryNum;
+			++self::$querySum;
 			try {
 				$save = $this->data[$query_str = $args['replace'].'.save('. json_encode($v) . ', ' .  $writeConcernString.')'] = $link->{$args['replace']}->save($v, $writeConcern);
 			} catch (MongoException $e) {
@@ -280,7 +280,7 @@ class Mongo extends Base{
 		$writeConcern = empty($args['writeConcern']) ? [] : $args['writeConcern'];
 		$r = [];
 		foreach ($args['updates'] as $v) {
-			++self::$queryNum;
+			++self::$querySum;
 			$options = array_intersect_key($v, ['upsert' => '']) + $writeConcern;
 			if (isset($v['multi'])) {
 				$options['multiple'] = $v['multi'];
@@ -479,7 +479,7 @@ class Mongo extends Base{
 						}
 					}
 				}
-				++self::$queryNum;
+				++self::$querySum;
 				$query_str = $args['aggregate'] .'.aggregateCursor('. json_encode($pipeline) .', '. json_encode($options) .')';
 				$this->data[$query_str] = $cursor = $link->{$args['aggregate']}->aggregatecursor($pipeline, $options);
 				$r = [];
@@ -518,7 +518,7 @@ class Mongo extends Base{
 				} else {
 					$args['query'] = [];
 				}
-				++self::$queryNum;
+				++self::$querySum;
 				$query_str = $args['distinct'] .'.distinct('. $args['key'] .', '. json_encode($args['query']) .')';
 				$this->data[$query_str] = $distinct = $link->{$args['distinct']}->distinct($args['key'], $args['query']);
 				if (!empty($args['found_rows'])) {
@@ -573,7 +573,7 @@ class Mongo extends Base{
 				if (!empty($args['cond'])) {
 					$options['condition'] = $args['cond'];
 				}
-				++self::$queryNum;
+				++self::$querySum;
 				$query_str = $args['ns'] .'.group('. json_encode($args['key']) .', '. json_encode($args['initial']) .', '. json_encode($args['$reduce']) .', '. json_encode($options) .')';
 				$this->data[$query_str] = $group = $link->{$args['ns']}->group($args['key'], $args['initial'], $args['$reduce'], $options);
 			} catch (MongoException $e) {
@@ -627,7 +627,7 @@ class Mongo extends Base{
 				}
 			}
 			if (!empty($args['found_rows'])) {
-				++self::$queryNum;
+				++self::$querySum;
 				$this->data[$query_str . '.count(true)'] = $this->found_rows = $cursor->count(true);
 			}
 			if (!empty($args['sort'])) {
@@ -670,7 +670,7 @@ class Mongo extends Base{
 		if ($args['query'] && !($args['query'] = $this->_idObject($args['query'], true))) {
 			return false;
 		}
-		++self::$queryNum;
+		++self::$querySum;
 		try {
 			$args['fields'] = empty($args['fields']) ? [] : $args['fields'];
 			$cursor = $link->{$args['collection']}->find($args['query'], $args['fields']);
@@ -793,7 +793,7 @@ class Mongo extends Base{
 		if (!$command || !($link = $this->link(false))) {
 			return false;
 		}
-		++self::$queryNum;
+		++self::$querySum;
 		try {
 			$r = $this->data[$query_str = 'this.command('.json_encode($command).', '. json_encode($options).' )'] = $link->command($command, $options);
 		} catch (MongoException $e) {

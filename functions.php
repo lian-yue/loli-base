@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-23 09:30:20
+/*	Updated: UTC 2015-01-24 13:53:32
 /*
 /* ************************************************************************** */
 
@@ -134,7 +134,7 @@ function is_filepath($path) {
  * @return integer
  */
 function load_db() {
-	return Loli\DB\Base::$queryNum;
+	return Loli\DB\Base::$querySum;
 }
 
 /**
