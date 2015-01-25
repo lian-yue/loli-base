@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-01-23 09:35:30
+/*	Updated: UTC 2015-01-25 15:10:34
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
@@ -28,8 +28,32 @@ abstract class Base{
 	public $node = [];
 
 	// 全部节点
-	public $allNode = [];
-	//allNode = ['pattern' => 匹配方式, 'node' => '节点名', 'method' =>回调方法名, 'class' => '回调class名, 'rewrite' => 'URL参数', 'permission' => 权限, 'form' => 表单名, 'skip' => 是否跳过];
+	public $allNode = [
+		/*[
+
+			// 这是getNoce 支持的
+			'pattern' => [
+				'正则' => [
+					'method' => '允许的http方法数组 默认 POST GET',
+					'rewrite' => 'url重写',
+					'matches' => 'url重写用正则匹配到的数据',
+				],
+			],
+			'rewrite' => 'url重写 $_REQUEST 附加',
+
+
+
+			// 这是 解析run支持
+			'node' => '节点名',	// 必须
+			'class' => '回调类名',	//
+			'method' =>'回调方法',	//
+			'permission' => '权限',
+			'form' => '表单数组',
+			'skip' => 'bool === false = 不跳过目录',
+			'type' => '0 = 导航节点(可包含)				1 = 读节点(不可包含)			2 = 请求动作节点(不可包含)',
+		]*/
+	];
+
 	// 时间格式
 	public $dateFormat = 'F j, Y';
 
@@ -41,28 +65,39 @@ abstract class Base{
 
 	public function getNode($before, $current, $after, &$rewrite) {
 		foreach($this->allNode as $value) {
-			if (empty($value['pattern'])) {
-				$value['pattern'] = ['^' . preg_quote(empty($value['method']) ? $value['node'] : $value['node'] . '/', '') . '$' => []];
+
+			// 没有正则使用 正则
+			if (!isset($value['pattern'])) {
+				$value['pattern'] = ['^' . preg_quote(empty($value['method']) ? $value['node'] : $value['node'] . '/?', '') . '$' => []];
 			}
+
+
 			foreach($value['pattern'] as $pattern => $vv) {
-				if (!in_array($_SERVER['REQUEST_METHOD'], empty($vv['method']) ? ['POST', 'GET'] : (array) $vv['method']) && !empty($value['method'])) {
+				if (empty($value['method']) && !in_array($_SERVER['REQUEST_METHOD'], empty($vv['method']) ? ['POST', 'GET'] : (array) $vv['method'])) {
 					continue;
 				}
-				if (!preg_match('/'. strtr($pattern, ['/' => '\\/']) .'/', empty($value['method']) || !empty($vv['after']) ? $current . ($after !== false ? '' : '/'. $after) : $current, $matches)) {
+
+				if (!preg_match('/'. strtr($pattern, ['/' => '\\/']) .'/', empty($value['method']) && empty($vv['type']) ? $current : $current . ($after !== false ? '' : '/'. $after), $matches)) {
 					continue;
 				}
+
+
 				if (!empty($value['rewrite'])) {
 					$rewrite = $value['rewrite'] + $rewrite;
 				}
+
 				if (!empty($vv['rewrite'])) {
 					$rewrite = $vv['rewrite'] + $rewrite;
 				}
+
+				// 结果 url重写
 				foreach($matches as $kkk => $vvv) {
-					if (isset($vv['query'][$kkk])) {
-						$rewrite[$vv['query'][$kkk]] = $vvv;
+					if (isset($vv['matches'][$kkk])) {
+						$rewrite[$vv['matches'][$kkk]] = $vvv;
 					}
 				}
-				return array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'permission' => '', 'form' => '', 'skip' => '']);
+
+				return array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'permission' => '', 'form' => '', 'skip' => '', 'type' => '']);
 			}
 		}
 		return false;
@@ -70,7 +105,7 @@ abstract class Base{
 	public function allNode() {
 		$r = [];
 		foreach ($this->allNode as $key => $value) {
-			$r[] = array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'permission' => '', 'form' => '', 'skip' => '']);;
+			$r[] = array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'permission' => '', 'form' => '', 'skip' => '', 'type' => '']);
 		}
 		return $r;
 	}
