@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-21 09:17:20
-/*	Updated: UTC 2015-01-24 16:45:21
+/*	Updated: UTC 2015-01-26 14:17:13
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -16,28 +16,28 @@ class Message {
 	private static $_errors = [];
 
 	// 允许重定向的 url
-	public static $to = [];
+	public static $redirect = [];
 
 	/**
 	 * 添加消息 添加错误
 	 * @param [type] $message 消息 和语言一样的方式
-	 * @param [type] $args    附加参数
+	 * @param [type] $data    附加数据
 	 */
-	public static function add($error, $args = []) {
+	public static function add($error, $data = []) {
 		$error = (array) $error;
 		$code = reset($error);
-		return empty(self::$_errors[$code]) && self::set($error, $args);
+		return empty(self::$_errors[$code]) && self::set($error, $data);
 	}
 
 	/**
 	 * 写入消息 写入错误
 	 * @param [type] $error 消息 和语言一样的方式
-	 * @param [type] $args    附加参数
+	 * @param [type] $data    附加数据
 	 */
-	public static function set($error, $args = []) {
+	public static function set($error, $data = []) {
 		$error = (array) $error;
 		$code = reset($error);
-		self::$_errors[$code] = [$error, $args];
+		self::$_errors[$code] = [$error, $data];
 		return true;
 	}
 
@@ -87,11 +87,11 @@ class Message {
 	/**
 	 * [run 执行消息]
 	 * @param  [type]  $message 消息
-	 * @param  [type]  $args    附加参数
-	 * @param  boolean $to      重定向地址
+	 * @param  [type]  $data    附加数据
+	 * @param  boolean $redirect      重定向地址
 	 * @return [type]           无返回值
 	 */
-	public static function run($message = [], $args = [], $to = []) {
+	public static function run($message = [], $data = [], $redirect = []) {
 		http_no_cache();
 		@ob_clean();
 
@@ -104,36 +104,36 @@ class Message {
 
 		// 错误
 		foreach (self::$_errors as $code => $value) {
-			$vars = $value[0];
-			reset($vars);
-			unset($vars[key($vars)]);
-			$arrays['errors'][$code] = ['code' => $code, 'message' => Lang::get($value[0], ['message', 'default']), 'vars' => $vars];
+			$args = $value[0];
+			reset($args);
+			unset($args[key($args)]);
+			$arrays['errors'][$code] = ['code' => $code, 'message' => Lang::get($value[0], ['message', 'default']), 'args' => $args];
 			$arrays += $value[1];
 		}
-		$arrays += $args;
+		$arrays += $data;
 
 
 
-		// to 地址
-		if (!isset($arrays['to']) && $to !== false) {
-			if (!$to && !empty($arrays['errors']) && !Ajax::$is) {
-				$to = 'javascript:history.back()';
+		// redirect 地址
+		if (!isset($arrays['redirect']) && $redirect !== false) {
+			if (!$redirect && !empty($arrays['errors']) && !Ajax::$is) {
+				$redirect = 'javascript:history.back()';
 			} else {
-				$to = $to ? (array) $to : ['referer', 'http' . (is_ssl() ? 's' : '') .'://'. $_SERVER['HTTP_HOST']];
-				$to = to($to, self::$to);
-				if (substr($to, 0, 2) == '//') {
-					$to = (is_ssl() ? 'https:' : 'http:') . $to;
+				$redirect = $redirect ? (array) $redirect : ['referer', 'http' . (is_ssl() ? 's' : '') .'://'. $_SERVER['HTTP_HOST']];
+				$redirect = redirect($redirect, self::$redirect);
+				if (substr($redirect, 0, 2) == '//') {
+					$redirect = (is_ssl() ? 'https:' : 'http:') . $redirect;
 				}
-				$parse = parse_url($to);
+				$parse = parse_url($redirect);
 				$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 				$parse['query']['message'] = reset($message);
 				$parse['query']['errors'] = empty($arrays['errors']) ? null : array_keys($arrays['errors']);
 				$parse['query']['ajax'] = null;
 				$parse['query']['r'] = mt_rand();
 				$parse['query'] = merge_string($parse['query']);
-				$to = merge_url($parse);
+				$redirect = merge_url($parse);
 			}
-			$arrays['to'] = $to;
+			$arrays['redirect'] = $redirect;
 		}
 
 
@@ -152,8 +152,8 @@ class Message {
 
 
 		// 无错误
-		if (!self::$_errors) {
-			@header('location: '. $arrays['to']);
+		if (!self::$_errors || (!empty($arrays['redirect']) && $arrays['redirect'] != 'javascript:history.back()')) {
+			@header('location: '. $arrays['redirect']);
 			exit;
 		}
 
@@ -178,10 +178,10 @@ class Message {
 		} else {
 			$e .= '#errors{background: #fff;color: #444;font-family: sans-serif;width: 700px;margin: 10% auto 0 auto;padding: 2.5em;border: 1px solid #dfdfdf;}';
 		}
-		$e .= '#errors .to{margin-top:0.4em;}';
-		$e .= '#errors .to a{text-decoration: none;font-weight: bold;color: #369;}';
-		$e .= '#errors .to a:hover{text-decoration: underline;}';
-		$e .= '#errors .to a:active{color: #D54E21;}';
+		$e .= '#redirect{margin-top:0.4em;}';
+		$e .= '#redirect a{text-decoration: none;font-weight: bold;color: #369;}';
+		$e .= '#redirect a:hover{text-decoration: underline;}';
+		$e .= '#redirect a:active{color: #D54E21;}';
 		$e .= '</style>';
 		$e .= '</head>';
 		$e .= '<body>';
@@ -190,8 +190,8 @@ class Message {
 			is_int($code) && $code >= 400 && $code < 600 && http_response_code($code);
 			$e .= '<p>' . $value['message'] . '</p>';
 		}
-		if (!empty($arrays['to'])) {
-			$e .= '<p id="to"><a href="'. $arrays['to'] .'">'. Lang::get('Return', ['message', 'default']). '</a></p>';
+		if (!empty($arrays['redirect'])) {
+			$e .= '<p id="redirect"><a href="'. $arrays['redirect'] .'">'. Lang::get('Return', ['message', 'default']). '</a></p>';
 		}
 		$e .= "</div>";
 		$e .= "</body>";
@@ -199,4 +199,4 @@ class Message {
 		exit($e);
 	}
 }
-Message::$to = empty($_SERVER['LOLI']['MESSAGE']['to']) ? [] : (array) $_SERVER['LOLI']['MESSAGE']['to'];
+Message::$redirect = empty($_SERVER['LOLI']['MESSAGE']['redirect']) ? [] : (array) $_SERVER['LOLI']['MESSAGE']['redirect'];

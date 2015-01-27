@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-01-25 16:02:10
+/*	Updated: UTC 2015-01-26 12:39:35
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
@@ -16,8 +16,6 @@ use Loli\Ajax, Loli\Message;
 trait Run{
 
 	private $_is = false;
-
-	protected $var;
 
 	public function get() {
 		if ($this->_is) {

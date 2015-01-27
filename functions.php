@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-24 13:53:32
+/*	Updated: UTC 2015-01-26 13:57:20
 /*
 /* ************************************************************************** */
 
@@ -630,29 +630,29 @@ function p($k, $d='') {
 
 
 /**
-*	获得 to 转向地址
+*	获得 redirect 转向地址
 *
-*	1 参数 to 地址
-*	2 参数 默认 to 地址 也是 只允许的 to 域名
-*	返回值 to 地址
+*	1 参数 redirect 地址
+*	2 参数 默认 redirect 地址 也是 只允许的 redirect 域名
+*	返回值 redirect 地址
 **/
 
-function to($to = [], $default = []) {
-	$to = (array) $to;
+function get_redirect($redirect = [], $default = []) {
+	$redirect = (array) $redirect;
 	$default = $default ? (array) $default : [];
-	if (!empty($_REQUEST['to'])) {
-		$to[] = $_REQUEST['to'];
+	if (!empty($_REQUEST['redirect'])) {
+		$redirect[] = $_REQUEST['redirect'];
 	}
 
-	if (in_array('cookie',  $to) && !empty($_COOKIE['to'])) {
-		$to[] = $_COOKIE['to'];
+	if (in_array('cookie',  $redirect) && !empty($_COOKIE['redirect'])) {
+		$redirect[] = $_COOKIE['redirect'];
 	}
-	if (in_array('referer',  $to) && !empty($_SERVER["HTTP_REFERER"])) {
-		$to[] = $_SERVER["HTTP_REFERER"];
+	if (in_array('referer',  $redirect) && !empty($_SERVER["HTTP_REFERER"])) {
+		$redirect[] = $_SERVER["HTTP_REFERER"];
 	}
 	$r = reset($default);
 	$break = false;
-	foreach ($to as $v) {
+	foreach ($redirect as $v) {
 		if ($v && is_string($v) && !in_array($v, ['referer', 'cookie'])) {
 			if (!preg_match('/^(https?\:)?\/\/\w+\.\w+/i', $v)) {
 				if ($v{0} != '/') {

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-05 16:44:04
-/*	Updated: UTC 2015-01-22 15:04:13
+/*	Updated: UTC 2015-01-26 15:14:55
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -20,6 +20,9 @@ trait Base{
 	// 超级管理员角色
 	public $superRoles = [];
 
+	// 游客角色
+	public $guestRoles = [];
+
 
 	/**
 	 * 权限控制
@@ -30,7 +33,7 @@ trait Base{
 	 * @param  string $compare		可选 匹配运算符
 	 * @return [type]				返回值匹配成功的数组
 	 */
-	public function permission($ID, $keys, $column = '', $value = '', $compare = '=') {
+	public function auth($ID, $keys, $column = '', $value = '', $compare = '=') {
 		static $r, $date, $static;
 		if (empty($date)) {
 			$date = gmtdate('Y-m-d H:i:s');
@@ -38,11 +41,11 @@ trait Base{
 		$ID = (int) $ID;
 		$k = implode('/', $keys);
 		if (!isset($r[$ID][$k])) {
-			$permissions = $nodes = [];
+			$r[$ID][$k] = $nodes = [];
 			$parent = 0;
 			while($keys) {
 				if(!$node = $this->Node->key(array_shift($keys), $parent)) {
-					return $r[$ID][$k] = [];
+					return $r[$ID][$k];
 				}
 				$parent = $node->ID;
 				$nodes[] = $node;
@@ -50,14 +53,20 @@ trait Base{
 
 			if (empty($static[$ID])) {
 				// 当前角色
-				$roles = [];
-				foreach ($this->Relationship->gets($ID) as $role) {
-					// 已过期的角色
-					if (!empty($role->expires) && $role->expires != '0000-00-00 00:00:00' && $role->expires < $date) {
-						continue;
+				if ($ID) {
+					$roles = [];
+					foreach ($this->Relationship->gets($ID) as $role) {
+						// 已过期的角色
+						if (!empty($role->expires) && $role->expires != '0000-00-00 00:00:00' && $role->expires < $date) {
+							continue;
+						}
+						$roles[] = $role->roleID;
 					}
-					$roles[] = $role->roleID;
+				} else {
+					// 游客角色
+					$roles = $this->guestRoles;
 				}
+
 
 				// 超级管理员的
 				if (in_array($ID, $this->superUsers) && !array_intersect($this->superRoles, $roles)) {
@@ -118,8 +127,10 @@ trait Base{
 						break;
 					}
 				}
+
+				// 有权限的
 				if (!$break) {
-					$permissions[$ID][] = $permission;
+					$r[$ID][$k][] = $permission;
 				}
 			}
 		}

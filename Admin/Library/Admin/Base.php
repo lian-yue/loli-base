@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-10 07:27:20
-/*	Updated: UTC 2015-01-21 14:23:35
+/*	Updated: UTC 2015-01-26 13:35:48
 /*
 /* ************************************************************************** */
 namespace Admin;
@@ -17,7 +17,7 @@ class_exists('Loli\Controller\Base') || exit;
 class Base extends Base_{
 	public $Style;
 	public $Script;
-	public $quotes = ['url', 'node', 'data', 'Style', 'Script', 'userID'];
+	public $quotes = ['dir', 'url', 'base', 'node', 'data', 'Style', 'Script', 'userID'];
 	public $userID = 0;
 	public function permission($node, $column = '', $value = '', $compare = '=') {
 		return $this->userID && $this->Admin->User->permission($this->userID, $node, $column, $value, $compare);
@@ -49,6 +49,6 @@ class Base extends Base_{
 		return $url;
 	}
 	public function getNonce($node = []) {
-		return  String::key(Token::get() . ($node === false ? '' : $this->userID . '/' . implode('/', $node ? $node : $this->node) . current_ip()));
+		return  String::key(Token::get() . ($node === false || !$this->userID ? implode('/', $this->base) : implode('/', $this->base) . $this->userID . '/' . implode('/', $node ? $node : $this->node) . current_ip()));
 	}
 }

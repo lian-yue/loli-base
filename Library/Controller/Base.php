@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-01-25 15:10:34
+/*	Updated: UTC 2015-01-26 15:25:49
 /*
 /* ************************************************************************** */
 namespace Loli\Controller;
@@ -24,8 +24,19 @@ abstract class Base{
 	// dir 载入
 	public $dir = './';
 
+	// 根节点
+	public $base = [];
+
 	// 节点
 	public $node = [];
+
+	// 验证地址
+	public $auth = '';
+
+	// 返回的数据
+	public $data = [];
+
+
 
 	// 全部节点
 	public $allNode = [
@@ -47,7 +58,7 @@ abstract class Base{
 			'node' => '节点名',	// 必须
 			'class' => '回调类名',	//
 			'method' =>'回调方法',	//
-			'permission' => '权限',
+			'auth' =>  false = 不需要认证 true = 需要
 			'form' => '表单数组',
 			'skip' => 'bool === false = 不跳过目录',
 			'type' => '0 = 导航节点(可包含)				1 = 读节点(不可包含)			2 = 请求动作节点(不可包含)',
@@ -57,18 +68,16 @@ abstract class Base{
 	// 时间格式
 	public $dateFormat = 'F j, Y';
 
-	// 返回的数据
-	public $data = ['title' => [], 'menu' => []];
 
 	// 需要引用的数据
-	public $quotes = ['url', 'dir', 'node', 'data'];
+	public $quotes = ['dir', 'url', 'base', 'node', 'data'];
 
 	public function getNode($before, $current, $after, &$rewrite) {
 		foreach($this->allNode as $value) {
 
 			// 没有正则使用 正则
 			if (!isset($value['pattern'])) {
-				$value['pattern'] = ['^' . preg_quote(empty($value['method']) ? $value['node'] : $value['node'] . '/?', '') . '$' => []];
+				$value['pattern'] = ['^' . preg_quote(strtolower(empty($value['method']) ? $value['node'] : $value['node'] . '/?', '')) . '$' => []];
 			}
 
 
@@ -97,7 +106,7 @@ abstract class Base{
 					}
 				}
 
-				return array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'permission' => '', 'form' => '', 'skip' => '', 'type' => '']);
+				return array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'auth' => '', 'form' => '', 'skip' => '', 'type' => '']);
 			}
 		}
 		return false;
@@ -105,12 +114,12 @@ abstract class Base{
 	public function allNode() {
 		$r = [];
 		foreach ($this->allNode as $key => $value) {
-			$r[] = array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'permission' => '', 'form' => '', 'skip' => '', 'type' => '']);
+			$r[] = array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'auth' => '', 'form' => '', 'skip' => '', 'type' => '']);
 		}
 		return $r;
 	}
 
-	abstract public function permission($node, $column = '', $value = '', $compare = '=');
+	abstract public function auth($node, $column = '', $value = '', $compare = '=');
 
 	// 默认执行
 	public function init() {
