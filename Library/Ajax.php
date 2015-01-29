@@ -24,6 +24,7 @@ class Ajax{
 	private static $_xmlhttprequest = false;
 
 	private static $_accept = '';
+	private static $_extension = '';
 
 	public static function init() {
 		self::$_xmlhttprequest = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
@@ -32,8 +33,11 @@ class Ajax{
 			$accept = explode('/', $accept);
 			self::$_accept = strtolower(trim(end($accept)));
 		}
-		self::$is = self::$_xmlhttprequest || in_array(self::$_accept, ['json', 'xml']) || !empty($_REQUEST['ajax']);
-		self::$type = empty($_REQUEST['ajax']) ? (in_array(self::$_accept, ['json', 'xml'])? self::$_accept : false) : (string) $_REQUEST['ajax'];
+
+		self::$_extension = pathinfo(url_path(), PATHINFO_EXTENSION)
+
+		self::$is = self::$_xmlhttprequest || in_array(self::$_accept, ['json', 'xml']) || in_array(self::$_extension, ['json', 'xml']) || !empty($_REQUEST['ajax']);
+		self::$type = empty($_REQUEST['ajax']) ? (in_array(self::$_accept, ['json', 'xml']) ? self::$_accept : (in_array(self::$_extension, ['json', 'xml']) ? self::$_extension : false)) : (string) $_REQUEST['ajax'];
 	}
 
 

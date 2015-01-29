@@ -16,3 +16,8 @@ if (!empty($_SERVER['REQUEST_URI']) && in_array(strtolower($_SERVER['REQUEST_URI
 	exit;
 }
 require __DIR__ . '/include.php';
+
+// 采用注册机制 绑定入口
+// add('hostname'， ‘/路径’, '根方法') 
+// add('hostname', '根方法') 
+// add('hostname', '根方法') 

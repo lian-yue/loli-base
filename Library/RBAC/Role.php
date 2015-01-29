@@ -22,7 +22,7 @@ class Role extends Query{
 
 	public $defaults = [
 		'name' => '',
-		'status' => false,
+		'status' => false,		// 角色是否有效
 		'description' => '',
 	];
 

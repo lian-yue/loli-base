@@ -25,7 +25,7 @@ class Node extends Query{
 	public $defaults = [
 		'parent' => 0,
 		'key' => '',
-		'type' => 0,		// 0 = 导航节点(可包含)				1 = 读节点(不可包含)			2 = 请求动作节点(不可包含)
+		'type' => 0,		// 0 = 导航节点(可包含不允许请求)				1 = 读节点(不可包含)			2 = 动作节点(不可包含)  ..... 后面的都不允许包含的类型
 		'name' => '',
 		'sort' => 0,
 		'description' => '',

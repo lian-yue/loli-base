@@ -25,7 +25,7 @@ class Permission extends Query{
 	public $defaults = [
 		'roleID' => 0,
 		'nodeID' => 0,
-		'status' => false,
+		'status' => false,			// 是否有权限
 		'private' => false,			// false = 公众 true = 私人 不能被继承
 		'args' => [],				// 其他 limit 等参数 比如每天最多发帖多少次 某个板块什么的能发帖
 	];

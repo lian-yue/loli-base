@@ -18,6 +18,10 @@ trait_exists('Loli\Model', true) || exit;
 abstract class Base{
 	use Model;
 
+	public $HTTPS = false;
+	public $HTTPURL = '/';
+	public $HTTPURL = '/';
+
 	// URL 地址
 	public $url = '';
 
@@ -35,7 +39,6 @@ abstract class Base{
 
 	// 返回的数据
 	public $data = [];
-
 
 
 	// 全部节点
@@ -127,20 +130,26 @@ abstract class Base{
 	}
 
 	// 载入文件
-	public function load($file, $once = true) {
-		foreach ((array)$file as $v) {
-			if ($is = is_file($__F = $this->dir .'/' . $v)) {
+	public function load($_file, $_once = true) {
+		foreach ((array)$_file as $v) {
+			if ($_is = is_file($_f = $this->dir .'/' . $v)) {
 				break;
 			}
 		}
 		if (empty($is)) {
 			return false;
 		}
+		foreach ($this->data as $k => $v){
+			if (!$k || !is_string($k) || $k{0} == '_' || $k == 'this' || $k == 'GLOBALS') {
+				unset($this->data[$k]);
+			}
+		}
+		unset($k, $v);
 		extract($this->data, EXTR_OVERWRITE);
-		if ($once) {
-			require_once $__F;
-		} else {
-			require $__F;
+		if ($_once) {
+			require_once $_f;
+		} else {	
+			require $_f;
 		}
 		return true;
 	}

@@ -44,13 +44,13 @@ trait Run{
 				Message::run();
 			}
 
-			// 类型必须是 1 或 2
+			// 类型必须不是0
 			if (!empty($value['method']) && !empty($value['type'])) {
 				Message::set(500);
 				Message::run();
 			}
 
-			// 类型必须是 0
+			// 类型必须是0
 			if (!empty($value['type']) && empty($value['method'])) {
 				Message::set(500);
 				Message::run();
