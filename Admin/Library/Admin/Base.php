@@ -12,7 +12,7 @@
 /*
 /* ************************************************************************** */
 namespace Admin;
-use Loli\Controller\Base as Base_, Loli\String, Loli\Token;
+use Loli\Controller\Base as Base_, Loli\Code, Loli\Token;
 class_exists('Loli\Controller\Base') || exit;
 class Base extends Base_{
 	public $Style;
@@ -49,6 +49,6 @@ class Base extends Base_{
 		return $url;
 	}
 	public function getNonce($node = []) {
-		return  String::key(Token::get() . ($node === false || !$this->userID ? implode('/', $this->base) : implode('/', $this->base) . $this->userID . '/' . implode('/', $node ? $node : $this->node) . current_ip()));
+		return  Code::key(Token::get() . ($node === false || !$this->userID ? implode('/', $this->base) : implode('/', $this->base) . $this->userID . '/' . implode('/', $node ? $node : $this->node) . current_ip()));
 	}
 }

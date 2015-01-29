@@ -20,7 +20,7 @@ class Token{
 	public static $name = '';
 
 	public static function set($token, $cookie = false) {
-		if (!is_string($token) || strlen($token) != 32 || String::key(__CLASS__ . substr($token, 0, 16), 16) != substr($token, 16)) {
+		if (!is_string($token) || strlen($token) != 32 || Code::key(__CLASS__ . substr($token, 0, 16), 16) != substr($token, 16)) {
 			return false;
 		}
 		$cookie && self::$name && Cookie::set(self::$name, $token, 86400 * 365, true);
@@ -31,8 +31,8 @@ class Token{
 		if (!self::$_token) {
 			if (self::$name && !self::set(Cookie::get(self::$name))) {
 				$token = uniqid();
-				$token .= String::rand(16 - strlen($token), '0123456789qwertyuiopasdfghjklzxcvbnm');
-				$token .= String::key(__CLASS__ . $token, 16);
+				$token .= mb_rand(16 - strlen($token), '0123456789qwertyuiopasdfghjklzxcvbnm');
+				$token .= Code::key(__CLASS__ . $token, 16);
 				self::set($token, true);
 			}
 		}

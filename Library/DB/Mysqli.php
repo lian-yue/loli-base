@@ -38,7 +38,7 @@ class MySQLi extends Base{
 
 
 	public function connect($args) {
-		if (!($link = new \mysqli(empty($args['host']) ? 'localhost' : $args['host'], empty($args['user']) ? 'root' : $args['user'], empty($args['pass']) ? '' : $args['pass'], empty($args['name']) ? 'dbname' : $args['name'], empty($args['port']) ? 3306 : $args['port'])) || $link->connect_errno) {
+		if (!($link = new \MySQLi(empty($args['host']) ? 'localhost' : $args['host'], empty($args['user']) ? 'root' : $args['user'], empty($args['pass']) ? '' : $args['pass'], empty($args['name']) ? 'dbname' : $args['name'], empty($args['port']) ? 3306 : $args['port'])) || $link->connect_errno) {
 			return false;
 		}
 		$link->set_charset('utf8');

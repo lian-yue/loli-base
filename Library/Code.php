@@ -12,35 +12,15 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-class String{
+class Code{
 
 	// 生成 字符串 KEY
 	public static $key = '';
 
-	// 生成随机字符串包括内容
-	public static $rand = '0123456789abcdefghijklmnopqrstuvwxyz';
-
 	// 解密是否过期
 	public static $expire = false;
 
-	/**
-	* 生成随机字符
-	*
-	* 1 参数 字符串长度
-	* 2 参数 字符串只能够包括 什么内容 1234567890  生成的字符串 只有 数字
-	*
-	* 返回值  随机字符串固定长度
-	**/
-	public static function rand($length, $string = false) {
-		$string = $string ? $string : self::$rand;
-		$strlen = mb_strlen($string) - 1;
-		$r = '';
-		for ($i = 0; $i < $length; $i++) {
-			$r .= mb_substr($string, mt_rand(0, $strlen), 1);
-		}
-		return $r;
 
-	}
 
 	/**
 	* 加密 key (不可解密的 只能用来判断) 请勿加密重要数据
@@ -89,12 +69,12 @@ class String{
 	*
 	*	返回值  0-9 a-z A-Z - _
 	**/
-	public static function encode($str, $key = '', $time = 0) {
+	public static function en($str, $key = '', $ttl = 0) {
 		// 随机
 		$rand = self::rand(6, '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM_-');
 
 		// base64_decode 随机字符串 和数据
-		$code = strtr(base64_encode(self::_code(gettype($str) .'|'. ($time? $time + time() : 0) .'|'. (is_array($str)||is_object($str) ? serialize($str) :$str), $rand . $key)), ['=' => '', '+' => '-', '/' => '_']);
+		$code = strtr(base64_encode(self::_code(gettype($str) .'|'. ($ttl? $ttl + time() : 0) .'|'. (is_array($str)||is_object($str) ? serialize($str) :$str), $rand . $key)), ['=' => '', '+' => '-', '/' => '_']);
 
 		// 数据完整性
 		$test = '';
@@ -115,7 +95,7 @@ class String{
 	*
 	*	返回值  你存入的数据
 	**/
-	public static function decode($str, $key = '') {
+	public static function de($str, $key = '') {
 		self::$expire = false;
 		$len = strlen($str);
 		if ($len < 14) {
@@ -150,4 +130,4 @@ class String{
 	}
 }
 
-String::$key = isset($_SERVER['LOLI']['STRING']['key']) ? $_SERVER['LOLI']['STRING']['key'] : '';
+Code::$key = isset($_SERVER['LOLI']['STRING']['key']) ? $_SERVER['LOLI']['STRING']['key'] : '';

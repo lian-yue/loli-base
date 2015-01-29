@@ -12,7 +12,7 @@
 /*
 /* ************************************************************************** */
 namespace Model\Admin;
-use Loli\RBAC\Base, Loli\Date, Loli\Lang, Loli\String, Loli\Query;
+use Loli\RBAC\Base, Loli\Date, Loli\Lang, Loli\Code, Loli\Query;
 class_exists('Loli\Query') || exit;
 
 class User extends Query{
@@ -140,7 +140,7 @@ class User extends Query{
 			return $this->current;
 		}
 		$this->current = false;
-		$key = 'admin_' . String::key('admin', 10);
+		$key = 'admin_' . Code::key('admin', 10);
 		if (empty($_COOKIE[$key]) || !is_string($_COOKIE[$key]) || count($a = explode('|', $_COOKIE[$key])) != 3) {
 			return false;
 		}
@@ -150,12 +150,12 @@ class User extends Query{
 			return false;
 		}
 
-		if ($key !== String::key(__CLASS__ . $user->ID . $user->password . $user->loginDate , 80)) {
+		if ($key !== Code::key(__CLASS__ . $user->ID . $user->password . $user->loginDate , 80)) {
 			return false;
 		}
 
 		// 太久没访问了
-		if (!($time = String::decode($time, __CLASS__)) || !($time = absint($time)) || $time > time() || ($time + $this->request) < time()) {
+		if (!($time = Code::de($time, __CLASS__)) || !($time = absint($time)) || $time > time() || ($time + $this->request) < time()) {
 			return false;
 		}
 
@@ -167,7 +167,7 @@ class User extends Query{
 		// time 超过 10 分之一 然后自动写入 新的
 		if (($time + ($this->request / 10)) < time()) {
 			$time = time();
-			$_COOKIE[$key] = implode('|', [$ID, $key, String::encode($time, __CLASS__)]);
+			$_COOKIE[$key] = implode('|', [$ID, $key, Code::en($time, __CLASS__)]);
 			@setcookie($key, $_COOKIE[$key], $time + $this->timeout, \admin\PATH, \admin\HOST, (bool) \admin\SSL, true);
 		}
 
@@ -218,11 +218,11 @@ class User extends Query{
 
 		$user->loginDate = $time;
 
-		$key = 'admin_' . String::key('admin', 10);
+		$key = 'admin_' . Code::key('admin', 10);
 
 		$_COOKIE[$key] = [$user->ID];
-		$_COOKIE[$key] = String::key(__CLASS__ . $user->ID . $user->password . $user->loginDate , 80);
-		$_COOKIE[$key] = String::encode($time, __CLASS__);
+		$_COOKIE[$key] = Code::key(__CLASS__ . $user->ID . $user->password . $user->loginDate , 80);
+		$_COOKIE[$key] = Code::en($time, __CLASS__);
 		$_COOKIE[$key] = implode('|', $_COOKIE[$key]);
 		@setcookie($key, $_COOKIE[$key], $time + $this->timeout, \Admin\PATH, \Admin\HOST, (bool) \Admin\SSL, true);
 		return true;
@@ -261,7 +261,7 @@ class User extends Query{
 
 	public function encryptPassword($password, $rand = false) {
 		$password = trim($password);
-		$rand = $rand ? substr($rand, 0, 6) : String::rand(6, '0123456789qwertyuiopasdfghjklzxcvbnm');
+		$rand = $rand ? substr($rand, 0, 6) : mb_rand(6, '0123456789qwertyuiopasdfghjklzxcvbnm');
 		$rand = zeroise($rand, 6);
 		$key = $this->password . $rand;
 		$password = md5($password);

@@ -690,6 +690,17 @@ function http_no_cache() {
 }
 
 
+function mb_rand($length, $string = false) {
+	$string = $string ? $string : '0123456789abcdefghijklmnopqrstuvwxyz';
+	$strlen = mb_strlen($string) - 1;
+	$r = '';
+	for ($i = 0; $i < $length; $i++) {
+		$r .= mb_substr($string, mt_rand(0, $strlen), 1);
+	}
+	return $r;
+}
+
+
 function add_call($key, $call, $priority = 10) {
 	global $_call_data, $_call_ksort;
 	$id = call_id($call);
