@@ -16,6 +16,6 @@ class_exists('Loli\DB\Base') || exit;
 if (empty($_SERVER['LOLI']['DB'])) {
 	trigger_error( 'Variables $_SERVER[\'LOLI\'][\'DB\'] does not exist', E_USER_ERROR);
 }
-$class = 'Loli\DB\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['Mysql', 'Mysqli']) ? (class_exists('Mysqli') ? 'Mysqli' : 'Mysql') : $_SERVER['LOLI']['DB']['type']);
+$class = 'Loli\DB\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? (class_exists('MySQLi') ? 'MySQLi' : 'MySQL') : $_SERVER['LOLI']['DB']['type']);
 return new $class($_SERVER['LOLI']['DB']);
 

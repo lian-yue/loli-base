@@ -23,7 +23,7 @@ const ENGINE_MEMORY = 'Memory';
 
 const ENGINE_ARCHIVE = 'Archive';
 
-class Mysql extends Base{
+class MySQL extends Base{
 	public function create($array, $table, $engine = ENGINE_INNODB) {
 		if (!$array  || !is_array($array) || !($table = $this->key($table))) {
 			return false;

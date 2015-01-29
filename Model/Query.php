@@ -13,5 +13,5 @@
 /* ************************************************************************** */
 namespace Model;
 class_exists('Loli\Query\Base') || exit;
-$class = 'Loli\Query\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['Mysql', 'Mysqli']) ? 'Mysql' : $_SERVER['LOLI']['DB']['type']);
+$class = 'Loli\Query\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? 'MySQL' : $_SERVER['LOLI']['DB']['type']);
 return new $class;

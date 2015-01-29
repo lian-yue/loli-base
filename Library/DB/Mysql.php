@@ -13,7 +13,7 @@
 /* ************************************************************************** */
 namespace Loli\DB;
 class_exists('Loli\DB\Base') || exit;
-class Mysql extends Base{
+class MySQL extends Base{
 
 	public function error() {
 		if (!$this->link) {
