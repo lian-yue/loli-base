@@ -14,21 +14,24 @@
 namespace Loli\Query;
 class_exists('Loli\Query\Base') || exit;
 
-// mysql 引擎
-const ENGINE_INNODB = 'InnoDB';
-
-const ENGINE_MYISAM = 'MyISAM';
-
-const ENGINE_MEMORY = 'Memory';
-
-const ENGINE_ARCHIVE = 'Archive';
 
 class MySQL extends Base{
-	public function create($array, $table, $engine = ENGINE_INNODB) {
+		
+	// mysql 引擎
+	const ENGINE_INNODB = 'InnoDB';
+
+	const ENGINE_MYISAM = 'MyISAM';
+
+	const ENGINE_MEMORY = 'Memory';
+
+	const ENGINE_ARCHIVE = 'Archive';
+
+
+	public function create($array, $table, $engine = self::ENGINE_INNODB) {
 		if (!$array  || !is_array($array) || !($table = $this->key($table))) {
 			return false;
 		}
-		$engine = $engine ? $engine : ENGINE_INNODB;
+		$engine = $engine ? $engine : self::ENGINE_INNODB;
 
 		$key = $unique = $primary = [];
 
