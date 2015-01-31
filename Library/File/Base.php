@@ -180,8 +180,8 @@ abstract class Base{
 	*
 	*	返回值 数组
 	**/
-	public function post($key, $size = 0, $mimetype = [], $multiple = 1) {
-		if ('POST' != $_SERVER['REQUEST_METHOD'] || empty($_FILES[$key])) {
+	public function post($key, $size = 0, $mimeType = [], $multiple = 1) {
+		if (empty($_FILES[$key])) {
 			return [];
 		}
 
@@ -217,7 +217,7 @@ abstract class Base{
 				continue;
 			}
 			$v = $mime + $v;
-			if ($mimetype && !in_array($v['type'], $mimetype) && !in_array(strtolower($v['extension']), $mimetype)) {
+			if ($mimeType && !in_array($v['type'], $mimeType) && !in_array(strtolower($v['extension']), $mimeType)) {
 				$v['error'] = UPLOAD_ERR_MIME_TYPE;
 				$a[] = $v;
 				continue;

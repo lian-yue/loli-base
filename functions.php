@@ -656,8 +656,7 @@ function get_redirect($redirect = [], $default = []) {
 		if ($v && is_string($v) && !in_array($v, ['referer', 'cookie'])) {
 			if (!preg_match('/^(https?\:)?\/\/\w+\.\w+/i', $v)) {
 				if ($v{0} != '/') {
-					$path = rtrim($path = url_path(), '/') == $path || !$path ? $path : dirname($path);
-					$v = $path . '/' . $v;
+					$v = substr($path = url_path(), -1, 1) == '/' ? $path . $v : dirname($path) .'/'. $v;
 				}
 				$v = '//'. $_SERVER['HTTP_HOST'] . '/' . ltrim($v, '/');
 			}
@@ -699,7 +698,6 @@ function mb_rand($length, $string = false) {
 	}
 	return $r;
 }
-
 
 function add_call($key, $call, $priority = 10) {
 	global $_call_data, $_call_ksort;

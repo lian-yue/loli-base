@@ -24,6 +24,7 @@ class Ajax{
 	private static $_xmlhttprequest = false;
 
 	private static $_accept = '';
+	
 	private static $_extension = '';
 
 	public static function init() {

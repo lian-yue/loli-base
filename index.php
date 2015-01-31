@@ -17,6 +17,9 @@ if (!empty($_SERVER['REQUEST_URI']) && in_array(strtolower($_SERVER['REQUEST_URI
 }
 require __DIR__ . '/include.php';
 
+echo dirname('./22');
+die;
+
 // 采用注册机制 绑定入口
 // add('hostname'， ‘/路径’, '根方法') 
 // add('hostname', '根方法') 

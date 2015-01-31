@@ -11,9 +11,9 @@
 /*	Updated: UTC 2015-01-26 12:39:35
 /*
 /* ************************************************************************** */
-namespace Loli\Controller;
+namespace Loli;
 use Loli\Ajax, Loli\Message;
-trait Run{
+class Route{
 
 	private $_is = false;
 
@@ -27,14 +27,19 @@ trait Run{
 		$doKey = strtr($class, '\\', '/') . '.';
 		$a = $this;
 		$rewrite = [];
-		$before = '/';
 		$after =  substr($a->path(), 1);
 		while($after !== false) {
-			list($current, $arg3) = explode('/', $after, 2) + [1 => false];
+			list($current, $arg2) = explode('/', $after, 2) + [1 => false];
 
 			// 没解析到
-			if (!$value = $a->getNode($before, $current, $arg3, $rewrite)) {
+			if (!$node = $a->runNode($current, $arg2, $rewrite)) {
 				Message::set(404);
+				Message::run();
+			}
+
+			// 服务器内部错误
+			if (!$value = $a->getNode($node)) {
+				Message::set(500);
 				Message::run();
 			}
 
@@ -58,7 +63,7 @@ trait Run{
 
 
 			// 选择节点
-			$this->node[] = $value['node'];
+			$this->node[] = $node;
 
 			// 有类的
 			if (!empty($value['class'])) {
@@ -76,8 +81,7 @@ trait Run{
 
 			// 要跳过的
 			if (!isset($value['skip']) || $value['skip'] !== false) {
-				$after = $arg3;
-				$before .= $before == '/' ? $current : '/' . $current;
+				$after = $arg2;
 			}
 		}
 
@@ -103,8 +107,8 @@ trait Run{
 		}
 
 		// 需要判断权限的
-		if (!isset($value['permission']) || $value['permission'] !== false) {
-			if (!$a->permission($a->node)) {
+		if (!isset($value['auth']) || $value['auth'] !== false) {
+			if (!$a->auth($a->node)) {
 				Message::set(403);
 				Message::run();
 			}
@@ -112,7 +116,6 @@ trait Run{
 
 		// 默认执行的
 		$a->init();
-
 
 		// 返回数据
 		return $a->$method();

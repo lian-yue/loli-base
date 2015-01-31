@@ -11,16 +11,11 @@
 /*	Updated: UTC 2015-01-26 15:25:49
 /*
 /* ************************************************************************** */
-namespace Loli\Controller;
-use Loli\Model, Loli\Date, Loli\Lang, Loli\Form, Loli\Message, Loli\Token;
+namespace Loli;
 trait_exists('Loli\Model', true) || exit;
 
-abstract class Base{
+abstract class Controller{
 	use Model;
-
-	public $HTTPS = false;
-	public $HTTPURL = '/';
-	public $HTTPURL = '/';
 
 	// URL 地址
 	public $url = '';
@@ -28,8 +23,8 @@ abstract class Base{
 	// dir 载入
 	public $dir = './';
 
-	// 根节点
-	public $base = [];
+	// 路径
+	public $path = '/';
 
 	// 节点
 	public $node = [];
@@ -40,10 +35,10 @@ abstract class Base{
 	// 返回的数据
 	public $data = [];
 
-
 	// 全部节点
 	public $allNode = [
-		/*[
+		/*
+		'节点名称' => [
 
 			// 这是getNoce 支持的
 			'pattern' => [
@@ -58,7 +53,6 @@ abstract class Base{
 
 
 			// 这是 解析run支持
-			'node' => '节点名',	// 必须
 			'class' => '回调类名',	//
 			'method' =>'回调方法',	//
 			'auth' =>  false = 不需要认证 true = 需要
@@ -73,16 +67,20 @@ abstract class Base{
 
 
 	// 需要引用的数据
-	public $quotes = ['dir', 'url', 'base', 'node', 'data'];
+	public $quotes = ['dir', 'url', 'path', 'node', 'data'];
 
-	public function getNode($before, $current, $after, &$rewrite) {
-		foreach($this->allNode as $value) {
 
-			// 没有正则使用 正则
+	public function runNode($current, $after, &$rewrite) {
+		foreach($this->allNode as $node => $value) {
+			// 没有正则使用 节点名
 			if (!isset($value['pattern'])) {
-				$value['pattern'] = ['^' . preg_quote(strtolower(empty($value['method']) ? $value['node'] : $value['node'] . '/?', '')) . '$' => []];
+				$value['pattern'] = ['^' . preg_quote(strtolower(empty($value['method']) ? $node : $node . '/?', '')) . '$' => []];
 			}
 
+			// 没有匹配跳过
+			if (!$value['pattern']) {
+				continue;
+			}
 
 			foreach($value['pattern'] as $pattern => $vv) {
 				if (empty($value['method']) && !in_array($_SERVER['REQUEST_METHOD'], empty($vv['method']) ? ['POST', 'GET'] : (array) $vv['method'])) {
@@ -102,24 +100,22 @@ abstract class Base{
 					$rewrite = $vv['rewrite'] + $rewrite;
 				}
 
-				// 结果 url重写
+				// 结果 url 重写
 				foreach($matches as $kkk => $vvv) {
 					if (isset($vv['matches'][$kkk])) {
 						$rewrite[$vv['matches'][$kkk]] = $vvv;
 					}
 				}
-
-				return array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'auth' => '', 'form' => '', 'skip' => '', 'type' => '']);
+				return $node;
 			}
 		}
 		return false;
 	}
+	public function getNode($node){
+		return isset($this->allNode[$node]) ? $this->allNode[$node] : false;
+	}
 	public function allNode() {
-		$r = [];
-		foreach ($this->allNode as $key => $value) {
-			$r[] = array_intersect_key($value, ['node' => '', 'method' => '', 'class' => '', 'auth' => '', 'form' => '', 'skip' => '', 'type' => '']);
-		}
-		return $r;
+		return $this->allNode;
 	}
 
 	abstract public function auth($node, $column = '', $value = '', $compare = '=');
@@ -170,8 +166,8 @@ abstract class Base{
 			$path = '/' . implode('/', $path);
 		}
 		if ($path && $path{0} != '/') {
-			$v = rtrim($v = $this->path(), '/') == $v || !$v ? $v : dirname($v);
-			$path = '/'. $path . '/' . $v;
+			$path = substr($v = $this->path, -1, 1) == '/' ? $v . $path : dirname($v) .'/'. $path;
+			$path = '/' . ltrim($path, '/');
 		}
 		$query = merge_string($query);
 		$url = $this->url. $path . ($query ? '?' . $query : '');
@@ -204,10 +200,6 @@ abstract class Base{
 
 	public function lang() {
 		return call_user_func_array(['Lang', 'get'], func_get_args());
-	}
-
-	public function path() {
-		return url_path();
 	}
 
 	public function title($sep = ' _ ') {
@@ -252,7 +244,7 @@ abstract class Base{
 				if ( is_string($kk)) {
 					$vv['class'][] = $kk;
 				}
-				$aa[$kk] = '<li class="' . implode(' ', $vv['class']) . '"><a href="'. $this->url($this->path(), $vv['query']) . '">'. $vv['name'] . (isset($vv['count']) ? '<span class="count">('.$vv['count'].')</span>' : '') . '</a></li>';
+				$aa[$kk] = '<li class="' . implode(' ', $vv['class']) . '"><a href="'. $this->url($this->path, $vv['query']) . '">'. $vv['name'] . (isset($vv['count']) ? '<span class="count">('.$vv['count'].')</span>' : '') . '</a></li>';
 			}
 
 			$a[] = ['name' => $v['name'] ? $this->lang(['$1:', $v['name']]) : '', 'class' => implode(' ', (array) $v['class']), 'value' => implode(' ', $aa)];
