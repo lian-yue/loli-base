@@ -1,0 +1,32 @@
+{
+    "name": "loli/base",
+    "description": "The Loli Framework Base.",
+    "keywords": ["framework", "loli"],
+    "license": "Apache2",
+    "authors": [
+        {
+            "name": "Lian Yue",
+            "email": "admin@lianyue.org"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0",
+        "ext-mcrypt": "*",
+        "ext-openssl": "*",
+        "ext-mbstring": "*"
+    },
+    "replace": {
+        "Loli": "self.version"
+    },
+    "autoload": {
+        "files": [
+            "src/functions.php",
+            "src/include.php"
+        ],
+        "psr-4": {
+            "Loli\\": "src/Loli/"
+        }
+    },
+    "minimum-stability" : "stable",
+    "prefer-stable" : true,
+}
