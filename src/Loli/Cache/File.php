@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-17 11:37:04
-/*	Updated: UTC 2015-01-16 08:01:01
+/*	Updated: UTC 2015-02-05 07:43:28
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
@@ -23,8 +23,10 @@ class File extends Base{
 
 	private $_dir = './';
 
-	public function __construct($dir, $key = '') {
-		$this->_dir = is_array($dir) ? $_dir['dir'] : $_dir;
+	public function __construct(array $args, $key = '') {
+		if (!empty($args['dir'])) {
+			$this->_dir = $args['dir'];
+		}
 		$this->key = $key;
 	}
 
@@ -159,7 +161,7 @@ class File extends Base{
 		return $mem || $this->_undir($this->_dir);
 	}
 
-	public function addServers($list, $a) {
+	public function addServers($list, array $a) {
 		return true;
 	}
 
@@ -208,7 +210,7 @@ class File extends Base{
 			$path = $dir . '/' . $name;
 			is_dir($path) ? $this->_undir($path) : @unlink($path);
 		}
-		closedir ($opendir);
+		closedir($opendir);
 		return true;
 	}
 }

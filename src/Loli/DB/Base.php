@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-02 16:34:00
+/*	Updated: UTC 2015-02-05 15:05:43
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -17,12 +17,12 @@ abstract class Base{
 
 	// 主数据库
 	private $_masters = [];
-	private $_masterLink = null;
+	private $_master;
 
 
 	// 从数据库
 	private $_slaves = [];
-	private $_slaveLink = true;
+	private $_slave;
 
 
 	// 是否运行过链接
@@ -54,7 +54,7 @@ abstract class Base{
 	// 查询行
 	public static $queryRow = 0;
 
-	public function __construct($args) {
+	public function __construct(array $args) {
 		if (!empty($args['slave'])) {
 			foreach ($args['slave'] as $v) {
 				$this->addSlave($v);
@@ -77,35 +77,35 @@ abstract class Base{
 		$this->link = true;
 		if ($slave && $this->_slaves && $this->autoCommit) {
 			$this->slave = true;
-			if ($this->_slaveLink === null) {
+			if ($this->_slave === null) {
 				shuffle($this->_slaves);
 				$i = 0;
 				foreach ($this->_slaves as $args) {
-					if (($this->_slaveLink = $this->connect($args)) || $i > 3) {
+					if (($this->_slave = $this->connect($args)) || $i > 3) {
 						$this->isLink = true;
 						break;
 					}
 					++$i;
 				}
 			}
-			if ($this->_slaveLink) {
-				return $this->_slaveLink;
+			if ($this->_slave) {
+				return $this->_slave;
 			}
 		}
 		$this->slave = false;
-		if ($this->_masterLink === null) {
+		if ($this->_master === null) {
 			shuffle($this->_masters);
 			$i = 0;
 			foreach ($this->_masters as $args) {
-				if (($this->_masterLink = $this->connect($args)) || $i > 3) {
+				if (($this->_master = $this->connect($args)) || $i > 3) {
 					$this->isLink = true;
 					break;
 				}
 				++$i;
 			}
-			!$this->_masterLink && $this->debug && $this->exitError('Link');
+			!$this->_master && $this->debug && $this->exitError('Link');
 		}
-		return $this->_masterLink;
+		return $this->_master;
 	}
 
 	public function addSlave($args) {
@@ -125,11 +125,13 @@ abstract class Base{
 	abstract public function errno();
 
 
+	abstract public function tables();
+
+	abstract public function exists($table);
+	abstract public function truncate($table);
+	abstract public function drop($table);
 
 	abstract public function create($query);
-	abstract public function drop($query);
-
-
 	abstract public function insert($query);
 	abstract public function replace($query);
 	abstract public function update($query);

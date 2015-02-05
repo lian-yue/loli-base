@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-17 08:46:33
-/*	Updated: UTC 2015-01-16 08:01:09
+/*	Updated: UTC 2015-02-05 07:40:57
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
@@ -25,7 +25,7 @@ class Memcache extends Base{
 
 	private $_d = false;
 
-	function __construct($args, $key = '') {
+	function __construct(array $args, $key = '') {
 		$this->_key = $key;
 		$this->_d = class_exists('Memcached');
 		foreach ($args as $list => $servers) {
@@ -188,7 +188,7 @@ class Memcache extends Base{
 		return true;
 	}
 
-	public function addServers($list, $a) {
+	public function addServers($list, array $a) {
 		if ($this->_d) {
 			if (empty($this->_mem[$list])) {
 				$this->_mem[$list] = new \Memcached;

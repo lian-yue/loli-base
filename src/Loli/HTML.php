@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-19 07:09:40
+/*	Updated: UTC 2015-02-05 06:59:39
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -250,9 +250,10 @@ class HTML{
 		$this->html = $this->above = '';
 		$this->count = $this->stack = $this->layer = [];
 
-
 		// 标签排序
-		lrsort($this->tag);
+		usort($this->tag, [$this, 'sort']);
+
+
 		$tag = [];
 		foreach ($this->tag as $v) {
 			$tag[$v] = in_array($v, $this->single);
@@ -766,6 +767,13 @@ class HTML{
 		return $r;
 	}
 
+
+	 public function sort($a, $b) {
+		if (($a = strlen($a)) == ($b = strlen($b))) {
+			return 0;
+		}
+		return ($a > $b) ? 1 : -1;
+	}
 }
 
 

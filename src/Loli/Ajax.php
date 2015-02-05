@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-10 10:24:36
-/*	Updated: UTC 2015-02-02 14:47:28
+/*	Updated: UTC 2015-02-05 06:56:42
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -24,7 +24,7 @@ class Ajax{
 	private static $_xmlhttprequest = false;
 
 	private static $_accept = '';
-	
+
 	private static $_extension = '';
 
 	public static function init() {

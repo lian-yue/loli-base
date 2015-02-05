@@ -8,77 +8,9 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-04 09:41:41
+/*	Updated: UTC 2015-02-05 07:30:05
 /*
 /* ************************************************************************** */
-
-/**
-*	字符串 数字 填补 0
-*
-*	1 参数 原来的字符串
-*	2 参数 填补到多少位数
-*
-*	返回值 0001 大概
-**/
-function zeroise($number, $threshold) {
-	return sprintf('%0'.$threshold.'s', $number);
-}
-
-
-
-
-/**
-*	获取某个目录的列表
-*
-*	1 参数某个目录地址
-*	2 是否递归
-*
-*	返回值数组
-**/
-function dirlist($dir, $call = false) {
-	$r = [];
-	if (is_dir($dir)) {
-		$dir = rtrim($dir, '\\/');
-		$open = opendir($dir);
-		while ($read = readdir($open)) {
-			if (in_array($read, ['.', '..'])) {
-				continue;
-			}
-			$path = $dir .'/'. $read;
-			if (!$call || is_file($path)) {
-				$r[] = $path;
-			} else {
-				$r = array_merge($r, dirlist($path));
-			}
-		}
-		closedir ($open);
-	}
-	return $r;
-}
-
-
-/**
-*	删除目录 包括子目录 和文件
-*
-*	1 参数 目录地址
-*
-*	返回值 true false
-**/
-function undir($dir) {
-	if (!$handle = opendir($dir)) {
-		return false;
-	}
-	while ($file = readdir($handle)) {
-		$un = $dir . '/' . $file;
-		if (!in_array($file, ['.', '..'])) {
-			is_dir($un) ? undir($un) : @unlink($un);
-		}
-	}
-	closedir($handle);
-	@rmdir($dir);
-	return true;
-}
-
 
 
 
@@ -315,7 +247,7 @@ function current_url() {
 *
 *	返回值 数组
 **/
-function array_unnull($a = [], $call = false) {
+function array_unnull(array $a, $call = false) {
 	foreach ($a as $k => $v) {
 		if ($call && is_array($a) && $a) {
 			 $a[$k] = array_unnull($a, $call);
@@ -429,7 +361,7 @@ function simplexml_uncdata($xml) {
 *	返回 合并后的字符串
 **/
 
-function merge_url($parse = []) {
+function merge_url(array $parse) {
 	$url = '';
 	if (isset($parse['scheme'])) {
 		$url .= $parse['scheme'] . '://';
@@ -520,39 +452,6 @@ function absint($int) {
 }
 
 
-/**
-*	数组字符串长度正排序
-*
-*	1 参数 引用数组
-*
-*	无返回值
-**/
-function lsort(&$a) {
-	return usort($a, function($a, $b){
-		if (($a = strlen($a)) == ($b = strlen($b))) {
-			return 0;
-		}
-		return ($a > $b) ? -1 : 1;
-	});
-}
-
-
-
-/**
-*	数组字符串长度逆排序
-*
-*	1 参数 引用数组
-*
-*	无返回值
-**/
-function lrsort(&$a) {
-	return usort($a, function($a, $b) {
-		if (($a = strlen($a)) == ($b = strlen($b))) {
-			return 0;
-		}
-		return ($a > $b) ? 1 : -1;
-	});
-}
 
 /**
 *	二维数组 自定义优先级排序
@@ -563,7 +462,7 @@ function lrsort(&$a) {
 *
 *	无返回值
 **/
-function prioritysort(&$arr, $key = 'priority', $asc = true) {
+function prioritysort(array &$arr, $key = 'priority', $asc = true) {
 	$a = [];
 	$i = 0;
 	foreach ($arr as $k => $v) {

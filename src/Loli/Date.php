@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-16 09:40:56
+/*	Updated: UTC 2015-02-05 06:52:20
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -291,7 +291,7 @@ class Date{
 		}
 		// 填补
 		for ($ii = 0; $ii < $i; ++$ii) {
-			$arr[$ii] = zeroise($arr[$ii], 2);
+			$arr[$ii] = sprintf("%02d", $arr[$ii]);
 		}
 
 		// 格式化

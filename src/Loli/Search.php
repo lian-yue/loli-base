@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-25 11:12:50
-/*	Updated: UTC 2014-12-30 09:23:33
+/*	Updated: UTC 2015-02-05 06:52:34
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -1221,7 +1221,7 @@ class Search{
 		} else {
 			$a = $this->callback;
 		}
-		$a = zeroise($a, 8);
+		$a = sprintf("%08d", $a);
 		$str = '';
 		for($i = 0; $i < 8; $i += 2) {
 			$str .= pack('H2', substr($a, $i, 2));

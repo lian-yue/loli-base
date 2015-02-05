@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-02 16:33:53
+/*	Updated: UTC 2015-02-05 08:54:12
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -204,14 +204,6 @@ class MySQL extends Base{
 		// 数据库引擎
 		$q .= ' ENGINE=' . $this->escape($engine) . ' DEFAULT CHARSET=utf8;';
  		return $q ;
-	}
-
-
-	public function drop($table) {
-		if (!$table = $this->key($table)) {
-			return false;
-		}
-		return 'DROP TABLE IF EXISTS ' .  $table;
 	}
 
 
@@ -458,14 +450,14 @@ class MySQL extends Base{
 		} elseif ($value === true) {
 			$value = 1;
 		} elseif (is_string($value)) {
-			$value = addslashes(stripslashes(addslashes((string) $value)));
+			$value = addslashes(stripslashes(addslashes($value)));
 			$value = '\''. $value .'\'';
 		}
 		return $value;
 	}
 
 	public function key($value, $asterisk = false) {
-		if (!$value || !preg_match('/^(?:([a-z_][0-9a-z_]*)?\.)?([a-z_][0-9a-z_]*|\*)$/i', trim($value), $matches)) {
+		if (!$value || !preg_match('/^(?:([a-z_][0-9a-z_]*)\.)?([a-z_][0-9a-z_]*|\*)$/i', trim($value), $matches)) {
 			return false;
 		}
 		if ($matches[2] == '*' && !$asterisk) {

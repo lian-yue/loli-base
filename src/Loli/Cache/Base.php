@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-17 08:31:12
-/*	Updated: UTC 2014-12-30 13:48:45
+/*	Updated: UTC 2015-02-05 07:41:07
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
@@ -22,7 +22,7 @@ abstract class Base{
 	protected $key = '';
 
 
-	abstract public function __construct($args, $key = '');
+	abstract public function __construct(array $args, $key = '');
 
 
 	/**
@@ -124,7 +124,7 @@ abstract class Base{
 	 * @param [type] $list 服务器组
 	 * @param [type] $a    服务器信息
 	 */
-	abstract public function addServers($list, $a);
+	abstract public function addServers($list, array $a);
 
 }
 

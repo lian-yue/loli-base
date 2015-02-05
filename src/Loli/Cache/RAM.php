@@ -8,14 +8,14 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-17 05:59:42
-/*	Updated: UTC 2015-01-16 08:01:24
+/*	Updated: UTC 2015-02-05 07:41:00
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
 class_exists('Loli\Cache\Base') || exit;
 class RAM extends Base {
 	public $_data = [];
-	public function __construct($args, $key = '') {
+	public function __construct(array $args, $key = '') {
 	}
 
 	public function get($key, $list = 'default', $mem = false) {
@@ -97,7 +97,7 @@ class RAM extends Base {
 		return true;
 	}
 
-	public function addServers($list, $a) {
+	public function addServers($list, array $a) {
 		return true;
 	}
 }

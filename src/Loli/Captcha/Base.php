@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-07 05:50:20
-/*	Updated: UTC 2015-01-10 06:01:49
+/*	Updated: UTC 2015-02-05 08:03:01
 /*
 /* ************************************************************************** */
 namespace Loli\Captcha;
@@ -63,6 +63,23 @@ abstract class Base {
 	abstract public function display();
 
 
+	// 字体文件 1参数默认地址
+	private function _files($dir, array $extensions = []) {
+		$extensions = array_map('strtolower', $extensions);
+		$r = [];
+		if (is_dir($dir)) {
+			$open = opendir($dir);
+			while ($read = readdir($open)) {
+				if (in_array($read, ['.', '..']) || !is_file($path = $dir .'/'. $read) || ($extensions && (!($extension = strtolower(pathinfo($read, PATHINFO_EXTENSION))) || !in_array($extension, $extensions)))) {
+					continue;
+				}
+				$r[] = $path;
+			}
+			closedir($open);
+		}
+		return $r;
+	}
+
 	// 随机小数
 	protected function rand($min = 0, $max = 1) {
 	    return $min + mt_rand() / mt_getrandmax() * ($max - $min);
@@ -75,7 +92,7 @@ abstract class Base {
 		if ($this->font) {
 			if (is_file($this->font)) {
 				$fontFile = $this->font;
-			} elseif (($fonts = dirlist($this->font)) || ($fonts = dirlist(__DIR__ . '/Fonts/'))) {
+			} elseif (($fonts = $this->_files($this->font, ['ttf', 'otf'])) || ($fonts = $this->_files(__DIR__ . '/Fonts', ['ttf', 'otf']))) {
 				$fontFile = $fonts[array_rand($fonts)];
 			}
 		}
@@ -92,11 +109,19 @@ abstract class Base {
 		if (is_string($this->line)) {
 			if (is_file($this->line)) {
 				$lineFile = $this->line;
-			} elseif (($lines = dirlist($this->line)) || ($lines = dirlist(__DIR__ . '/Lines/'))) {
+			} elseif (($lines = $this->_files($this->line, ['ttf', 'otf'])) || ($lines = $this->_files(__DIR__ . '/Lines', ['ttf', 'otf']))) {
 				$lineFile = $lines[array_rand($lines)];
 			}
 		}
 		return $lineFile;
+	}
+
+	// 背景
+	protected function background() {
+		if (!$this->dirBackground || !($backgrounds = $this->_files($this->dirBackground, ['jpg', 'jpeg', 'png', 'gif', 'webp']))) {
+			return false;
+		}
+		return $backgrounds[array_rand($backgrounds)];
 	}
 
 

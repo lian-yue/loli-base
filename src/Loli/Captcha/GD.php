@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-02 14:47:36
+/*	Updated: UTC 2015-02-05 08:02:19
 /*
 /* ************************************************************************** */
 namespace Loli\Captcha;
@@ -52,10 +52,9 @@ class GD extends Base{
 		imagefilledrectangle($this->im, 0, 0, $this->width, $this->height, imagecolorallocate($this->im, $color['red'], $color['green'], $color['blue']));
 
 
-
 		// 创建背景图片
-		if ($this->dirBackground && ($img = dirlist($this->dirBackground))) {
-			$bg = imagecreatefromjpeg($img[array_rand($img)]);
+		if ($background = $this->background()) {
+			$bg = imagecreatefromjpeg($background);
 			$x = imageSX($bg);
 			$y = imageSY($bg);
 			imagecopymerge($this->im, $bg, 0, 0, $x <= $this->width ? 0 : mt_rand(0, $x - $this->width), $y <= $this->height ? 0 : mt_rand(0, $y - $this->height), $x, $y, $this->pctBackground);

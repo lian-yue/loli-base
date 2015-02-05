@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-10-29 15:22:22
-/*	Updated: UTC 2015-01-22 13:22:03
+/*	Updated: UTC 2015-02-05 09:07:33
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -34,14 +34,6 @@ abstract class Base{
 	 */
 	abstract public function create($array, $table, $engine = false);
 
-
-
-	/**
-	 * 删除表
-	 * @param  string  $table  名称
-	 * @return false or string
-	 */
-	abstract public function drop($table);
 
 	/**
 	 * 添加

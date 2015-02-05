@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-10-24 10:41:06
-/*	Updated: UTC 2015-01-16 08:01:30
+/*	Updated: UTC 2015-02-05 07:42:26
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
@@ -23,7 +23,7 @@ class Redis extends Base{
 
 	private $_servers = [];
 
-	public function __construct($args, $key = '') {
+	public function __construct(array $args, $key = '') {
 		$this->_key = $key;
 		foreach ($args as $list => $servers) {
 			$list = is_int($list) ? 'default' : $list;
@@ -230,7 +230,7 @@ class Redis extends Base{
 		return true;
 	}
 
-	public function addServers($list, $a) {
+	public function addServers($list, array $a) {
 		$this->_servers[$list] = array_merge(array_values($a), empty($this->_servers[$list]) ? [] : $this->_servers[$list]);
 	}
 

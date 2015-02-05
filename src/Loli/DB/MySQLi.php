@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-02 16:34:01
+/*	Updated: UTC 2015-02-05 15:05:26
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -100,10 +100,45 @@ class MySQLi extends Base{
 		return $this->data[$query] = $r;
 	}
 
-	public function create($query) {
-		return $this->query($query, false);
+	public function tables() {
+		if (($arrays = $this->query('SHOW TABLES', false)) === false) {
+			return false;
+		}
+		$tables = [];
+		foreach ($arrays as $object) {
+			foreach ($object as $table) {
+				$tables[] = $table;
+			}
+		}
+		return $tables;
 	}
-	public function drop($query) {
+
+	public function exists($table) {
+		if (!$link = $this->link(false)) {
+			return false;
+		}
+		if (($query = $this->query('SHOW TABLES LIKE \''. addcslashes($link->real_escape_string($table), '%_') .'\'', false)) === false) {
+			return false;
+		}
+		return $query ? 1 : 0;
+	}
+
+	public function truncate($table) {
+		if (!preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table)) {
+			return false;
+		}
+		return $this->query('TRUNCATE TABLE `'. $table .'`', false);
+	}
+
+	public function drop($table) {
+		if (!preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table)) {
+			return false;
+		}
+		return $this->query('DROP TABLE IF EXISTS `'. $table .'`', false);
+	}
+
+
+	public function create($query) {
 		return $this->query($query, false);
 	}
 
@@ -143,7 +178,7 @@ class MySQLi extends Base{
 
 
 	public function start() {
-		if (!$link = $this->link(false)){
+		if (!$link = $this->link(false)) {
 			return false;
 		}
 		$this->autocommit = false;

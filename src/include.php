@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-02-04 16:38:05
+/*	Updated: UTC 2015-02-05 06:48:50
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -68,14 +68,6 @@ if (empty($_SERVER['PHP_SELF'])) {
 	$_SERVER['PHP_SELF'] = preg_replace('/(\?.*)?$/', '', $_SERVER["REQUEST_URI"]);
 }
 
-
-
-
-
-
-
-
-
 // Loli 目录
 const VERSION = '1.0.2';
 
@@ -88,13 +80,10 @@ header( 'X-Version: ' . VERSION);
 header( 'X-Support: ' . SUPPORT);
 
 
-
-
 // debug
 if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 	new Debug($_SERVER['LOLI']['DEBUG']);
 }
-
 
 
 $func = function($key) {

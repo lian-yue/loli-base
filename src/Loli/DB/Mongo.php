@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-02 16:34:00
+/*	Updated: UTC 2015-02-05 16:18:13
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -67,6 +67,80 @@ class Mongo extends Base{
 
 
 
+	public function tables() {
+		if (!$link = $this->link(false)) {
+			return false;
+		}
+		$tables = [];
+		try {
+			$collections = $this->data['getCollectionNames()']  = $link->getCollectionNames();
+			foreach ($collections as $collection) {
+				$tables[] = $collection;
+			}
+		 } catch (MongoException $e) {
+			$this->_error = $e->getMessage();
+			$this->_errno = $e->getCode();
+			$this->debug && $this->exitError($query_str);
+			return false;
+		}
+		return $tables;
+	}
+
+
+	public function exists($table) {
+		if (($tables = $this->tables()) === false) {
+			return false;
+		}
+		return in_array($table, $tables) ? 1 : 0;
+	}
+
+
+	public function truncate($table) {
+		if (!$table || !is_string($table) || $table{0} == '$') {
+			return false;
+		}
+		if (!$link = $this->link(false)) {
+			return false;
+		}
+
+		try {
+			$r = $this->data[$query_str = $table.'.remove()'] = $link->{$table}->remove();
+		} catch (MongoException $e) {
+			$this->_error = $e->getMessage();
+			$this->_errno = $e->getCode();
+			$this->debug && $this->exitError($query_str);
+			return false;
+		}
+		if (empty($r['ok'])) {
+			$this->_error = empty($r['err']) ? (empty($r['errmsg']) ? 'Truncate' : $r['errmsg']) : $r['err'];
+			$this->_errno = empty($r['code']) ? -1 : $r['code'];
+			$this->debug && $this->exitError($query_str);
+			return false;
+		}
+		return empty($v['n']) ? 0 : $v['n'];
+	}
+
+
+	public function drop($table) {
+		if (!$table || !is_string($table) || $table{0} == '$') {
+			return false;
+		}
+		if (!$link = $this->link(false)) {
+			return false;
+		}
+
+		try {
+			$r = $this->data[$query_str = $table.'.drop()'] = $link->{$table}->drop();
+		} catch (MongoException $e) {
+			$this->_error = $e->getMessage();
+			$this->_errno = $e->getCode();
+			$this->debug && $this->exitError($query_str);
+			return false;
+		}
+		return empty($r['ok']) ? 0 : 1;
+	}
+
+
 	public function create($args) {
 		if (empty($args['create'])) {
 			if (empty($args['collection'])) {
@@ -78,23 +152,10 @@ class Mongo extends Base{
 			return false;
 		}
 		$this->_command(['dropIndexes' => $args['create'], 'index' => '*']);
-		empty($args['indexes']) && $this->_command(['createIndexes' => $args['create'], 'indexes' => $args['indexes']]);
+		empty($args['indexes']) || $this->_command(['createIndexes' => $args['create'], 'indexes' => $args['indexes']]);
 		return true;
 	}
 
-
-	public function drop($args) {
-		if (empty($args['drop'])) {
-			if (empty($args['collection'])) {
-				return false;
-			}
-			$args['drop'] = $args['collection'];
-		}
-		if (!($r = $this->_command($a = array_intersect_key($args, ['drop' => '']))) || empty($r['ok'])) {
-			return false;
-		}
-		return true;
-	}
 
 	public function insert($args) {
 		if (empty($args['insert'])) {

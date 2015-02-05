@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-05 05:03:53
-/*	Updated: UTC 2015-02-02 16:33:53
+/*	Updated: UTC 2015-02-05 09:08:01
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -121,15 +121,6 @@ class Mongo extends Base{
 
 		return $r;
 	}
-
-	public function drop($table) {
-		if (!$table = $this->key($table)) {
-			return false;
-		}
-		return ['collection' => $table, 'command' => 'drop'];
-	}
-
-
 
 
 	public function add($array, $table) {
