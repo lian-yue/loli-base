@@ -3,6 +3,7 @@
     "description": "The Loli Framework Base.",
     "keywords": ["framework", "loli"],
     "license": "Apache2",
+    "version" : "1.0.2",
     "authors": [
         {
             "name": "Lian Yue",

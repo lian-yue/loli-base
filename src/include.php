@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-02-05 16:37:02
+/*	Updated: UTC 2015-02-06 11:49:58
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -23,11 +23,8 @@ date_default_timezone_set('UTC');
 mb_internal_encoding('UTF-8');
 
 
-// 修改
-$_SERVER += ['SERVER_SOFTWARE' => '', 'REQUEST_URI' => ''];
-
 // 修改 IIS 的  _SERVER 信息
-if (empty($_SERVER['REQUEST_URI']) || (php_sapi_name() != 'cgi-fcgi' && preg_match('/^Microsoft-IIS\//', $_SERVER['SERVER_SOFTWARE']))) {
+if (empty($_SERVER['REQUEST_URI']) || (php_sapi_name() != 'cgi-fcgi' && !empty($_SERVER['SERVER_SOFTWARE']) && preg_match('/^Microsoft-IIS\//', $_SERVER['SERVER_SOFTWARE']))) {
 
 	if (isset($_SERVER['HTTP_X_ORIGINAL_URL'])) {
 		// IIS Mod-Rewrite 静态化
@@ -55,6 +52,7 @@ if (empty($_SERVER['REQUEST_URI']) || (php_sapi_name() != 'cgi-fcgi' && preg_mat
 		}
 	}
 }
+
 // 为PHP解决所有请求CGI主机 SCRIPT_FILENAME , 在php.cgi设置的东西结束
 if (isset($_SERVER['SCRIPT_FILENAME']) && (strpos($_SERVER['SCRIPT_FILENAME'], 'php.cgi') == strlen($_SERVER['SCRIPT_FILENAME']) - 7)) {
 	$_SERVER['SCRIPT_FILENAME'] = $_SERVER['PATH_TRANSLATED'];
@@ -64,8 +62,8 @@ if (strpos($_SERVER['SCRIPT_NAME'], 'php.cgi') !== false) {
 	unset($_SERVER['PATH_INFO']);
 }
 // 修改 空 PHP_SELF
-if (empty($_SERVER['PHP_SELF'])) {
-	$_SERVER['PHP_SELF'] = preg_replace('/(\?.*)?$/', '', $_SERVER["REQUEST_URI"]);
+if (empty($_SERVER['PHP_SELF']) && !empty($_SERVER['REQUEST_URI'])) {
+	$_SERVER['PHP_SELF'] = preg_replace('/(\?.*)?$/', '', $_SERVER['REQUEST_URI']);
 }
 
 // Loli 目录
@@ -74,13 +72,13 @@ const VERSION = '1.0.2';
 const SUPPORT = 'Loli.Net';
 
 // 版本号
-header( 'X-Version: ' . VERSION);
+headers_sent() || header('X-Version: ' . VERSION);
 
 // 技术支持
-header( 'X-Support: ' . SUPPORT);
+headers_sent() || header('X-Support: ' . SUPPORT);
 
 
-// debug
+// Debug
 if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 	new Debug($_SERVER['LOLI']['DEBUG']);
 }

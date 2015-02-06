@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-05 16:37:06
+/*	Updated: UTC 2015-02-06 06:56:50
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -130,4 +130,4 @@ class Code{
 	}
 }
 
-Code::$key = isset($_SERVER['LOLI']['STRING']['key']) ? $_SERVER['LOLI']['STRING']['key'] : '';
+Code::$key = isset($_SERVER['LOLI']['CODE']['key']) ? $_SERVER['LOLI']['CODE']['key'] : '';

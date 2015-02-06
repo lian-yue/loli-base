@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-10 10:24:36
-/*	Updated: UTC 2015-02-05 06:56:42
+/*	Updated: UTC 2015-02-06 11:58:34
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -35,9 +35,10 @@ class Ajax{
 			self::$_accept = strtolower(trim(end($accept)));
 		}
 
-		self::$_extension = pathinfo(url_path(), PATHINFO_EXTENSION)
+		self::$_extension = pathinfo(url_path(), PATHINFO_EXTENSION);
 
 		self::$is = self::$_xmlhttprequest || in_array(self::$_accept, ['json', 'xml']) || in_array(self::$_extension, ['json', 'xml']) || !empty($_REQUEST['ajax']);
+
 		self::$type = empty($_REQUEST['ajax']) ? (in_array(self::$_accept, ['json', 'xml']) ? self::$_accept : (in_array(self::$_extension, ['json', 'xml']) ? self::$_extension : false)) : (string) $_REQUEST['ajax'];
 	}
 
@@ -65,7 +66,7 @@ class Ajax{
 	 * @return exit 结束掉
 	 */
 	public static function get($data) {
-		header('X-Ajax: true');
+		headers_sent() || header('X-Ajax: true');
 		$type = strtolower(self::$type);
 		if ($type == 'query') {
 			$data = merge_string($data);
@@ -87,7 +88,7 @@ class Ajax{
 			header('Content-Type: application/x-javascript; charset=UTF-8');
 			$data = $function . '(' . json_encode($data) . ')';
 		} else {
-			if ('POST' != $_SERVER['REQUEST_METHOD'] || self::$_xmlhttprequest || self::$_accept == 'json') {
+			if (empty($_SERVER['REQUEST_METHOD']) || 'POST' != $_SERVER['REQUEST_METHOD'] || self::$_xmlhttprequest || self::$_accept == 'json') {
 				header('Content-Type: application/json; charset=UTF-8');
 			}
 			$data = json_encode($data);

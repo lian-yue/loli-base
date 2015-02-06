@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-21 09:17:20
-/*	Updated: UTC 2015-02-02 14:47:55
+/*	Updated: UTC 2015-02-06 11:59:43
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -116,11 +116,18 @@ class Message {
 
 		// redirect 地址
 		if (!isset($arrays['redirect']) && $redirect !== false) {
-			if (!$redirect && !empty($arrays['errors']) && !Ajax::$is) {
+			if (!$redirect && !empty($arrays['errors']) && !Ajax::$is && !Console::$is) {
 				$redirect = 'javascript:history.back()';
 			} else {
-				$redirect = $redirect ? (array) $redirect : ['referer', 'http' . (is_ssl() ? 's' : '') .'://'. $_SERVER['HTTP_HOST']];
-				$redirect = redirect($redirect, self::$redirect);
+				if ($redirect) {
+					$redirect = (array) $redirect;
+				} else {
+					$redirect = ['referer'];
+					if (!empty($_SERVER['HTTP_HOST'])) {
+						$redirect[] = '//'. $_SERVER['HTTP_HOST'];
+					}
+				}
+				$redirect = get_redirect($redirect, self::$redirect);
 				if (substr($redirect, 0, 2) == '//') {
 					$redirect = (is_ssl() ? 'https:' : 'http:') . $redirect;
 				}
@@ -140,13 +147,14 @@ class Message {
 
 		// header 头
 		if (!empty($arrays['errors'])) {
-			header('X-Message-Errors: ' . json_encode(array_keys($arrays['errors'])));
+			headers_sent() || header('X-Message-Errors: ' . json_encode(array_keys($arrays['errors'])));
 		}
-		header('X-Message: ' . reset($message));
+		headers_sent() || header('X-Message: ' . reset($message));
 
+		// Console
+		Console::$is && exit(Console::get($arrays));
 
-
-		// ajax
+		// Ajax
 		Ajax::$is && exit(Ajax::get($arrays));
 
 

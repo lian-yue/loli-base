@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-05 07:30:05
+/*	Updated: UTC 2015-02-06 12:01:58
 /*
 /* ************************************************************************** */
 
@@ -164,6 +164,7 @@ function to_object($a) {
 	return $a;
 }
 
+echo current_ip();
 /**
 *	获得 访问者 IP
 *
@@ -173,8 +174,11 @@ function to_object($a) {
 **/
 function current_ip() {
 	static $ip;
-	if (empty($ip)) {
-		$ip = $_SERVER['REMOTE_ADDR'];
+	if (!isset($ip)) {
+		$ip = false;
+		if (!empty($_SERVER['REMOTE_ADDR'])) {
+			$ip = $_SERVER['REMOTE_ADDR'];
+		}
 		if (empty($_SERVER['LOLI']['IP']['PROXY'])) {
 
 		} elseif (isset($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP)) {
@@ -188,26 +192,29 @@ function current_ip() {
 				}
 			}
 		}
+
 		// 兼容请求地址
-		if (preg_match('/^(.*(.)\:)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/', $ip, $matches)) {
-			if (strtolower($matches[1]) === '::ffff:') {
-				// ipv4 访问 ipv6
-				$ip = $matches[3];
-			} else {
-				// ipv6 访问 ipv4
-				$ip = $matches[1];
-				$pos = strpos($ip, '::') !== false;
-				$arr = str_split(str_pad(dechex(ip2long($matches[3])), 8, '0', STR_PAD_LEFT), 4);
-				$ip = $matches[1];
-				if (strpos($ip, '::') === false) {
-					$ip .= ltrim($arr[0], '0') . ':' . ltrim($arr[1], '0');
+		if ($ip) {
+			$ip = inet_ntop(inet_pton($ip));
+			if (preg_match('/^(.*(.)\:)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/', $ip, $matches)) {
+				if ($matches[1] === '::') {
+					// ipv4 访问 ipv6
+					$ip = $matches[3];
 				} else {
-					$ip .= $arr[0] === '0000' ? ($matches[2] == ':' ? '' : '0:') : ltrim($arr[0], '0') . ':';
-					$ip .= $arr[1] === '0000' ? ($matches[2] == ':' ? '' : '0') : ltrim($arr[1], '0');
+					// ipv6 访问 ipv4
+					$ip = $matches[1];
+					$pos = strpos($ip, '::') !== false;
+					$arr = str_split(str_pad(dechex(ip2long($matches[3])), 8, '0', STR_PAD_LEFT), 4);
+					$ip = $matches[1];
+					if (strpos($ip, '::') === false) {
+						$ip .= ltrim($arr[0], '0') . ':' . ltrim($arr[1], '0');
+					} else {
+						$ip .= $arr[0] === '0000' ? ($matches[2] == ':' ? '' : '0:') : ltrim($arr[0], '0') . ':';
+						$ip .= $arr[1] === '0000' ? ($matches[2] == ':' ? '' : '0') : ltrim($arr[1], '0');
+					}
 				}
 			}
 		}
-		$ip = strtolower($ip);
 	}
 	return $ip;
 }
@@ -224,16 +231,12 @@ function current_ip() {
 *	返回值 当前 的url
 **/
 function current_url() {
-	static $url;
-	if (empty($url)) {
-		$url = is_ssl() ? 'https://' : 'http://';
-		$url .= $_SERVER['HTTP_HOST'];
-		$url .= isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : (isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : '/');
-		$url = parse_url($url);
-		$url['query'] = empty($url['query']) ? [] : parse_string($url['query']);
-		$url['query'] = merge_string($url['query']);
-		$url = merge_url($url);
+	if (empty($_SERVER['HTTP_HOST'])) {
+		return false;
 	}
+	$url = is_ssl() ? 'https://' : 'http://';
+	$url .= $_SERVER['HTTP_HOST'];
+	$url .= isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : (isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : '/');
 	return $url;
 }
 
@@ -268,17 +271,13 @@ function array_unnull(array $a, $call = false) {
 *	返回值 true = http false = https
 **/
 function is_ssl() {
-	static $a;
-	if (isset($a)) {
-
-	} elseif (isset($_SERVER['HTTPS']) && ('on' == strtolower($_SERVER['HTTPS']) || '1' == $_SERVER['HTTPS'])) {
-		$a = true;
-	} elseif (isset($_SERVER['SERVER_PORT']) && '443' == $_SERVER['SERVER_PORT']) {
-		$a = true;
-	} else {
-		$a = false;
+	if (isset($_SERVER['HTTPS']) && ('on' == strtolower($_SERVER['HTTPS']) || '1' == $_SERVER['HTTPS'])) {
+		return true;
 	}
-	return $a;
+	if (isset($_SERVER['SERVER_PORT']) && '443' == $_SERVER['SERVER_PORT']) {
+		return true;
+	}
+	return false;
 }
 
 /**
@@ -289,18 +288,13 @@ function is_ssl() {
 *	返回值 true = http false = https
 **/
 function is_mobile() {
-	static $a;
-	if (isset($a)) {
-
-	} elseif (empty($_SERVER['HTTP_USER_AGENT'])) {
-		$a = false;
-	} elseif (strpos($_SERVER['HTTP_USER_AGENT'], 'Mobile') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Android') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Silk/') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Kindle') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'BlackBerry') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Opera Mini') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Opera Mobi') !== false) {
-		$a = true;
-	} else {
-		$a = false;
+	if (empty($_SERVER['HTTP_USER_AGENT'])) {
+		return false;
 	}
-
-	return $a;
+	if (strpos($_SERVER['HTTP_USER_AGENT'], 'Mobile') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Android') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Silk/') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Kindle') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'BlackBerry') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Opera Mini') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Opera Mobi') !== false) {
+		return true;
+	}
+	return false;
 }
 
 
@@ -402,11 +396,10 @@ function merge_url(array $parse) {
  * @return string
  */
 function url_path() {
-	static $path;
-	if (!isset($path)) {
-		$path = '/' . urldecode(explode('?', ltrim($_SERVER['REQUEST_URI'], '/'))[0]);
+	if (empty($_SERVER['REQUEST_URI'])) {
+		return false;
 	}
-	return $path;
+	return '/' . urldecode(explode('?', ltrim($_SERVER['REQUEST_URI'], '/'))[0]);
 }
 
 
@@ -558,7 +551,7 @@ function get_redirect($redirect = [], $default = []) {
 				if ($v{0} != '/') {
 					$v = substr($path = url_path(), -1, 1) == '/' ? $path . $v : dirname($path) .'/'. $v;
 				}
-				$v = '//'. $_SERVER['HTTP_HOST'] . '/' . ltrim($v, '/');
+				$v = empty($_SERVER['HTTP_HOST']) ? '/' . ltrim($v, '/') : '//'. $_SERVER['HTTP_HOST'] . '/' . ltrim($v, '/');
 			}
 			foreach ($default as $vv) {
 				if ($break = domain_match($v, $vv)) {
