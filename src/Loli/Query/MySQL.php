@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-05 08:54:12
+/*	Updated: UTC 2015-02-07 10:25:08
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -271,8 +271,6 @@ class MySQL extends Base{
 		// 是否记录查询 数量
 		if ($count) {
 			$q .= 'COUNT(' . ($groupby ? 'DISTINCT ' . $groupby : '*') . ') AS count';
-		} elseif (!empty($query['$foundRows']) && $query['$foundRows'] === true) {
-			$q .= ' SQL_CALC_FOUND_ROWS ' . implode(', ', $fields) . ' ';
 		} else {
 			$q .= ' ' . implode(', ', $fields) . ' ';
 		}

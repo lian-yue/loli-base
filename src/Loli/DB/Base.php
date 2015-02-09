@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-05 15:05:43
+/*	Updated: UTC 2015-02-07 10:24:13
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -34,9 +34,6 @@ abstract class Base{
 
 	// 创建数据的返回 ID
 	public $insertID = 0;
-
-	// 查询带有 foundRows 的数量
-	public $foundRows = 0;
 
 	// 是否自动提交
 	public $autoCommit = true;

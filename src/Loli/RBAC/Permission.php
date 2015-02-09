@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-03 07:09:40
-/*	Updated: UTC 2015-01-22 15:03:59
+/*	Updated: UTC 2015-02-06 12:45:46
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -51,7 +51,7 @@ class Permission extends Query{
 	public $updates = true;
 	public $deletes = true;
 
-	public function r($r, $c = true) {
+	protected function r($r, $c = true) {
 		if ($c && $this->ttl) {
 			$key = json_encode(['roleID' => $r->roleID, 'nodeID' => $r->nodeID]);
 			$this->slave ? $this->cache->add($r, $key, get_class($this), $this->ttl) : $this->cache->set($r, $key, get_class($this), $this->ttl);
@@ -63,7 +63,7 @@ class Permission extends Query{
 		return $r;
 	}
 
-	public function w($new, $old, $args) {
+	protected function w($new, $old, $args) {
 		if (isset($new['args'])) {
 			$new['args'] = empty($new['args']) ? '' : $new['args'];
 		}

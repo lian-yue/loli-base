@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-18 18:43:50
-/*	Updated: UTC 2015-01-14 12:19:09
+/*	Updated: UTC 2015-02-07 12:53:32
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -110,28 +110,26 @@ class IP{
 	*
 	*	返回值 数组
 	**/
-	public static function cidr($ip, $cidr = 0, $is_binary = false) {
+	public static function cidr($ip, $cidr = 0, $isBinary = false) {
 		$binary = self::binary($ip);
 		$len = strlen($binary);
-		$cidr = ($cidr = absint($cidr)) > $len ? $len : $cidr;
+		$cidr = $cidr > $len ? $len : $cidr;
 		$binary = substr($binary, 0, $cidr);
 
 		$a[] = str_pad($binary, $len, '0', STR_PAD_RIGHT);
 		$a[] = str_pad($binary, $len, '1', STR_PAD_RIGHT);
 
-		if (!$is_binary) {
+		if (!$isBinary) {
 			foreach ($a as &$v) {
 				$temp = '';
 				foreach (str_split($v, 8) as $vv) {
 					$temp .= chr(bindec($vv));
 				}
-				$v = strtolower(inet_ntop($temp));
+				$v = inet_ntop($temp);
 			}
 		}
 		return $a;
 	}
-
-
 
 	/**
 	*	ip 查询
@@ -140,7 +138,7 @@ class IP{
 	*
 	*	返回值 bool
 	**/
-	public static function whois($ip, $quotes = []) {
+	public static function whois($ip, &$quotes = []) {
 		$query = [];
 		$ip .= "\n";
 		$hostname = 'whois.iana.org';
@@ -354,17 +352,6 @@ class IP{
 		}
 		$descr = trim($descr);
 		return ['start' => $inetnum[0], 'end' => $inetnum[1], 'netname' => $netname, 'country' => $country, 'descr' => $descr, 'address' => $address];
-	}
-
-	/**
-	*	当前ip地址
-	*
-	*	无参数
-	*
-	*	返回当前用户的ip 地址
-	**/
-	public static function current() {
-		return current_ip();
 	}
 }
 

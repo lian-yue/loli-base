@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-05 06:52:20
+/*	Updated: UTC 2015-02-07 16:06:57
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -83,6 +83,7 @@ class Date{
 	public static $name = '';
 
 	public static function init() {
+		self::$timezone = '+00:00';
 		if (!empty($_SERVER['LOLI']['DATE'])) {
 			foreach ($_SERVER['LOLI']['DATE'] as $k => $v) {
 				if (in_array($k, ['timezone', 'allTimezone', 'name'])) {
@@ -91,14 +92,13 @@ class Date{
 			}
 		}
 
-
 		//self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
 
 		// COOKIE
-		self::$name && ($cookie = Cookie::get(self::$name)) && self::setTimezone((string)$cookie);
+		self::$name && ($value = Router::request()->getCookie(self::$name)) && self::setTimezone((string)$value);
 
 		// GET POST
-		self::$name && !empty($_REQUEST[self::$name]) && self::setTimezone((string)$_REQUEST[self::$name]);
+		self::$name && ($value = Router::request()->getParam(self::$name)) && self::setTimezone((string)$value);
 	}
 
 
@@ -155,7 +155,7 @@ class Date{
 			return false;
 		}
 		self::$timezone = $timezone;
-		$cookie && self::$name && Cookie::set(self::$name, $timezone, 86400 * 365);
+		$cookie && self::$name && Router::response()->setCookie(self::$name, $timezone, 86400 * 365);
 		return true;
 	}
 

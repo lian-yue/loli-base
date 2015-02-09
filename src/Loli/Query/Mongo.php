@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-05 05:03:53
-/*	Updated: UTC 2015-02-05 09:08:01
+/*	Updated: UTC 2015-02-07 10:28:49
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -176,9 +176,6 @@ class Mongo extends Base{
 		if ($sort = $this->_sort($query)) {
 			$args['sort'] = $sort;
 		}
-		if (isset($query['$foundRows']) && $query['$foundRows'] === true) {
-			$args['foundRows'] = true;
-		}
 
 		// 分组的
 		if ($groupby && empty($args['limit']) && empty($args['skip']) && !in_array('_id', $groupby) && !array_diff($groupby, array_keys($args['fields']))) {
@@ -228,7 +225,7 @@ class Mongo extends Base{
 		}
 
 		// 带有函数并且 没 统计所有数量的
-		/*if (($function || ($groupby && !in_array('_id', $groupby))) && empty($args['foundRows']) ) {
+		/*if (($function || ($groupby && !in_array('_id', $groupby))) ) {
 
 
 			$pipeline = [];

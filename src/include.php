@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-02-06 11:49:58
+/*	Updated: UTC 2015-02-09 15:10:24
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -22,61 +22,21 @@ date_default_timezone_set('UTC');
 // 修改默认编码
 mb_internal_encoding('UTF-8');
 
+// 禁用XML 外部实体
+libxml_disable_entity_loader(true);
 
-// 修改 IIS 的  _SERVER 信息
-if (empty($_SERVER['REQUEST_URI']) || (php_sapi_name() != 'cgi-fcgi' && !empty($_SERVER['SERVER_SOFTWARE']) && preg_match('/^Microsoft-IIS\//', $_SERVER['SERVER_SOFTWARE']))) {
-
-	if (isset($_SERVER['HTTP_X_ORIGINAL_URL'])) {
-		// IIS Mod-Rewrite 静态化
-		$_SERVER['REQUEST_URI'] = $_SERVER['HTTP_X_ORIGINAL_URL'];
-	} elseif (isset($_SERVER['HTTP_X_REWRITE_URL'])) {
-		// IIS Isapi_Rewrite 静态化
-		$_SERVER['REQUEST_URI'] = $_SERVER['HTTP_X_REWRITE_URL'];
-	} else {
-		// 如果 没有 PATH_INFO  使用  ORIG_PATH_INFO
-		if (!isset($_SERVER['PATH_INFO']) && isset($_SERVER['ORIG_PATH_INFO'])) {
-			$_SERVER['PATH_INFO'] = $_SERVER['ORIG_PATH_INFO'];
-		}
-		// IIS 某些 配置 途径信息 无需添加 两次
-		if (isset($_SERVER['PATH_INFO'])) {
-			if ($_SERVER['PATH_INFO'] == $_SERVER['SCRIPT_NAME']) {
-				$_SERVER['REQUEST_URI'] = $_SERVER['PATH_INFO'];
-			} else {
-				$_SERVER['REQUEST_URI'] = $_SERVER['SCRIPT_NAME'] . $_SERVER['PATH_INFO'];
-			}
-		}
-
-		// 追加查询字符串, 如果它存在, 并且不为空
-		if (! empty($_SERVER['QUERY_STRING'])) {
-			$_SERVER['REQUEST_URI'] .= '?' . $_SERVER['QUERY_STRING'];
-		}
-	}
-}
-
-// 为PHP解决所有请求CGI主机 SCRIPT_FILENAME , 在php.cgi设置的东西结束
-if (isset($_SERVER['SCRIPT_FILENAME']) && (strpos($_SERVER['SCRIPT_FILENAME'], 'php.cgi') == strlen($_SERVER['SCRIPT_FILENAME']) - 7)) {
-	$_SERVER['SCRIPT_FILENAME'] = $_SERVER['PATH_TRANSLATED'];
-}
-// 修改 Dreamhost  和 CGI 的
-if (strpos($_SERVER['SCRIPT_NAME'], 'php.cgi') !== false) {
-	unset($_SERVER['PATH_INFO']);
-}
-// 修改 空 PHP_SELF
-if (empty($_SERVER['PHP_SELF']) && !empty($_SERVER['REQUEST_URI'])) {
-	$_SERVER['PHP_SELF'] = preg_replace('/(\?.*)?$/', '', $_SERVER['REQUEST_URI']);
-}
-
-// Loli 目录
+// 系统版本号
 const VERSION = '1.0.2';
 
+// 系统技术支持
 const SUPPORT = 'Loli.Net';
 
-// 版本号
-headers_sent() || header('X-Version: ' . VERSION);
 
-// 技术支持
-headers_sent() || header('X-Support: ' . SUPPORT);
-
+// 版本信息
+if (!headers_sent()) {
+	header('X-Version: ' . VERSION);
+	header('X-Support: ' . SUPPORT);
+}
 
 // Debug
 if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
@@ -84,20 +44,15 @@ if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 }
 
 
-$func = function($key) {
-	return require __DIR__ . '/Model/'.$key.'.php';
-};
+// 注册 DB 全局
+Model::__reg('DB', function() {
+	empty($_SERVER['LOLI']['DB']) && trigger_error( 'Variables $_SERVER[\'LOLI\'][\'DB\'] does not exist', E_USER_ERROR);
+	$class = __NAMESPACE__ . '\DB\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? (class_exists('MySQLi') ? 'MySQLi' : 'MySQL') : $_SERVER['LOLI']['DB']['type']);
+	return $class($_SERVER['LOLI']['DB']);
+});
 
-// 缓存
-Model::__reg('Cache', $func);
-
-// 静态
-Model::__reg('DB', $func);
-
-// 查询对象
-Model::__reg('Query', $func);
-
-// Session
-Model::__reg('Session', $func);
-
-unset($func);
+// 注册 Query 全局
+Model::__reg('Query', function() {
+	$class = __NAMESPACE__. '\Query\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? 'MySQL' : $_SERVER['LOLI']['DB']['type']);
+	return new $class;
+});

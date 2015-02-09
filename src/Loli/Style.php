@@ -11,8 +11,8 @@
 /*	Updated: UTC 2015-01-21 14:43:45
 /*
 /* ************************************************************************** */
-namespace Loli\Controller;
-class_exists('Loli\Controller\Resources') || exit;
+namespace Loli;
+class_exists('Loli\Resources') || exit;
 class Style extends Resources{
 	public $default = ['type' => 'text/css', 'media' => 'all', 'priority' => 10];
 	public function call($value, $args, $key) {

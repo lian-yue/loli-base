@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-10-25 12:08:21
-/*	Updated: UTC 2015-02-03 09:19:55
+/*	Updated: UTC 2015-02-07 17:04:56
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
@@ -49,7 +49,7 @@ class SSH2 extends Base{
 		}
 	}
 
-	private function link() {
+	private function _link() {
 		if ($this->_link !== null) {
 			return $this->_link;
 		}

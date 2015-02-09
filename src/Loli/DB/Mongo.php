@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-05 16:18:13
+/*	Updated: UTC 2015-02-07 13:03:01
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -44,14 +44,6 @@ class Mongo extends Base{
 	public function connect($args) {
 		try {
 			$MongoClient = new MongoClient(!empty($args['link']) ? $args['link'] : ('mongodb://'. (empty($args['host']) ? MongoClient::DEFAULT_HOST : $args['host']) .':' . (empty($args['port']) ? MongoClient::DEFAULT_PORT : $args['port'])));
-		} catch (MongoException $e) {
-			$this->_error = $e->getMessage();
-			$this->_errno = $e->getCode();
-			$this->debug && $this->exitError('MongoClient()');
-			return false;
-		}
-
-		try {
 			$link = $MongoClient->selectDB($args['name']);
 			if (!empty($args['pass'])) {
 				$link->authenticate($args['user'], $args['pass']);
@@ -59,7 +51,7 @@ class Mongo extends Base{
 		} catch (MongoException $e) {
 			$this->_error = $e->getMessage();
 			$this->_errno = $e->getCode();
-			$this->debug && $this->exitError('MongoClient()->authenticate()');
+			$this->debug && $this->exitError('MongoClient()');
 			return false;
 		}
 		return $link;
@@ -548,9 +540,6 @@ class Mongo extends Base{
 					++self::$queryRow;
 					$r[] = (object) $this->_toString($v);
 				}
-				if (!empty($args['foundRows'])) {
-					$this->foundRows = count($r);
-				}
 			} catch (MongoException $e) {
 				$this->_error = $e->getMessage();
 				$this->_errno = $e->getCode();
@@ -582,9 +571,6 @@ class Mongo extends Base{
 				++self::$querySum;
 				$query_str = $args['distinct'] .'.distinct('. $args['key'] .', '. json_encode($args['query']) .')';
 				$this->data[$query_str] = $distinct = $link->{$args['distinct']}->distinct($args['key'], $args['query']);
-				if (!empty($args['foundRows'])) {
-					$this->foundRows = empty($distinct) ? 0 : count($distinct);
-				}
 			} catch (MongoException $e) {
 				$this->_error = $e->getMessage();
 				$this->_errno = $e->getCode();
@@ -686,10 +672,6 @@ class Mongo extends Base{
 					$cursor = $cursor->addOption($k, $v);
 					$query_str .= '.addOption('. $k .', '. (is_array($v) || is_object($v) ? json_encode($v)  : $v) .')';
 				}
-			}
-			if (!empty($args['foundRows'])) {
-				++self::$querySum;
-				$this->data[$query_str . '.count(true)'] = $this->foundRows = $cursor->count(true);
 			}
 			if (!empty($args['sort'])) {
 				$cursor = $cursor->sort($args['sort']);

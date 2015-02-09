@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 12:09:10
-/*	Updated: UTC 2015-01-24 06:29:29
+/*	Updated: UTC 2015-02-08 17:52:54
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -30,7 +30,7 @@ class Curl{
 	public $resources = [];
 
 	// 自动加载
-	public function __construct($a = [], $cookie = false) {
+	public function __construct(array $a = [], $cookie = false) {
 		$this->cookie = $cookie == false ? (empty($_SERVER['LOLI']['CURL']['cookie']) ? './' : $_SERVER['LOLI']['CURL']['cookie']) : $cookie;
 		$this->defaults = $a + [
 			CURLOPT_SSL_VERIFYPEER => false,
@@ -96,7 +96,7 @@ class Curl{
 	*
 	*	bool
 	**/
-	public function add($key, $url, $curl = []) {
+	public function add($key, $url, array $curl = []) {
 		if (!empty($this->curl[$key])) {
 			return false;
 		}
@@ -113,7 +113,7 @@ class Curl{
 	*
 	*	bool
 	**/
-	public function set($key, $url, $curl = []) {
+	public function set($key, $url, array $curl = []) {
 		$this->curl[$key] = ['url' => $url, 'curl' => $curl];
 		$this->info[$key] = [];
 		return true;
@@ -152,10 +152,8 @@ class Curl{
 	}
 
 
-	public function flush() {
-		$this->info = [];
-		$this->curl = [];
-		$this->resources = [];
+	public function clear() {
+		$this->info = $this->curl = $this->resources = [];
 		return true;
 	}
 

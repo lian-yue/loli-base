@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-15 14:00:37
-/*	Updated: UTC 2015-02-04 16:29:51
+/*	Updated: UTC 2015-02-07 15:38:08
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -17,7 +17,7 @@ class Debug {
 	// display 需要输出并且结束的错误
 	public $display = null;
 
-	// arg debug输出是否输出 arg内容
+	// arg debug输出是否输出 args内容
 	public $args = false;
 
 
@@ -33,9 +33,10 @@ class Debug {
 				$this->$k = $v;
 			}
 		}
-		// debug 的
+		// Debug 的
 		set_error_handler([$this, 'errorHandler']);
 		set_exception_handler([$this, 'exceptionHandler']);
+
 
 		// 需要显示的错误级别
 		$this->display === null || error_reporting($this->display);
@@ -48,6 +49,8 @@ class Debug {
 			$this->log && @ini_set('error_log', sprintf(is_string($this->log) ? $this->log : dirname(__DIR__). '/Debug/%s.log', gmdate('Y-m-d H-i')));
 		}
 	}
+
+
 
 	public function errorHandler($errno, $error, $errFile, $errLine, $errContext) {
 		// 被 @ 取消的
@@ -63,6 +66,7 @@ class Debug {
 		}
 		ini_get('display_errors') &&  $this->_display($errno, $error, debug_backtrace());
 	}
+
 
 	public function exceptionHandler($a) {
 		$trace = array_merge([['file' => $a->getFile(), 'line' => $a->getLine()]], $a->getTrace());
@@ -112,8 +116,6 @@ class Debug {
 
 		// ajax 的
 		if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-			header('Content-Type: application/json; charset=UTF-8');
-
 			$a = [];
 			foreach ($trace as $k => $v) {
 				if (empty($v['file'])) {
@@ -138,11 +140,19 @@ class Debug {
 
 				$a[] = ['file' => $this->dir ? ltrim(strtr(preg_replace('/^'. preg_quote($this->dir, '/') .'/', '', $v['file']), '\\', '/'), '/') : $v['file'], 'line' => $v['line'], 'func' => $func, 'args' => $args];
 			}
-			echo json_encode(['errno' => $errno, 'error' => $error, 'trace' => $a]);
+			$isJS = empty($_SERVER['HTTP_ACCEPT']) ? false : stripos(explode(';', $_SERVER['HTTP_ACCEPT'])[0], 'javascript');
+			if (!headers_sent()) {
+				header('Content-Type: application/'. ($isJS ? 'javascript': 'json'). '; charset=UTF-8');
+			}
+			$json = json_encode(['errno' => $errno, 'error' => $error, 'trace' => $a]);
+			if ($isJS) {
+				$json =  '<script type="text/javascript>window.console.log('.$json.')</script>';
+			}
+			echo $json;
 			exit;
 		}
 
-		header('Content-Type:text/html; charset=UTF-8');
+		headers_sent() || header('Content-Type:text/html; charset=UTF-8');
 		$a[] = '<!DOCTYPE html>';
 		$a[] = '<html xmlns="http://www.w3.org/1999/xhtml">';
 		$a[] = '<head>';

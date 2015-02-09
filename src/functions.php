@@ -8,58 +8,9 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-06 12:14:37
+/*	Updated: UTC 2015-02-08 16:54:58
 /*
 /* ************************************************************************** */
-
-
-
-/**
-*	判断是否是 email
-*
-*	1 参数 email邮箱
-*
-*	返回值 成功返回 1参数 失败返回 假
-**/
-function is_email($email) {
-	return filter_var($email, FILTER_VALIDATE_EMAIL);
-}
-
-/**
- * 判断是否是文件名
- * @param  [type]  $name [description]
- * @return boolean       [description]
- */
-function is_filename($name) {
-	if (!$name || trim($name, " \t\n\r\0\x0B.") != $name || preg_replace('/[\\\"\<\>\|\?\*\:\/	]/', '', $name) != $name || strlen($name) > 255) {
-		return false;
-	}
-	return $name;
-}
-
-/**
- * 判断是否是文件路径
- * @param  [type]  $path [description]
- * @return boolean       [description]
- */
-function is_filepath($path) {
-	if (strlen($path) > 2048) {
-		return false;
-	}
-	$path = preg_replace('/[\/\\\\]+/', '/', $path);
-	if (!$path = trim($path, '/')) {
-		return '/';
-	}
-	foreach(explode('/', $path) as $v) {
-		if(!is_filename($v)) {
-			return false;
-		}
-	}
-	return $path;
-}
-
-
-
 
 /**
  * 数据库查询次数
@@ -85,7 +36,7 @@ function load_time($decimal = 4) {
  * @param  integer $decimal 小数点精确
  * @return float
  */
-function load_memory($decimal = 4) {
+function load_ram($decimal = 4) {
 	return number_format((memory_get_peak_usage() / 1024 / 1024), $decimal);
 }
 
@@ -165,82 +116,6 @@ function to_object($a) {
 }
 
 
-/**
-*	获得 访问者 IP
-*
-*	无参数
-*
-*	返回值 用户
-**/
-function current_ip() {
-	static $ip;
-	if (!isset($ip)) {
-		$ip = false;
-		if (!empty($_SERVER['REMOTE_ADDR'])) {
-			$ip = $_SERVER['REMOTE_ADDR'];
-		}
-		if (empty($_SERVER['LOLI']['IP']['PROXY'])) {
-
-		} elseif (isset($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP)) {
-			$ip = $_SERVER['HTTP_CLIENT_IP'];
-		} elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-			foreach (explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']) as $v) {
-				$v = trim($v);
-				if (filter_var($v, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) && $_SERVER['SERVER_ADDR'] != $v) {
-					$ip = $v;
-					break;
-				}
-			}
-		}
-
-		// 兼容请求地址
-		if ($ip) {
-			$ip = inet_ntop(inet_pton($ip));
-			if (preg_match('/^(.*(.)\:)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/', $ip, $matches)) {
-				if ($matches[1] === '::') {
-					// ipv4 访问 ipv6
-					$ip = $matches[3];
-				} else {
-					// ipv6 访问 ipv4
-					$ip = $matches[1];
-					$pos = strpos($ip, '::') !== false;
-					$arr = str_split(str_pad(dechex(ip2long($matches[3])), 8, '0', STR_PAD_LEFT), 4);
-					$ip = $matches[1];
-					if (strpos($ip, '::') === false) {
-						$ip .= ltrim($arr[0], '0') . ':' . ltrim($arr[1], '0');
-					} else {
-						$ip .= $arr[0] === '0000' ? ($matches[2] == ':' ? '' : '0:') : ltrim($arr[0], '0') . ':';
-						$ip .= $arr[1] === '0000' ? ($matches[2] == ':' ? '' : '0') : ltrim($arr[1], '0');
-					}
-				}
-			}
-		}
-	}
-	return $ip;
-}
-
-
-
-
-
-/**
-*	获取当前 url
-*
-*	无参数
-*
-*	返回值 当前 的url
-**/
-function current_url() {
-	if (empty($_SERVER['HTTP_HOST'])) {
-		return false;
-	}
-	$url = is_ssl() ? 'https://' : 'http://';
-	$url .= $_SERVER['HTTP_HOST'];
-	$url .= isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : (isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : '/');
-	return $url;
-}
-
-
 
 /**
 *	删除 数组中 的 null 值
@@ -262,40 +137,6 @@ function array_unnull(array $a, $call = false) {
 	return $a;
 }
 
-
-/**
-*	判断是否是 ssl 访问
-*
-*	无参数
-*
-*	返回值 true = http false = https
-**/
-function is_ssl() {
-	if (isset($_SERVER['HTTPS']) && ('on' == strtolower($_SERVER['HTTPS']) || '1' == $_SERVER['HTTPS'])) {
-		return true;
-	}
-	if (isset($_SERVER['SERVER_PORT']) && '443' == $_SERVER['SERVER_PORT']) {
-		return true;
-	}
-	return false;
-}
-
-/**
-*	判断是否是 移动 设备
-*
-*	无参数
-*
-*	返回值 true = http false = https
-**/
-function is_mobile() {
-	if (empty($_SERVER['HTTP_USER_AGENT'])) {
-		return false;
-	}
-	if (strpos($_SERVER['HTTP_USER_AGENT'], 'Mobile') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Android') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Silk/') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Kindle') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'BlackBerry') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Opera Mini') !== false || strpos($_SERVER['HTTP_USER_AGENT'], 'Opera Mobi') !== false) {
-		return true;
-	}
-	return false;
-}
 
 
 /**
@@ -391,17 +232,6 @@ function merge_url(array $parse) {
 }
 
 
-/**
- * url 路径
- * @return string
- */
-function url_path() {
-	if (empty($_SERVER['REQUEST_URI'])) {
-		return false;
-	}
-	return '/' . urldecode(explode('?', ltrim($_SERVER['REQUEST_URI'], '/'))[0]);
-}
-
 
 
 
@@ -488,98 +318,6 @@ function prioritysortcall($a, $b) {
 }
 
 
-
-
-/**
-*
-*	1 参数 key 值
-*
-*	返回值 '' 或者
-**/
-function g($k, $d='') {
-	return isset($_GET[$k]) ? (is_array($_GET[$k]) ? ($_POST[$k]? '': '1') :(string) $_GET[$k]) : $d;
-}
-
-/**
-*	返回 无html 标签 无 ' " 的 REQUEST 参数
-*
-*	1 参数 key 值
-*
-*	返回值 '' 或者
-**/
-function r($k, $d= '') {
-	return isset($_REQUEST[$k]) ? (is_array($_REQUEST[$k]) ? ($_POST[$k]? '': '1') :(string) $_REQUEST[$k]) : $d;
-}
-/**
-*	返回 无html 标签 无 ' " 的 REQUEST 参数
-*
-*	1 参数 key 值
-*
-*	返回值 '' 或者
-**/
-function p($k, $d='') {
-	return isset($_POST[$k]) ? (is_array($_POST[$k]) ? ($_POST[$k]? '': '1') :(string) $_POST[$k]) : $d;
-}
-
-
-/**
-*	获得 redirect 转向地址
-*
-*	1 参数 redirect 地址
-*	2 参数 默认 redirect 地址 也是 只允许的 redirect 域名
-*	返回值 redirect 地址
-**/
-
-function get_redirect($redirect = [], $default = []) {
-	$redirect = (array) $redirect;
-	$default = $default ? (array) $default : [];
-	if (!empty($_REQUEST['redirect'])) {
-		$redirect[] = $_REQUEST['redirect'];
-	}
-
-	if (in_array('cookie',  $redirect) && !empty($_COOKIE['redirect'])) {
-		$redirect[] = $_COOKIE['redirect'];
-	}
-	if (in_array('referer',  $redirect) && !empty($_SERVER["HTTP_REFERER"])) {
-		$redirect[] = $_SERVER["HTTP_REFERER"];
-	}
-	$r = reset($default);
-	$break = false;
-	foreach ($redirect as $v) {
-		if ($v && is_string($v) && !in_array($v, ['referer', 'cookie'])) {
-			if (!preg_match('/^(https?\:)?\/\/\w+\.\w+/i', $v)) {
-				if ($v{0} != '/') {
-					$v = substr($path = url_path(), -1, 1) == '/' ? $path . $v : dirname($path) .'/'. $v;
-				}
-				$v = empty($_SERVER['HTTP_HOST']) ? '/' . ltrim($v, '/') : '//'. $_SERVER['HTTP_HOST'] . '/' . ltrim($v, '/');
-			}
-			foreach ($default as $vv) {
-				if ($break = domain_match($v, $vv)) {
-					break;
-				}
-			}
-			if (!$default || $break) {
-				$r = $v;
-				break;
-			}
-		}
-	}
-	return $r;
-}
-
-
-/**
-*	设置无缓存
-*
-*
-*	返回值 header
-**/
-function http_no_cache() {
-	header("Expires: -1");
-	header("Cache-Control: no-cache, must-revalidate, no-store, private, post-check=0, pre-check=0, max-age=0", false);
-	header("Pragma: no-cache");
-	return true;
-}
 
 
 function mb_rand($length, $string = false) {

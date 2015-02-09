@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-03 16:33:56
-/*	Updated: UTC 2015-02-03 16:54:37
+/*	Updated: UTC 2015-02-06 14:03:57
 /*
 /* ************************************************************************** */
 namespace Loli\Search;
@@ -21,7 +21,7 @@ class Keyword extends Query{
 		'status' => '',
 		'length' => '',
 		'number' => '>=',
-		'language' => '',
+		'country' => '',
 		'dateline' => '<=',
 	];
 
@@ -31,7 +31,7 @@ class Keyword extends Query{
 		'status' => 0,
 		'length' => 0,
 		'number' => 0,
-		'language' => 0,
+		'country' => 0,
 		'dateline' => 0,
 	];
 
@@ -44,14 +44,21 @@ class Keyword extends Query{
 		'status' => ['type' => 'int', 'unsigned' => true, 'length' => 1, 'key' => ['status' => 0]],
 		'length' => ['type' => 'int', 'unsigned' => true, 'length' => 1, 'key' => ['length' => 0]],
 		'number' => ['type' => 'int', 'unsigned' => true, 'key' => ['number' => 0]],
-		'language' => ['type' => 'int', 'length' => 2, 'unsigned' => true, 'key' => ['language' => 0]],
+		'country' => ['type' => 'text', 'length' => 2, 'key' => ['country' => 0]],
 		'dateline' => ['type' => 'int', 'unsigned' => true, 'key' => ['dateline' => 0]],
 	];
 
 	public $add = true;
 
-	public $update = ['status', 'number', 'language'];
+	public $update = ['status', 'number', 'country'];
 
 	public $delete = true;
+
+
+	public $country;
+
+	function country() {
+
+	}
 
 }

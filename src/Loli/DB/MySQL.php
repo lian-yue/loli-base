@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-05 15:05:14
+/*	Updated: UTC 2015-02-07 10:24:43
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -83,11 +83,6 @@ class MySQL extends Base{
 				++self::$queryRow;
 			}
 			$r && mysql_free_result($q);
-
-
-			if (preg_match('/^\s*SELECT.*(?:\s+SQL_CALC_FOUND_ROWS\s+).*(?=\s+FROM\s+)/is', $query)) {
-				$this->foundRows = $this->count('SELECT FOUND_ROWS();', $slave);
-			}
 
 			if ($this->debug && preg_match('/^\s*SELECT /i', $query)) {
 				$this->query('EXPLAIN ' . $query, $slave);
@@ -189,6 +184,4 @@ class MySQL extends Base{
     	$this->autoCommit = true;
 		return $this->query('ROLLBACK;', false);
     }
-
-
 }

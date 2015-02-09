@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-05 15:05:26
+/*	Updated: UTC 2015-02-07 13:03:43
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -22,7 +22,7 @@ class MySQLi extends Base{
 		if (($link = $this->link($this->slave)) && $link->connect_error) {
 			return $link->connect_error;
 		}
-		return $link ? $link->error : mysqli_error();
+		return $link ? $link->error : @mysqli_error();
 	}
 
 
@@ -33,7 +33,7 @@ class MySQLi extends Base{
 		if (($link = $this->link($this->slave)) && $link->connect_errno) {
 			return $link->connect_errno;
 		}
-		return $link ? $link->errno : mysqli_errno();
+		return $link ? $link->errno : @mysqli_errno();
 	}
 
 
@@ -87,11 +87,6 @@ class MySQLi extends Base{
 				++self::$queryRow;
 			}
 			$r && $q->free_result();
-
-
-			if (preg_match('/^\s*SELECT.*(?:\s+SQL_CALC_FOUND_ROWS\s+).*(?=\s+FROM\s+)/is', $query)) {
-				$this->foundRows = $this->count('SELECT FOUND_ROWS();', $slave);
-			}
 
 			if ($this->debug && preg_match('/^\s*(SELECT) /i', $query)) {
 				$this->query('EXPLAIN ' . $query, $slave);

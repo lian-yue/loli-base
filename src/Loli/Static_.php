@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-03 09:18:44
+/*	Updated: UTC 2015-02-07 09:45:46
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -65,7 +65,7 @@ class Static_{
 		if (strpos($a, '$version') === false && $f && preg_match('/\.[a-z]+$/i', $a)) {
 			$a .= (strpos($a, '?') === false ? '?' : '&') . 'v=$version';
 		}
-		return self::$url . strtr($a, ['$lang' => Lang::$current, '$version' =>self::$version]);
+		return self::$url . strtr($a, ['$lang' => Lang::$current, '$version' => self::$version]);
 	}
 
 	/**

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-10-24 10:41:06
-/*	Updated: UTC 2015-02-05 07:42:26
+/*	Updated: UTC 2015-02-07 13:02:00
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
@@ -250,7 +250,7 @@ class Redis extends Base{
 				}
 
 			} catch (RedisException $e) {
-				trigger_error('Redis '. $host .':' . $port, E_USER_WARNING);
+				trigger_error('Redis '. $host .':' . $port . ' message: ' . $e->getMessage(), E_USER_WARNING);
 			}
 		}
 		return $this->_servers[$list][$key]['obj'];

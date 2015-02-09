@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-18 07:04:24
-/*	Updated: UTC 2015-02-05 07:36:05
+/*	Updated: UTC 2015-02-07 16:08:33
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -55,9 +55,24 @@ class Page{
 
 	// 保留的参数
 	public static $query = ['$limit', '$orderby', '$order'];
+
 	public static function lang($a) {
 		return Lang::get($a, ['page', 'default']);
 	}
+
+	public static function init() {
+		// 总共数量
+		self::$count = 0;
+		self::$limit = 0;
+		self::$maxLimit = 50;
+		self::$defaultLimit = 10;
+		self::$offset = false;
+		self::$maxOffset = 0;
+		self::$isOffset = -1;
+		self::$url = false;
+		self::$more = [];
+	}
+
 	public static function count(){
 		return self::$count;
 	}
@@ -202,7 +217,7 @@ class Page{
 	public static function url($more = false) {
 		$value = self::value();
 		if (!self::$url) {
-			$parse = parse_url(current_url());
+			$parse = parse_url(Router::request()->getUrl());
 			$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 			$parse['query'][self::isOffset() ? '$offset': '$page'] = $value;
 			$parse['query'] = merge_string($parse['query']);
@@ -248,7 +263,7 @@ class Page{
 		if (!self::$more ||self::count() < self::limit()) {
 			return false;
 		}
-		$parse = parse_url(current_url());
+		$parse = parse_url(Router::request()->getUrl());
 		$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 		unset($parse['query']['$offset'], $parse['query']['$page']);
 		$parse['query'] = self::$more + $parse['query'];

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 09:43:36
-/*	Updated: UTC 2015-02-02 16:33:54
+/*	Updated: UTC 2015-02-09 17:15:17
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -59,7 +59,7 @@ class Query{
 	public $primary = [];
 
 	// 唯一值 记住是二维数组
-	public $unique = [];
+	public $uniques = [];
 
 	// 默认值
 	public $defaults = [];
@@ -366,7 +366,7 @@ class Query{
 				break;
 		}
 
-		if ($this->ttl && ($r = $this->cache->get($count == 1? reset($a) : json_encode($a), get_class($this)))) {
+		if ($this->ttl && ($r = Cache::get($count == 1? reset($a) : json_encode($a), get_class($this)))) {
 			return $this->r($r, false);
 		}
 		return $this->row($a);
@@ -384,22 +384,26 @@ class Query{
 		if (!$this->lists) {
 			return [];
 		}
-		if (!isset($this->lists['$result']) || !is_array($this->lists['$result'])) {
+		if (!isset($this->lists['$results']) || !is_array($this->lists['$results'])) {
 			// 数量
-			$this->lists['$foundRows'] = !isset($this->lists['$count']) || $this->lists['$count'] === true;
+			$this->lists['$count'] = !isset($this->lists['$count']) || $this->lists['$count'] === true;
 
 			// 内容
-			$this->lists['$result'] = $this->results($this->lists);
+			$this->lists['$results'] = $this->results($this->lists);
 
 			// 数量
-			if ($this->lists['$foundRows']) {
-				$this->lists['$count'] = $this->DB->foundRows;
+			if ($this->lists['$count']) {
+				$this->lists['$count'] = $this->count($this->lists);
 			} else {
-				$this->lists['$count'] = count($this->lists['$count']);
+				$this->lists['$count'] = count($this->lists['$results']);
 			}
-			$this->lists['$foundRows'] = false;
 		}
 
+
+		/*//if ($this->lists['$count'] && !empty($this->lists['$limit'])) {
+
+
+		//}
 
 		// 数量
 		if ($this->lists['$count'] && !empty($this->lists['$limit'])) {
@@ -407,7 +411,7 @@ class Query{
 			$this->Page->limit = $this->lists['$limit'];
 			// 总共数量
 			$this->Page->count = $this->lists['$count'];
-			if (!empty($this->lists['$more']) && ($row = end($this->lists['$result']))) {
+			if (!empty($this->lists['$more']) && ($row = end($this->lists['$results']))) {
 				foreach ($this->lists['$more'] as $k => $v) {
 					if (is_int($k)) {
 						$more[$v] = $row->$v;
@@ -419,14 +423,14 @@ class Query{
 			} else {
 				$this->Page->more = [];
 			}
-		}
+		}*/
 
  		// 内容
-		$r = [];
-		foreach($this->lists['$result'] as $k => $v) {
+		/*$r = [];
+		foreach($this->lists['$results'] as $k => $v) {
 			$r[$k] = clone $v;
-		}
-		return $r;
+		}*/
+		return ['results' => $r, 'count' => $this->lists['$count']];
 	}
 
 
@@ -462,10 +466,10 @@ class Query{
 		}
 
 		// 唯一值检测
-		if ($this->unique) {
-			foreach ($this->unique as $unique) {
+		if ($this->uniques) {
+			foreach ($this->uniques as $uniques) {
 				$qq = [];
-				foreach($unique as $k) {
+				foreach($uniques as $k) {
 					if (!$get = isset($a[$k])) {
 						break;
 					}
@@ -576,10 +580,10 @@ class Query{
 
 
 		// 唯一值检测
-		if ($this->unique) {
-			foreach ($this->unique as $unique) {
+		if ($this->uniques) {
+			foreach ($this->uniques as $uniques) {
 				$q = [];
-				foreach($unique as $k) {
+				foreach($uniques as $k) {
 					if (isset($a[$k])) {
 						$v = $a[$k];
 						if ($v !== $old->{$k}) {
@@ -588,7 +592,7 @@ class Query{
 					}
 				}
 				if ($q) {
-					foreach($unique as $k) {
+					foreach($uniques as $k) {
 						$q[$k] = isset($q[$k]) ? $q[$k] : $old->{$k};
 					}
 					if ($this->DB->row($this->Query->get(['$limit' => 1] + $q, $table), false)) {
@@ -674,17 +678,17 @@ class Query{
 
 		$this->slave = false;
 		// 主要 字段检测 和唯值检测
-		$unique = $this->unique ? $this->unique : [];
+		$uniques = $this->uniques ? $this->uniques : [];
 		if ($this->primary) {
-			$unique = array_merge([$this->primary], $unique);
+			$uniques = array_merge([$this->primary], $uniques);
 		}
-		if ($unique) {
+		if ($uniques) {
 
 			// 取得查询数组
 			$q = [];
 			$i = 0;
 			foreach ($a as $k => $v) {
-				foreach($unique as $vv) {
+				foreach($uniques as $vv) {
 					if (count($vv) == 1) {
 						$kkk = reset($vv);
 						if (isset($v[$kkk])) {
@@ -709,7 +713,7 @@ class Query{
 			if ($q) {
 				foreach($this->DB->results($this->Query->get($q, $table, '*', 'OR'), false) as $v) {
 					foreach($a as $kk => $vv) {
-						foreach($unique as $vvv) {
+						foreach($uniques as $vvv) {
 							$exists = true;
 							foreach ($vvv as $vvvv) {
 								if (!isset($vv[$vvvv]) || $vv[$vvvv] !== $v->{$vvvv}) {
@@ -880,8 +884,8 @@ class Query{
 
 
 		// 主要 字段检测 和唯值检测
-		$unique = array_merge([$this->primary],  $this->unique ? $this->unique : []);
-		foreach ($unique as $v) {
+		$uniques = array_merge([$this->primary],  $this->uniques ? $this->uniques : []);
+		foreach ($uniques as $v) {
 			$for = false;
 			foreach ($v as $vv) {
 				if (isset($a[$vv])) {
@@ -966,6 +970,38 @@ class Query{
 		return $r;
 	}
 
+	public function exists() {
+		$this->slave = false;
+		$r = 0;
+		foreach ((array) $this->table([], -1) as $table) {
+			if ($this->DB->exists($table)) {
+				++$r;
+			}
+		}
+		return $r;
+	}
+
+	public function truncate() {
+		$this->slave = false;
+		$r = 0;
+		foreach ((array) $this->table([], -1) as $table) {
+			if ($this->DB->truncate($table)) {
+				++$r;
+			}
+		}
+		return $r;
+	}
+
+	public function drop() {
+		$this->slave = false;
+		$r = 0;
+		foreach ((array) $this->table([], -1) as $table) {
+			if ($this->DB->drop($table)) {
+				++$r;
+			}
+		}
+		return $r;
+	}
 
 
 	public function create() {
@@ -979,16 +1015,6 @@ class Query{
 		return $r;
 	}
 
-	public function drop() {
-		$this->slave = false;
-		$r = 0;
-		foreach ((array) $this->table([], -1) as $table) {
-			if ($this->DB->drop($this->Query->drop($table), false)) {
-				++$r;
-			}
-		}
-		return $r;;
-	}
 
 
 	// 整理数据类型
@@ -1067,7 +1093,7 @@ class Query{
 			foreach ($this->primary as $v) {
 				$params[$v] = $r->$v;
 			}
-			$this->slave ? $this->cache->add($r, $count == 1 ? reset($params) : json_encode($params), get_class($this), $this->ttl) : $this->cache->set($r, $count == 1 ? reset($params) : json_encode($params), get_class($this), $this->ttl);
+			$this->slave ? Cache::add($r, $count == 1 ? reset($params) : json_encode($params), get_class($this), $this->ttl) : Cache::set($r, $count == 1 ? reset($params) : json_encode($params), get_class($this), $this->ttl);
 		}
 		return $r;
 	}
@@ -1111,7 +1137,7 @@ class Query{
 			$params[$v] = $a->$v;
 		}
 		if ($params) {
-			$this->ttl && $this->cache->delete($count == 1 ? reset($params) : json_encode($params), get_class($this));
+			$this->ttl && Cache::delete($count == 1 ? reset($params) : json_encode($params), get_class($this));
 			call_user_func_array([$this, 'get'], $params);
 		}
 	}

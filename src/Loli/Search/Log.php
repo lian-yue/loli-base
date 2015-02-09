@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-03 16:45:32
-/*	Updated: UTC 2015-02-03 16:52:23
+/*	Updated: UTC 2015-02-06 13:41:36
 /*
 /* ************************************************************************** */
 namespace Loli\Search;
@@ -41,5 +41,4 @@ class Log extends Query{
 	];
 
 	public $add = true;
-
 }

@@ -8,14 +8,14 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-16 09:40:52
+/*	Updated: UTC 2015-02-07 16:02:19
 /*
 /* ************************************************************************** */
 namespace Loli;
 class Lang{
 
 	// 全部语言
-	public static $all = ['en' => '->'];
+	public static $all = ['en' => 'English'];
 
 	// 默认语言
 	public static $default = 'en';
@@ -58,17 +58,17 @@ class Lang{
 		self::_userAll();
 
 		// COOKIE
-		self::$name && ($cookie = Cookie::get(self::$name)) && self::set((string)$cookie);
+		self::$name && ($value = Router::request()->getCookie(self::$name)) && self::set((string)$value);
 
 		// GET POST
-		self::$name && !empty($_REQUEST[self::$name]) && self::set((string)$_REQUEST[self::$name]);
+		self::$name && ($value = Router::request()->getParam(self::$name)) && self::set((string)$value);
 	}
 
 	private static function _userAll() {
 		self::$userAll = [];
 
  		// 正则表达提取语言
-		if (preg_match_all("/(([a-z]{2})[a-z_\-]{0,8})/i", empty($_SERVER["HTTP_ACCEPT_LANGUAGE"]) ? '' : $_SERVER["HTTP_ACCEPT_LANGUAGE"], $arr)) {
+		if (preg_match_all("/(([a-z]{2})[a-z_\-]{0,8})/i", Router::request()->getHeader('Accept-Language'), $arr)) {
 			foreach ($arr[1] as $k => $v) {
 				self::$userAll[] = $v;
 				if ($v != $arr[2][$k]) {
@@ -166,7 +166,7 @@ class Lang{
 		self::$userAll = array_values(array_intersect(array_unique(self::$userAll), array_keys(self::$all)));
 		self::$current = reset(self::$userAll);
 
-		$cookie && self::$name && Cookie::set(self::$name, self::$current, 86400 * 365);
+		$cookie && self::$name && Router::response()->setCookie(self::$name, self::$current, 86400 * 365);
 		return self::$current;
 	}
 
