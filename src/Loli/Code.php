@@ -83,7 +83,6 @@ class Code{
 		}
 
 		return $rand . $code . $test;
-
 	}
 
 

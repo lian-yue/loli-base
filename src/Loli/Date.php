@@ -83,7 +83,6 @@ class Date{
 	public static $name = '';
 
 	public static function init() {
-		self::$timezone = '+00:00';
 		if (!empty($_SERVER['LOLI']['DATE'])) {
 			foreach ($_SERVER['LOLI']['DATE'] as $k => $v) {
 				if (in_array($k, ['timezone', 'allTimezone', 'name'])) {
@@ -95,10 +94,10 @@ class Date{
 		//self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
 
 		// COOKIE
-		self::$name && ($value = Router::request()->getCookie(self::$name)) && self::setTimezone((string)$value);
+		self::$name && ($value = Cookie::get(self::$name)) && self::setTimezone((string)$value);
 
 		// GET POST
-		self::$name && ($value = Router::request()->getParam(self::$name)) && self::setTimezone((string)$value);
+		self::$name && ($value = r(self::$name)) && self::setTimezone((string)$value);
 	}
 
 
@@ -305,3 +304,5 @@ class Date{
 		return ltrim($r ,' :-');
 	}
 }
+
+Date::init();

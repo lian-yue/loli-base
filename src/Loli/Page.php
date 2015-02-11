@@ -60,8 +60,7 @@ class Page{
 
 
 
-	public function __construct(Request $request = null, $url = false, $offset = false, $limit = false) {
-		$this->_request = $request;
+	public function __construct($url = false, $offset = false, $limit = false) {
 		$this->url = $url;
 		$this->offset = $offset;
 		$this->limit = $limit;
@@ -83,7 +82,7 @@ class Page{
 		if ($this->limit) {
 			return $this->limit;
 		}
-		$limit = (int) $this->_request->getParam('$limit', 0);
+		$limit = (int) r('$limit', 0);
 		return $this->limit = $limit > 0 && $limit <= $this->maxLimit ? $limit : $this->defaultLimit;
 	}
 
@@ -93,9 +92,9 @@ class Page{
 			return $this->offset;
 		}
 		if ($this->isOffset()) {
-			return $this->offset = ($offset = (int) $this->_request->getParam('$offset', 0)) < 0 ? 0 : $offset;
+			return $this->offset = ($offset = (int) r('$offset', 0)) < 0 ? 0 : $offset;
 		}
-		return $this->offset = ($page = (int) $this->_request->getParam('$page', 1)) < 0 ? 0 : ($page - 1) * $this->limit();
+		return $this->offset = ($page = (int) r('$page', 1)) < 0 ? 0 : ($page - 1) * $this->limit();
 	}
 
 	// 是否允许偏移

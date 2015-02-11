@@ -263,6 +263,121 @@ function nl2p($str) {
 }
 
 
+function r($name, $defaltValue = '') {
+	return isset($_REQUEST[$name]) ? (is_array($_REQUEST[$name]) ? ($_REQUEST[$name] ? '1' : $defaltValue) : (string) $_REQUEST[$name]) : $defaltValue;
+}
+
+
+function g($name, $defaltValue = '') {
+	return isset($_GET[$name]) ? (is_array($_GET[$name]) ? ($_GET[$name] ? '1' : $defaltValue) : (string) $_GET[$name]) : $defaltValue;
+}
+
+
+function p($name, $defaltValue = '') {
+	return isset($_POST[$name]) ? (is_array($_POST[$name]) ? ($_POST[$name] ? '1' : $defaltValue) : (string) $_POST[$name]) : $defaltValue;
+}
+
+
+
+
+
+/**
+*	获得 访问者 IP
+*
+*	无参数
+*
+*	返回值 用户
+**/
+function current_ip() {
+	static $ip;
+	if (empty($ip)) {
+		$ip = $_SERVER['REMOTE_ADDR'];
+		if (isset($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP)) {
+			$ip = $_SERVER['HTTP_CLIENT_IP'];
+		} elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+			foreach (explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']) as $v) {
+				$v = trim($v);
+				if (filter_var($v, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) && $_SERVER['SERVER_ADDR'] != $v) {
+					$ip = $v;
+					break;
+				}
+			}
+		}
+		// 兼容请求地址
+		if (preg_match('/^(.*(.)\:)(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/', $ip, $matches)) {
+			if (strtolower($matches[1]) === '::ffff:') {
+				// ipv4 访问 ipv6
+				$ip = $matches[3];
+			} else {
+				// ipv6 访问 ipv4
+				$ip = $matches[1];
+				$pos = strpos($ip, '::') !== false;
+				$arr = str_split(str_pad(dechex(ip2long($matches[3])), 8, '0', STR_PAD_LEFT), 4);
+				$ip = $matches[1];
+				if (strpos($ip, '::') === false) {
+					$ip .= ltrim($arr[0], '0') . ':' . ltrim($arr[1], '0');
+				} else {
+					$ip .= $arr[0] === '0000' ? ($matches[2] == ':' ? '' : '0:') : ltrim($arr[0], '0') . ':';
+					$ip .= $arr[1] === '0000' ? ($matches[2] == ':' ? '' : '0') : ltrim($arr[1], '0');
+				}
+			}
+		}
+
+		$ip = strtolower($ip);
+	}
+	return $ip;
+}
+
+
+
+
+
+/**
+*	获取当前 url
+*
+*	无参数
+*
+*	返回值 当前 的url
+**/
+function current_url() {
+	static $url;
+	if (empty($url)) {
+		$url = current_scheme() ? 'https://' : 'http://';
+		$url .= $_SERVER['HTTP_HOST'];
+		$url .= isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : (isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : '/');
+		$url = parse_url($url);
+		$url['query'] = empty($url['query']) ? [] : parse_string($url['query']);
+		$url['query'] = merge_string($url['query']);
+		$url = merge_url($url);
+	}
+	return $url;
+}
+
+
+
+
+/**
+*	判断是否是 ssl 访问
+*
+*	无参数
+*
+*	返回值 true = http false = https
+**/
+function current_scheme() {
+	if (isset($_SERVER['REQUEST_SCHEME'])) {
+		$scheme = $_SERVER['REQUEST_SCHEME'];
+	} elseif (isset($_SERVER['HTTPS']) && ('on' == strtolower($_SERVER['HTTPS']) || '1' == $_SERVER['HTTPS'])) {
+		$scheme = 'https';
+	} elseif (isset($_SERVER['SERVER_PORT']) && '443' == $_SERVER['SERVER_PORT']) {
+		$scheme = 'https';
+	} elseif (isset($_SERVER['SERVER_PORT']) && '443' == $_SERVER['SERVER_PORT']) {
+		$scheme = 'https';
+	} else {
+		$scheme = 'http';
+	}
+
+	return $scheme;
+}
 
 
 /**

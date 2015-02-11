@@ -58,17 +58,17 @@ class Lang{
 		self::_userAll();
 
 		// COOKIE
-		self::$name && ($value = Router::request()->getCookie(self::$name)) && self::set((string)$value);
+		self::$name && ($value = Cookie::get(self::$name)) && self::set((string)$value);
 
 		// GET POST
-		self::$name && ($value = Router::request()->getParam(self::$name)) && self::set((string)$value);
+		self::$name && ($value = r(self::$name)) && self::set((string)$value);
 	}
 
 	private static function _userAll() {
 		self::$userAll = [];
 
  		// 正则表达提取语言
-		if (preg_match_all("/(([a-z]{2})[a-z_\-]{0,8})/i", Router::request()->getHeader('Accept-Language'), $arr)) {
+		if (preg_match_all("/(([a-z]{2})[a-z_\-]{0,8})/i", isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '', $arr)) {
 			foreach ($arr[1] as $k => $v) {
 				self::$userAll[] = $v;
 				if ($v != $arr[2][$k]) {
