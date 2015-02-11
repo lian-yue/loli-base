@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 06:47:03
-/*	Updated: UTC 2015-02-07 10:12:03
+/*	Updated: UTC 2015-02-10 06:49:11
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -23,7 +23,7 @@ class Table{
 	*	2 参数 是否显示 默认 true
 	*	3 参数 附加class
 	**/
-	public static function form($a, $echo = true, $class = '') {
+	public static function form(array $a, $echo = true, $class = []) {
 		$class = (array) $class;
 		$class[] = 'table-form';
 		$r = '<table class="' . implode(' ', $class) .'" >';
@@ -71,7 +71,7 @@ class Table{
 	*	3 参数 是否显示
 	*	4 参数 class
 	**/
-	public static function lists($tbody = [], $thead = [], $echo = true, $class = '') {
+	public static function lists(array $tbody, array $thead, $echo = true, $class = []) {
 		$class = (array) $class;
 		$class[] = 'table-lists';
 		$r = '<table class="'. implode(' ', $class) .'" >';

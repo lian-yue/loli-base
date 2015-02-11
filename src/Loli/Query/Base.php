@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-10-29 15:22:22
-/*	Updated: UTC 2015-02-05 09:07:33
+/*	Updated: UTC 2015-02-10 06:22:25
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -32,7 +32,7 @@ abstract class Base{
 	 * @param  string  $engine 数据库引擎 可选
 	 * @return false or string
 	 */
-	abstract public function create($array, $table, $engine = false);
+	abstract public function create(array $array, $table, $engine = false);
 
 
 	/**
@@ -41,14 +41,14 @@ abstract class Base{
 	 * @param [type] $table 表名称
 	 * @return false or string
 	 */
-	abstract public function add($array, $table);
+	abstract public function add(array $array, $table);
 	/**
 	 * 写入
 	 * @param [type] $array 一维数组 或二维数组
 	 * @param [type] $table 表名称
 	 * @return false or string
 	 */
-	abstract public function set($array, $table);
+	abstract public function set(array $array, $table);
 
 	/**
 	 * 获得
@@ -58,7 +58,7 @@ abstract class Base{
 	 * @param  string $logical 运算符
 	 * @return false or string
 	 */
-	abstract public function get($query, $table, $fields = ['*'], $logical = 'AND');
+	abstract public function get(array $query, $table, $fields = ['*'], $logical = 'AND');
 
 	/**
 	 * 更新
@@ -68,7 +68,7 @@ abstract class Base{
 	 * @param  string $logical 运算符
 	 * @return false or string
 	 */
-	abstract public function update($array, $query, $table, $logical = 'AND');
+	abstract public function update(array $array, array $query, $table, $logical = 'AND');
 
 	/**
 	 * 删除
@@ -77,7 +77,7 @@ abstract class Base{
 	 * @param  string $logical 运算符
 	 * @return false or string
 	 */
-	abstract public function delete($query, $table, $logical = 'AND');
+	abstract public function delete(array $query, $table, $logical = 'AND');
 
 
 	/**

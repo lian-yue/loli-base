@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-01-16 08:04:11
+/*	Updated: UTC 2015-02-10 14:44:19
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -52,16 +52,13 @@ abstract class Base {
 	// jpg 处理质量
 	public $quality = 90;
 
-	// 图片
-	protected $im;
-
 	// 处理图片内存限制
 	public $memory = '512M';
 
 	// 文件后缀
-	public $type = [1 => ['jpg', 'jpeg', 'jpe', 'jfif', 'jif'], 2 => ['gif'], 3 => ['png'], 4 => ['webp']];
+	public $types = [1 => ['jpg', 'jpeg', 'jpe', 'jfif', 'jif'], 2 => ['gif'], 3 => ['png'], 4 => ['webp']];
 
-	public $mime = [1 => 'image/jpeg', 2 => 'image/gif', 3 => 'image/png', 4 => 'image/webp'];
+	public $mimes = [1 => 'image/jpeg', 2 => 'image/gif', 3 => 'image/png', 4 => 'image/webp'];
 	/**
 	*	init
 	*
@@ -118,7 +115,7 @@ abstract class Base {
 	*
 	*	返回值 string
 	**/
-	abstract public function type($type = false);
+	abstract public function type();
 
 	/**
 	 * [frames 帧数量]
@@ -211,15 +208,9 @@ abstract class Base {
 	*	返回值 文件绝对地址
 	**/
 	public function resize($max_w, $max_h, $crop = false, $enlarge = false, $fill = false) {
-
 		// 强制控制大小
 		$this->_maxMin($max_w, $max_h);
-
-		// 处理尺寸
-		if (!$args = $this->resizeDimensions($max_w, $max_h, $crop, $enlarge, $fill)) {
-			return false;
-		}
-		return  call_user_func_array([$this, 'resampled'], $args);
+		return  call_user_func_array([$this, 'resampled'], $this->resizeDimensions($max_w, $max_h, $crop, $enlarge, $fill));
 	}
 
 	/**
@@ -234,8 +225,8 @@ abstract class Base {
 	*	返回值 数组 或者 false
 	**/
 	public function resizeDimensions($max_w = 0, $max_h = 0, $crop = false, $enlarge = false, $fill = false) {
-		if (!$this->im || ($max_w <= 0 && $max_h <= 0)) {
-			return false;
+		if ($max_w <= 0 && $max_h <= 0) {
+			throw new Exception('Resize', 70);
 		}
 
 		$w = $this->width();
@@ -307,7 +298,7 @@ abstract class Base {
 			$src_x = 0;
 			$src_y = 0;
 
-			list($dst_w, $dst_h) = $this->constrain_dimensions($max_w, $max_h, $enlarge);
+			list($dst_w, $dst_h) = $this->constrainDimensions($max_w, $max_h, $enlarge);
 		}
 		$dst_x = 0;
 		$dst_y = 0;
@@ -346,10 +337,7 @@ abstract class Base {
 	*	5 参数 是否放大 默认 false = 禁止放大 true = 允许放大
 	*
 	**/
-	public function constrain_dimensions($max_w = 0, $max_h = 0, $enlarge = false) {
-		if (!$this->im) {
-			return false;
-		}
+	public function constrainDimensions($max_w = 0, $max_h = 0, $enlarge = false) {
 		$w = $this->width();
 		$h = $this->height();
 

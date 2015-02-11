@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-05 05:03:53
-/*	Updated: UTC 2015-02-07 10:28:49
+/*	Updated: UTC 2015-02-10 06:23:58
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -36,7 +36,7 @@ class Mongo extends Base{
 	];
 
 
-	public function create($a, $table, $engine = false) {
+	public function create(array $a, $table, $engine = false) {
 		if (!$table = $this->key($table)) {
 			return false;
 		}
@@ -123,19 +123,19 @@ class Mongo extends Base{
 	}
 
 
-	public function add($array, $table) {
+	public function add(array $array, $table) {
 		return $this->_addSet($array, $table, false);
 	}
 
 
 
-	public function set($array, $table) {
+	public function set(array $array, $table) {
 		return $this->_addSet($array, $table, true);
 	}
 
 
 
-	public function get($query, $table, $fields = ['*'], $logical = 'AND') {
+	public function get(array $query, $table, $fields = ['*'], $logical = 'AND') {
 		if (!is_array($query) || !($args['collection'] = $this->key($table))) {
 			return false;
 		}
@@ -276,7 +276,7 @@ class Mongo extends Base{
 
 
 
-	public function update($array, $query, $table, $logical = 'AND') {
+	public function update(array $array, array $query, $table, $logical = 'AND') {
 		if (!is_array($array) || !is_array($query) || !($table = $this->key($table))) {
 			return false;
 		}
@@ -322,7 +322,7 @@ class Mongo extends Base{
 
 
 
-	public function delete($query, $table, $logical = 'AND') {
+	public function delete(array $query, $table, $logical = 'AND') {
 		if (!$table = $this->key($table)) {
 			return false;
 		}
@@ -398,7 +398,7 @@ class Mongo extends Base{
 
 
 
-	private function _query($query = [], $logical = 'AND', $having = []) {
+	private function _query(array $query, $logical = 'AND') {
 		if (!$query) {
 			return [];
 		}
@@ -618,7 +618,7 @@ class Mongo extends Base{
 	*
 	*
 	**/
-	private function _sort($query) {
+	private function _sort(array $query) {
 		if (empty($query['$orderby'])) {
 			return false;
 		}

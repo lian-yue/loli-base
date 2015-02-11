@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-03-24 11:06:22
-/*	Updated: UTC 2015-01-03 10:31:49
+/*	Updated: UTC 2015-02-10 06:30:32
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -16,7 +16,7 @@ class Form{
 
 	private static $_tags = ['span', 'div', 'p', 'a', 'code'];
 
-	public static function get($a = [], $e = true) {
+	public static function get(array $a, $e = true) {
 		$a['type'] = empty($a['type']) ? 'text' : $a['type'];
 		if ( $a['type']{0} == '_' || strtolower($a['type']) == 'get' || !method_exists(__CLASS__, $a['type'])) {
 			return false;
@@ -26,7 +26,7 @@ class Form{
 
 
 
-	public static function fieldset($a, $e = true, $class = '') {
+	public static function fieldset(array $a, $e = true, $class = '') {
 		$class = (array) $class;
 		$class[] = 'form-fieldset';
 		$r = '<fieldset class="'. implode(' ', $class) .'">';
@@ -55,7 +55,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function text($a = [], $e = true) {
+	public static function text(array $a, $e = true) {
 		return self::_input('text', $a, $e);
 	}
 
@@ -69,7 +69,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function hidden($a = [], $e = true) {
+	public static function hidden(array $a, $e = true) {
 		return self::_input('hidden', $a, $e);
 	}
 
@@ -81,7 +81,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function file($a = [], $e = true) {
+	public static function file(array $a, $e = true) {
 		return self::_input('file', $a, $e);
 	}
 
@@ -93,7 +93,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function password($a = [], $e = true) {
+	public static function password(array $a, $e = true) {
 		return self::_input('password', $a, $e);
 	}
 
@@ -106,7 +106,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function email($a = [], $e = true) {
+	public static function email(array $a, $e = true) {
 		return self::_input('email', $a, $e);
 	}
 
@@ -118,7 +118,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function url($a = [], $e = true) {
+	public static function url(array $a, $e = true) {
 		return self::_input('url', $a, $e);
 	}
 
@@ -130,7 +130,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function search($a = [], $e = true) {
+	public static function search(array $a, $e = true) {
 		return self::_input('search', $a, $e);
 	}
 
@@ -142,7 +142,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function number($a = [], $e = true) {
+	public static function number(array $a, $e = true) {
 		return self::_input('number', $a, $e);
 	}
 
@@ -154,7 +154,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function color($a = [], $e = true) {
+	public static function color(array $a, $e = true) {
 		return self::_input('color', $a, $e);
 	}
 
@@ -166,7 +166,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function range($a = [], $e = true) {
+	public static function range(array $a, $e = true) {
 		return self::_input('range', $a, $e);
 	}
 
@@ -179,7 +179,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function tel($a = [], $e = true) {
+	public static function tel(array $a, $e = true) {
 		return self::_input('tel', $a, $e);
 	}
 
@@ -191,7 +191,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function datetime_local($a = [], $e = true) {
+	public static function datetime_local(array $a, $e = true) {
 		return self::_input('datetime-local', $a, $e);
 	}
 
@@ -203,7 +203,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function image($a = [], $e = true) {
+	public static function image(array $a, $e = true) {
 		return self::_input('image', $a, $e);
 	}
 	/**
@@ -214,7 +214,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function datetime($a = [], $e = true) {
+	public static function datetime(array $a, $e = true) {
 		return self::_input('datetime', $a, $e);
 	}
 	/**
@@ -225,7 +225,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function date($a = [], $e = true) {
+	public static function date(array $a, $e = true) {
 		return self::_input('date', $a, $e);
 	}
 
@@ -237,7 +237,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function month($a = [], $e = true) {
+	public static function month(array $a, $e = true) {
 		return self::_input('month', $a, $e);
 	}
 
@@ -250,7 +250,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function week($a = [], $e = true) {
+	public static function week(array $a, $e = true) {
 		return self::_input('week', $a, $e);
 	}
 
@@ -262,7 +262,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function time($a = [], $e = true) {
+	public static function time(array $a, $e = true) {
 		return self::_input('time', $a, $e);
 	}
 
@@ -274,7 +274,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function submit($a = [], $e = true) {
+	public static function submit(array $a, $e = true) {
 		$a['name'] = isset($a['name']) ? 'submit' : $a['name'];
 		return self::_input('submit', $a, $e);
 	}
@@ -286,7 +286,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function reset($a = [], $e = true) {
+	public static function reset(array $a, $e = true) {
 		return self::_input('reset', $a, $e);
 	}
 
@@ -299,7 +299,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function button($a = [], $e = true) {
+	public static function button(array $a, $e = true) {
 		$a['name'] = empty($a['name']) ? 'button' : $a['name'];
 		self::_filter($a, 'button');
 		$a['type'] = 'submit';
@@ -318,7 +318,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function textarea($a = [], $e = true) {
+	public static function textarea(array $a, $e = true) {
 		self::_filter($a, 'textarea');
 		$r = self::_label($a);
 		$r .= '<textarea '. self::_attr($a, ['value']) .' >'. $a['value'] .'</textarea>';
@@ -335,7 +335,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function select($a = [], $e = true) {
+	public static function select(array $a, $e = true) {
 		self::_filter($a, 'select');
 		$r = self::_label($a);
 		$r .= '<select '. self::_attr($a, ['value', 'option']) .' >';
@@ -364,7 +364,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function radio($a = [], $e = true) {
+	public static function radio(array $a, $e = true) {
 		self::_filter($a, 'radio');
 		$r = '';
 		foreach ($a['option'] as $k => $v) {
@@ -385,7 +385,7 @@ class Form{
 	*
 	*	返回值 或者显示
 	**/
-	public static function checkbox($a = [], $e = true) {
+	public static function checkbox(array $a, $e = true) {
 		if (empty($a['option'])) {
 			return self::_input('checkbox', $a, $e);
 		}
@@ -410,7 +410,7 @@ class Form{
 	*	3 参数 e 是否显示
 	*
 	**/
-	private static function _input($type,  $a = [], $e = true) {
+	private static function _input($type,  array $a, $e = true) {
 		self::_filter($a, $type);
 		$r = self::_label($a);
 		$r .= '<input '. self::_attr($a) . '/>';
@@ -440,7 +440,7 @@ class Form{
 	*
 	*	返回值 label 标签 或 ''
 	**/
-	private static function _label($a) {
+	private static function _label(array $a) {
 		return empty($a['label']) ? '' : '<label for="'. $a['id'] . '" class="label-'. $a['id'] . ' form-label">'. $a['label'] . '</label>';
 	}
 
@@ -451,7 +451,7 @@ class Form{
 	*
 	*	返回值 label 标签 或 ''
 	**/
-	private static function _tags($a, $tags = []) {
+	private static function _tags(array $a, array $tags = []) {
 		$r = '';
 		foreach ( array_intersect_key($a, array_flip($tags?(array)$tags:self::$_tags)) as $k => $v) {
 			if ( $v) {
@@ -478,7 +478,7 @@ class Form{
 	*
 	*	请勿直接使用
 	***/
-	private static function _attr($a, $in = []) {
+	private static function _attr(array $a, array $in = []) {
 		$r = '';
 		foreach ($a as $k => $v) {
 			if ( $k == 'label' || $k == 'legend' || in_array($k, self::$_tags) || in_array($k, $in) || (!$v && !in_array($k, ['value', 'min', 'max']))) {
@@ -503,7 +503,7 @@ class Form{
 	*
 	*	引用返回
 	**/
-	private static function _filter(&$a, $type = 'text') {
+	private static function _filter(array &$a, $type = 'text') {
 		$a['name'] = empty($a['name']) ? 'form' : $a['name'];
 		$i = 'form-' . preg_replace('/[^0-9a-z_-]/i','_', $a['name']);
 		$a = $a + [ 'name' => '', 'class' => '', 'id' => $i, 'value' => '', 'option' => []];
@@ -575,7 +575,7 @@ class Form{
 		return true;
 	}
 
-	private static function _html(&$a, $tags = []) {
+	private static function _html(array &$a, array $tags = []) {
 		foreach ($a as $k => &$v) {
 			if (in_array($k, $tags ? (array)$tags : self::$_tags)) {
 				continue;

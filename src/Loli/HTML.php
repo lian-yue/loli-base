@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-05 06:59:39
+/*	Updated: UTC 2015-02-10 06:36:47
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -227,7 +227,7 @@ class HTML{
 	}
 
 
-	public function __invoke(){
+	public function __invoke() {
 		return call_user_func_array([$this, 'format'], func_get_args());
 	}
 
@@ -269,9 +269,9 @@ class HTML{
 
 		// 没有标签
 		if (!$html || !strstr($html, '<') || !($arr = preg_split("/\<(\s*\/\s*)?([a-z0-9]+)((?:\s+(?:\s*(?:[0-9a-z_:-]+)\s*(?:\=\s*(?:\"[^\"]*\"|\'[^\']*\'|\w*))?)*|))(?(1)|\s*\/?\s*)\>/is", $html, -1, PREG_SPLIT_DELIM_CAPTURE))) {
-			$this->element && $this->push($this->element);
+			$this->element && $this->_push($this->element);
 			$this->html($this->text($html));
-			$this->pop();
+			$this->_pop();
 			return $this->cache['format'][$cache] = trim($this->html);
 		}
 
@@ -304,10 +304,10 @@ class HTML{
 					if ($tag[$v]) {
 
 						// 限制子级
-						$this->sub($v);
+						$this->_sub($v);
 
 						// 限制父级
-						if (!$this->parent($v)) {
+						if (!$this->_parent($v)) {
 							break;
 						}
 
@@ -321,20 +321,20 @@ class HTML{
 						$count = array_count_values($this->layer);
 						$count = $count[$v];
 						while ($count > $this->custom[$v]['nested'] && $this->stack) {
-							if ($this->pop() == $v) {
+							if ($this->_pop() == $v) {
 								$count--;
 							}
 						}
 					}
 
 					// 限制子级
-					$this->sub($v);
+					$this->_sub($v);
 
 					// 限制父级
-					if (!$this->parent($v)) {
+					if (!$this->_parent($v)) {
 						break;
 					}
-					$this->push($v, $attr);
+					$this->_push($v, $attr);
 
 					break;
 				case 2:
@@ -343,7 +343,7 @@ class HTML{
 					$continue = true;
 					$v =strtolower($v);
 					if (!isset($tag[$v]) || !$tag[$v]) {
-						 $this->pop($v);
+						 $this->_pop($v);
 					}
 					break;
 				case 3:
@@ -352,7 +352,7 @@ class HTML{
 					$continue = true;
 					if ($v) {
 						if (!$this->stack && $this->element && trim($v)) {
-							$this->push($this->element);
+							$this->_push($this->element);
 						}
 						$this->html($this->text($v));
 					}
@@ -379,7 +379,7 @@ class HTML{
 			}
 		}
 		while (!empty($this->stack)) {
-			$this->pop();
+			$this->_pop();
 		}
 		return $this->cache['format'][$cache] = trim($this->html);
 	}
@@ -392,7 +392,7 @@ class HTML{
 	*
 	*	返回值 true false
 	**/
-	public function parent($tag) {
+	private function _parent($tag) {
 		// 允许嵌套的父级 (多层次)
 		if (!empty($this->custom[$tag]['parents']) && !in_array($a['tag'], $this->custom[$tag]['parents'])) {
 			return false;
@@ -413,7 +413,7 @@ class HTML{
 	*
 	*	返回值 无
 	**/
-	public function sub($tag) {
+	private function _sub($tag) {
 		$i = 0;
 		do {
 
@@ -425,7 +425,7 @@ class HTML{
 			if ($this->stack) {
 				// 内联 标签 限制
 				while (in_array(end($this->layer), $this->inline) && !in_array($tag, $this->inline) && !in_array($tag, $this->inlineBlock)) {
-					$this->pop();
+					$this->_pop();
 				}
 
 				// 拒绝 允许 子 标签 多级
@@ -440,7 +440,7 @@ class HTML{
 					}
 				}
 				while ($count) {
-					$this->pop();
+					$this->_pop();
 					$count--;
 				}
 
@@ -449,44 +449,27 @@ class HTML{
 				$vv = end($this->layer);
 				if (isset($this->custom[$vv]['allow']) && !in_array($tag, $this->custom[$vv]['allow'])) {
 					$while = true;
-					$this->pop();
+					$this->_pop();
 				} elseif (isset($this->custom[$vv]['refuse']) && in_array($tag, $this->custom[$vv]['refuse'])) {
 					$while = true;
-					$this->pop();
+					$this->_pop();
 				}
 			}
 
 			// 块级元素 内联元素 出现并列
 			if ($this->abreast && $this->above && !in_array($this->above, $this->inline) && !in_array($this->above, $this->inlineBlock) && in_array($tag, $this->inline)) {
-				$this->push($this->abreast);
+				$this->_push($this->abreast);
 				$while = true;
 			}
 
 			// 直接是 内联元素
 			if ($this->element && !$this->stack && !$this->layer && in_array($tag, $this->inline)) {
-				$this->push($this->abreast);
+				$this->_push($this->abreast);
 				$while = true;
 			}
 
 			$i++;
 		} while($while && $i < 3);
-	}
-
-
-
-
-
-	/**
-	*	其他代码转换
-	*
-	*	1 参数 val
-	*
-	*	返回值 转换后的
-	**/
-	public function text($a) {
-		$a = strtr($a, ['"' => '&quot;', '\'' => '&#039;', '<' => '&lt;', '>' => '&gt;']);
-		$this->text && ($a = call_user_func($this->text, $a, $this));
-		return $a;
 	}
 
 
@@ -498,7 +481,7 @@ class HTML{
 	*
 	*	返回值 str 字符串
 	**/
-	public function push($tag, $attr = '') {
+	private function _push($tag, $attr = '') {
 		if (empty($this->count[$tag])) {
 			$this->count[$tag] = 0;
 		}
@@ -523,7 +506,7 @@ class HTML{
 	*
 	*	返回值 true false
 	**/
-	public function pop($tag = '') {
+	private function _pop($tag = '') {
 		if (!$a = array_pop($this->stack)) {
 			return false;
 		}
@@ -538,6 +521,9 @@ class HTML{
 		$this->html($this->call($a));
 		return $a['tag'];
 	}
+
+
+
 
 	/**
 	*	单标签写入
@@ -557,11 +543,27 @@ class HTML{
 		$this->count[$tag]++;
 
 		$a['tag'] = $tag;
-		$a['attr'] = empty($attr) ? [] : $this->attr($attr, $tag);
+		$a['attr'] = $attr ? $this->attr($attr, $tag) : [];
 		$a['single'] = true;
 		$a['html'] = '';
 		return $this->call($a);
 	}
+
+
+
+	/**
+	*	其他代码转换
+	*
+	*	1 参数 val
+	*
+	*	返回值 转换后的
+	**/
+	public function text($a) {
+		$a = strtr($a, ['"' => '&quot;', '\'' => '&#039;', '<' => '&lt;', '>' => '&gt;']);
+		$this->text && ($a = call_user_func($this->text, $a, $this));
+		return $a;
+	}
+
 
 
 	/**
@@ -605,7 +607,7 @@ class HTML{
 	*
 	*	返回值 字符串
 	**/
-	public function defaultCall($tag, $attr, $single, $html = '') {
+	public function defaultCall($tag, array $attr, $single = false, $html = '') {
 		// attr
 		foreach ($attr as $k => $v) {
 			if (!isset($attr[$k]) || ($v = $this->Attr->run($attr[$k], $k, $tag)) === null) {
@@ -648,7 +650,7 @@ class HTML{
 	*
 	*	返回值 字符串
 	**/
-	public function style($tag, $attr, $single, $html = '') {
+	public function style($tag, array $attr, $single = false, $html = '') {
 		$media = empty($attr['media']) ? 'all' : $this->Attr->run($attr['media'], 'media', 'style');
 
 		// 移除注释
@@ -707,7 +709,7 @@ class HTML{
 	*
 	*	返回值 字符串
 	**/
-	public function param($tag, $attr, $single, $html = '') {
+	public function param($tag, array $attr, $single = false, $html = '') {
 		$tag = end($this->stack);
 		if (empty($attr['name']) || !isset($attr['value']) || ($attr['name'] == 'type' && !strpos($attr['value'], '/')) || ($attr['value'] = $this->Attr->run($attr['value'],  $attr['name'], $tag)) === null) {
 			return '';
@@ -735,7 +737,7 @@ class HTML{
 	*	返回值解析后的数组
 	**/
 	public function attr($attr, $tag) {
-		if (empty($attr)) {
+		if (!$attr) {
 			return [];
 		}
 		$cache = $attr;

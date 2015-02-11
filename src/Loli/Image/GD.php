@@ -8,89 +8,114 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-16 08:55:06
-/*	Updated: UTC 2015-02-02 14:47:44
+/*	Updated: UTC 2015-02-10 14:44:37
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
 class_exists('Loli\Image\Base') || exit;
 class GD extends Base {
 
-	// 旧 图片
-	private $_old = false;
+	private $_old, $_im;
 
-	// 图片类型
 	private $_type = false;
 
-	public function create($a, $type = false) {
-		$this->destroy();
-		if ($a && is_file($a) && ($info = @getimagesize($a)) && ($a = file_get_contents($a)) && ($this->im = @imagecreatefromstring($a)) && ($this->_old = @imagecreatefromstring($a))) {
-			imagealphablending($this->im, false);
-			imagesavealpha($this->im, true);
-			$this->type($type ? $type : image_type_to_extension($info[2], false));
-			return true;
+	public function create($file, $type = false) {
+		$this->_im && $this->destroy();
+		if (!$file || !is_file($file)) {
+			throw new Exception('Image does not exist', 10);
 		}
-		return false;
-	}
+		if (!($info = @getimagesize($file)) || !($contents = file_get_contents($file)) || !($this->_im = @imagecreatefromstring($contents)) || !($this->_old = @imagecreatefromstring($a))) {
+			throw new Exception('Open the image', 11);
+		}
+		unset($contents);
 
+		imagealphablending($this->_im, false);
+		imagesavealpha($this->_im, true);
+
+
+		// 设置类型
+		$type = $type ? $type : image_type_to_extension($info[2], false);
+		if (empty($this->types[$type])) {
+			reset($this->types);
+			$this->_type = key($this->types);
+			foreach ($this->types as $key => $extensions) {
+				if (in_array($type, $extensions)) {
+					$this->_type = $key;
+					break;
+				}
+			}
+		} else {
+			$this->_type = (int) $type;
+		}
+
+		return $this;
+	}
 
 	public function destroy() {
 		$this->_type = false;
 		$this->_old && imagedestroy($this->_old);
-		return $this->im && imagedestroy($this->im);
+		$this->_im && imagedestroy($this->_im);
+		return  $this;
 	}
 
 
 	public function width() {
-		return $this->im ? imagesx($this->im) : 0;
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
+		}
+		return imagesx($this->_im) ;
 	}
-
 
 	public function height() {
-		return $this->im ? imagesy($this->im) : 0;
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
+		}
+		return imagesy($this->_im);
 	}
 
-	public function type($type = false) {
-		if ($type) {
-			if (empty($this->type[$type])) {
-				$type = strtolower($type);
-				reset($this->type);
-				$this->_type = key($this->type);
-				foreach ($this->type as $k => $v) {
-					if (in_array($type, $v)) {
-						$this->_type = $k;
-						break;
-					}
-				}
-			} else {
-				$this->_type = intval($type);
-			}
+	public function type() {
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
 		}
 		return $this->_type;
 	}
 
+
 	public function frames() {
-		return $this->im ? 1 : false;
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
+		}
+		return 1;
 	}
 
-	public function length(){
-		return $this->im ? 0 : false;
+	public function length() {
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
+		}
+		return 0;
 	}
 
 	public function rotate($angle) {
-		if (!$this->im || !($this->im = imagerotate($this->im, $angle, 16777215 , 0))) {
-			return false;
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
 		}
-		return true;
+		if (!$this->_im = imagerotate($this->_im, $angle, 16777215 , 0)) {
+			throw new Exception('Rotate', 30);
+		}
+		return $this;
 	}
 
 
 	public function flip($mode = self::FLIP_HORIZONTAL) {
-		if (!$this->im) {
-			return false;
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
 		}
-		if (function_exists ('imageflip')){
-			$arg =[ self::FLIP_HORIZONTAL => IMG_FLIP_HORIZONTAL, self::FLIP_VERTICAL => IMG_FLIP_VERTICAL, self::FLIP_BOTH => IMG_FLIP_BOTH];
-			return imageflip($this->im , isset($arg[$mode]) ? $arg[$mode] : IMG_FLIP_BOTH);
+		if (function_exists('imageflip')) {
+			$arg = [self::FLIP_HORIZONTAL => IMG_FLIP_HORIZONTAL, self::FLIP_VERTICAL => IMG_FLIP_VERTICAL, self::FLIP_BOTH => IMG_FLIP_BOTH];
+			if (!imageflip($this->_im , isset($arg[$mode]) ? $arg[$mode] : IMG_FLIP_BOTH)){
+				throw new Exception('Flip', 40);
+			}
+			return $this;
 		}
 		$width = $this->width();
 		$height = $this->height();
@@ -117,25 +142,30 @@ class GD extends Base {
 				break;
 		}
 		$image = $this->_create($width, $height);
-		if (!imagecopyresampled($image, $this->im, 0, 0, $src_x, $src_y , $width, $height, $src_width, $src_height)) {
-			return false;
+		if (!imagecopyresampled($image, $this->_im, 0, 0, $src_x, $src_y , $width, $height, $src_width, $src_height)) {
+			throw new Exception('Flip', 40);
 		}
 
-		imagedestroy($this->im);
-		$this->im = $image;
-		return true;
+		imagedestroy($this->_im);
+		$this->_im = $image;
+		return $this;
 	}
 
 
 	public function text($text, $font, $size = 12, $color = '#000000', $x = 0, $y = 0, $angle = 0,  $opacity = 1.0) {
-		if (!$this->im) {
-			return false;
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
+		}
+		if (!$font || !is_file($font)) {
+			throw new Exception('Font file does not exist', 50);
 		}
 		$angle = $angle % 360;
-        $info = imagettfbbox($size, $angle, $font, $text);
+		if (!$info = imagettfbbox($size, $angle, $font, $text)) {
+			throw new Exception('Font', 51);
+		}
 
 
-        if ($color && is_array($color)) {
+		if ($color && is_array($color)) {
 			foreach (['red', 'green', 'blue'] as $v) {
 				$$v = empty($color[$v]) ? 0 : $color[$v];
 			}
@@ -188,16 +218,22 @@ class GD extends Base {
 			$y -= $info[7];
 		}
 
-		imagealphablending($this->im, true);
-		$color = imagecolorallocatealpha($this->im, $red, $green, $blue, 127 - $opacity * 127);
-		imagettftext($this->im, $size, $angle, $x, $y, $color, $font, $text);
-		imagealphablending($this->im, false);
-		return true;
+		imagealphablending($this->_im, true);
+		$color = imagecolorallocatealpha($this->_im, $red, $green, $blue, 127 - $opacity * 127);
+		imagettftext($this->_im, $size, $angle, $x, $y, $color, $font, $text);
+		imagealphablending($this->_im, false);
+		return $this;
 	}
 
 	public function insert($file, $x = 0, $y = 0, $opacity = 1.0) {
-		if (!$file || !is_file($file) || !($info = @getimagesize($file)) || !($data = file_get_contents($file)) || !($im = @imagecreatefromstring($data))) {
-			return false;
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
+		}
+		if (!$file || !is_file($file)) {
+			throw new Exception('Image does not exist', 60);
+		}
+		if (!($info = @getimagesize($file)) || !($data = file_get_contents($file)) || !($im = @imagecreatefromstring($data))) {
+			throw new Exception('Open the image', 61);
 		}
 		unset($data);
 
@@ -215,39 +251,45 @@ class GD extends Base {
 			$y += $this->height() - $info[1];
 		}
 
-        imagealphablending($im, true);
+		imagealphablending($im, true);
 		$src =  $this->_create($info[0], $info[1]);
 		imagealphablending($src, true);
-		imagecopy($src, $this->im, 0, 0, $x, $y, $info[0], $info[1]);
+		imagecopy($src, $this->_im, 0, 0, $x, $y, $info[0], $info[1]);
 		imagecopy($src, $im, 0, 0, 0, 0, $info[0], $info[1]);
-		imagecopymerge($this->im, $src, $x, $y, 0, 0, $info[0], $info[1], $opacity * 100);
+		imagecopymerge($this->_im, $src, $x, $y, 0, 0, $info[0], $info[1], $opacity * 100);
 		imagedestroy($src);
 		imagedestroy($im);
-		return true;
+		return $this;
 	}
 
 
 
 	public function resampled($new_w, $new_h, $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h) {
-		if (!$this->im || !($image = $this->_create($new_w, $new_h)) || !imagecopyresampled($image, $this->im, $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h)) {
-			return false;
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
 		}
-		imagedestroy($this->im);
-		$this->im = $image;
-		return true;
+		if (!imagecopyresampled($image = $this->_create($new_w, $new_h), $this->_im, $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h)) {
+			throw new Exception('Resize', 70);
+		}
+		imagedestroy($this->_im);
+		$this->_im = $image;
+		return $this;
 	}
 
 
 
 
 	public function save($save, $type = false) {
-		if (!$save || !$this->im) {
-			return false;
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
+		}
+		if (!$save) {
+			throw new Exception('Path', 80);
 		}
 
 		$info = pathinfo($save);
 		if (!empty($info['extension'])) {
-			foreach ($this->type as $k => $v) {
+			foreach ($this->types as $k => $v) {
 				if (in_array($info['extension'], $v)) {
 					$type = $k;
 				}
@@ -255,23 +297,23 @@ class GD extends Base {
 		}
 
 		if (self::TYPE_WEBP == $type) {
-			if (!imagewebp($this->im, $save)) {
-				return false;
+			if (!imagewebp($this->_im, $save)) {
+				throw new Exception('Save', 80);
 			}
 		} elseif (self::TYPE_GIF == $type) {
 			$this->stotal();
-			if (!imagegif($this->im, $save)) {
-				return false;
+			if (!imagegif($this->_im, $save)) {
+				throw new Exception('Save', 80);
 			}
 		} elseif (self::TYPE_PNG == $type) {
 			$this->stotal();
-			if (!imagepng($this->im, $save)) {
-				return false;
+			if (!imagepng($this->_im, $save)) {
+				throw new Exception('Save', 80);
 			}
 		} else {
-			imageinterlace($this->im, true);
-			if (!imagejpeg($this->im, $save, $this->quality)) {
-				return false;
+			imageinterlace($this->_im, true);
+			if (!imagejpeg($this->_im, $save, $this->quality)) {
+				throw new Exception('Save', 80);
 			}
 		}
 
@@ -279,7 +321,7 @@ class GD extends Base {
 		$stat = stat(dirname($save));
 		$perms = $stat['mode'] & 0000666;
 		@chmod($save, $perms);
-		return $save;
+		return $this;
 	}
 
 
@@ -287,26 +329,30 @@ class GD extends Base {
 
 
 	public function show($type = false) {
-		if (!$this->im) {
-			return false;
+		if (!$this->_im) {
+			throw new Exception('Resource', 1);
 		}
 		$type = $type ? $type : $this->type();
 		header('Content-Type: ' . (empty($this->mime[$type]) ? reset($$this->mime) : $this->mime[$type]));
 		if (self::TYPE_WEBP == $type) {
-			if (!imagewebp($this->im)) {
-				return false;
+			if (!imagewebp($this->_im)) {
+				throw new Exception('Show', 90);
 			}
 		} elseif (self::TYPE_GIF == $type) {
 			$this->stotal();
-			imagegif ($this->im);
+			if (!imagegif($this->_im)) {
+				throw new Exception('Show', 90);
+			}
 		} elseif (self::TYPE_PNG == $type) {
 			$this->stotal();
-			imagepng ($this->im);
+			imagepng($this->_im);
 		} else {
-			imageinterlace($this->im, true);
-			imagejpeg($this->im, null, $this->quality);
+			imageinterlace($this->_im, true);
+			if (!imagejpeg($this->_im, null, $this->quality)) {
+				throw new Exception('Show', 90);
+			}
 		}
-		return true;
+		return $this;
 	}
 
 
@@ -319,7 +365,7 @@ class GD extends Base {
 	*	返回值 bool
 	**/
 	public function stotal() {
-		return function_exists('imageistruecolor') && $this->_old && $this->im && !imageistruecolor($this->_old) && imagetruecolortopalette($this->im, false, imagecolorstotal($this->_old));
+		return function_exists('imageistruecolor') && $this->_old && $this->_im && !imageistruecolor($this->_old) && imagetruecolortopalette($this->_im, false, imagecolorstotal($this->_old));
 	}
 
 
@@ -335,7 +381,7 @@ class GD extends Base {
 	**/
 	private function _create($w, $h) {
 		if (!$image = imagecreatetruecolor($w, $h)) {
-			return false;
+			throw new Exception('Creating images', 1);
 		}
 		imagefilledrectangle($image, 0, 0, $w, $h, imagecolorallocate($image, 255, 255, 255));
 		imagealphablending($image, false);

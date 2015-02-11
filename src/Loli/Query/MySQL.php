@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-07 10:25:08
+/*	Updated: UTC 2015-02-10 06:25:53
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -27,7 +27,7 @@ class MySQL extends Base{
 	const ENGINE_ARCHIVE = 'Archive';
 
 
-	public function create($array, $table, $engine = self::ENGINE_INNODB) {
+	public function create(array $array, $table, $engine = self::ENGINE_INNODB) {
 		if (!$array  || !is_array($array) || !($table = $this->key($table))) {
 			return false;
 		}
@@ -207,15 +207,15 @@ class MySQL extends Base{
 	}
 
 
-	public function add($array, $table) {
-		return $this->_addSet($array, $table);
+	public function add(array $array, $table) {
+		return $this->_addAndSet($array, $table);
 	}
 
-	public function set($array, $table) {
-		return $this->_addSet($array, $table, true);
+	public function set(array $array, $table) {
+		return $this->_addAndSet($array, $table, true);
 	}
 
-	public function get($query, $table, $fields = ['*'], $logical = 'AND') {
+	public function get(array $query, $table, $fields = ['*'], $logical = 'AND') {
 		if (!is_array($query) || !$table) {
 			return false;
 		}
@@ -311,7 +311,7 @@ class MySQL extends Base{
 	*
 	*	返回值 string or false
 	**/
-	public function update($array, $query, $table, $logical = 'AND') {
+	public function update(array $array, array $query, $table, $logical = 'AND') {
 		if (!is_array($array) || !is_array($query) || !($from = $this->_from($table, false))) {
 			return false;
 		}
@@ -404,7 +404,7 @@ class MySQL extends Base{
 	*
 	* 返回值 数据库查询 字符串
 	**/
-	public function delete($query, $table, $logical = 'AND') {
+	public function delete(array $query, $table, $logical = 'AND') {
 		if (!is_array($query) || !($from = $this->_from($table))) {
 			return false;
 		}
@@ -466,7 +466,7 @@ class MySQL extends Base{
 
 
 
-	private function _addSet($array, $table, $set = false) {
+	private function _addAndSet(array $array, $table, $set = false) {
 		if (!($table = $this->key($table)) || !is_array($array)) {
 			return false;
 		}
@@ -626,7 +626,7 @@ class MySQL extends Base{
 	*
 	*
 	**/
-	private function _orderby($query) {
+	private function _orderby(array $query) {
 		if (empty($query['$orderby'])) {
 			return false;
 		}
@@ -683,7 +683,7 @@ class MySQL extends Base{
 	*
 	* 返回值 数据库查询 字符串
 	**/
-	private function _whereHaving($query = [], $logical = 'AND', $type = 'WHERE', $having = []) {
+	private function _whereHaving(array $query, $logical = 'AND', $type = 'WHERE', $having = []) {
 		if ($type) {
 			$type = strtoupper($type);
 			$type == 'HAVING' ? 'HAVING' : 'WHERE';
@@ -845,12 +845,12 @@ class MySQL extends Base{
 
 
 
-	private function _having($query = [], $logical = 'AND', $having = []) {
+	private function _having(array $query, $logical = 'AND', array $having = []) {
 		return $this->_whereHaving($query, $logical, 'HAVING', $having);
 	}
 
 
-	private function _where($query = [], $logical = 'AND', $having = []) {
+	private function _where(array $query, $logical = 'AND', array $having = []) {
 		return $this->_whereHaving($query, $logical, 'WHERE', $having);
 	}
 }

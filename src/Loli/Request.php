@@ -8,10 +8,184 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-06 14:16:56
-/*	Updated: UTC 2015-02-09 15:13:21
+/*	Updated: UTC 2015-02-10 19:11:17
 /*
 /* ************************************************************************** */
 namespace Loli;
+
+
+
+class Request{
+
+	private static $_g, $_input;
+
+	private static function _start() {
+		if (!self::$_g) {
+			self::$_g = [$_SERVER, $_GET, $_POST, $_COOKIE, $_FILES, $_ENV, isset($_SESSION) ? $_SESSION : []];
+		}
+		return true;
+	}
+
+	public static function end() {
+		if (self::$_g) {
+			unset($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES, $_ENV, $_SESSION);
+			list($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES, $_ENV, $_SESSION) = self::$_g;
+		}
+		return true;
+	}
+
+	// 默认版本
+	public static function defaultVersion() {
+		self::_start();
+		return empty(self::$_g[0]['SERVER_PROTOCOL']) || self::$_g[0]['SERVER_PROTOCOL'] == 'HTTP/1.0' ? 1.0 : 1.1;
+	}
+
+	// 默认方法
+	public static function defaultMethod() {
+		self::_start();
+		if (isset(self::$_g[0]['REQUEST_METHOD'])) {
+			$method = self::$_g[0]['REQUEST_METHOD'];
+		} else {
+			$method = 'GET';
+		}
+		$method = strtoupper($method);
+		if (!preg_match('/^[A-Z]+$/', $method)) {
+			$method = 'GET';
+		}
+		return $method;
+	}
+
+
+	// 默认协议
+	public static function defaultScheme() {
+		self::_start();
+		if (isset(self::$_g[0]['HTTPS']) && ('on' == strtolower(self::$_g[0]['HTTPS']) || '1' == self::$_g[0]['HTTPS'])) {
+			$scheme = 'https';
+		} elseif (isset(self::$_g[0]['SERVER_PORT']) && '443' == self::$_g[0]['SERVER_PORT']) {
+			$scheme = 'https';
+		} elseif (isset(self::$_g[0]['SERVER_PORT_SECURE']) && self::$_g[0]['SERVER_PORT_SECURE'] == '1') {
+			$scheme = 'https';
+		} else {
+			$scheme = 'http';
+		}
+		return $scheme;
+	}
+
+
+	// 默认HOST
+	public static function defaultHost() {
+		self::_start();
+		if (isset(self::$_g[0]['HTTP_HOST'])) {
+			$host = self::$_g[0]['HTTP_HOST'];
+		} elseif (isset(self::$_g[0]['SERVER_NAME'])) {
+			$host = self::$_g[0]['SERVER_NAME'];
+			if (isset(self::$_g[0]['SERVER_PORT']) && !in_array(self::$_g[0]['SERVER_PORT'], ['80', '443'])) {
+				$host .= ':' . self::$_g[0]['SERVER_PORT'];
+			}
+		} else {
+			$host = 'localhost';
+		}
+		return preg_replace('/[^0-9a-z:._-]/', '', strtolower($host));
+	}
+
+	// 默认路径
+	public static function defaultPath() {
+		self::_start();
+		if (isset(self::$_g[0]['REQUEST_URI'])) {
+			$path = explode('?', self::$_g[0]['REQUEST_URI'])[0];
+		} elseif (isset(self::$_g[0]['HTTP_X_ORIGINAL_URL'])) {
+			$path = explode('?', self::$_g[0]['HTTP_X_REWRITE_URL'])[0];
+		} elseif (isset(self::$_g[0]['PATH_INFO']) && isset(self::$_g[0]['SCRIPT_NAME'])) {
+			if (self::$_g[0]['PATH_INFO'] == self::$_g[0]['SCRIPT_NAME']) {
+				$path = self::$_g[0]['PATH_INFO'];
+			} else {
+				$path = self::$_g[0]['SCRIPT_NAME'] . self::$_g[0]['PATH_INFO'];
+			}
+		} elseif (isset(self::$_g[0]['ORIG_PATH_INFO']) && isset(self::$_g[0]['SCRIPT_NAME'])) {
+			if (self::$_g[0]['ORIG_PATH_INFO'] == self::$_g[0]['SCRIPT_NAME']) {
+				$path = self::$_g[0]['ORIG_PATH_INFO'];
+			} else {
+				$path = self::$_g[0]['SCRIPT_NAME'] . self::$_g[0]['ORIG_PATH_INFO'];
+			}
+		} else {
+			$path = '/';
+		}
+		$path = urldecode($path);
+		$path = preg_replace('/[\x00-\x1F?]+/x', '', $path);
+		$path = preg_replace('/[\/\\\\]+/', '/', $path);
+		$path = preg_replace('/\/\.+\//', '/', $path);
+		return '/'. ltrim($path, '/');
+	}
+
+	// 默认 Query
+	public static function defaultQuery() {
+		self::_start();
+		return isset(self::$_g[0]['QUERY_STRING']) ? self::$_g[0]['QUERY_STRING'] : merge_string(self::$_g[1]);
+	}
+
+
+	// 默认 headers 头
+	public static function defaultHeaders() {
+		self::_start();
+		if (function_exists('getallheaders')) {
+			$headers = getallheaders();
+		} elseif (function_exists('http_get_request_headers')) {
+			$headers = http_get_request_headers();
+		} else {
+			$headers = [];
+			foreach (self::$_g[0] as $name => $value) {
+				if (substr($name, 0, 5) === 'HTTP_') {
+					$headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+				}
+			}
+		}
+		return $headers;
+	}
+
+	// 默认内容
+	public static function defaultContentParams() {
+		//return $content;
+	}
+
+
+	// 默认内容
+	public static function defaultContentParams() {
+		//return $content;
+	}
+
+	// 默认内容
+	//public static function defaultContent() {
+		//self::_start();
+		//if (self::$_input === null) {
+		//	$content = empty(self::$_g[0]['CONTENT_TYPE']) || empty(self::$_g[0]['CONTENT_LENGTH']) || strpos(strtolower(self::$_g[0]['CONTENT_TYPE']), 'multipart/form-data') !== false ||  ? false : fopen('php://input', 'rb');
+		//}
+		//return $content;
+	//}
+
+
+	// 解析内容
+	//$uri, $method = 'GET', $parameters = array(), $cookies = array(), $files = array(), $server = array(), $content = null
+
+	public function __construct($method = 'GET', $path = false, $headers = [], $files = [], $content = null) {
+		self::_start();
+		$version = $version ? $version : self::defaultValue();
+		$method = $method ? $method : self::defaultMethod();
+		$_SESSION = $_GET = $_POST = $_COOKIE = $_FILES = $_ENV = [];
+		$_SERVER = self::$_g[0];
+		foreach ($_SERVER as $name => $value) {
+			if ((substr($name, 0, 5) === 'HTTP_') || in_array(['UNENCODED_URL', 'X_ORIGINAL_URL', 'HTTP_X_ORIGINAL_URL', 'IIS_WasUrlRewritten'])) {
+				unset($_SERVER[$name]);
+			}
+		}
+		$_SERVER['SERVER_PROTOCOL'] = 'HTTP/' . $version;
+
+		//self::init();
+		//$this->defaultContent;
+	}*/
+}
+
+
+/*
 class Request{
 	private $_version, $_headers, $_content, $_method, $_scheme, $_host, $_path, $_queryParams, $_bodyParams, $_params, $_cookies, $_url, $_contentType, $_IP, $_accept, $_ajax, $_token, $_ranges;
 	private $_rewriteParams = [];
@@ -485,20 +659,13 @@ class Request{
 			try {
 				$this->setToken($token);
 			} catch (Exception $e) {
-				$this->_token = false;
+				$token = uniqid();
+				$token .= mb_rand(16 - strlen($token), '0123456789qwertyuiopasdfghjklzxcvbnm');
+				$token .= Code::key(__CLASS__ . self::TOKEN_HEADER . $token, 16);
+				$this->setToken($token);
 			}
 		}
-		if (!$this->_token) {
-			return false;
-		}
 		return $key ? $this->_token : substr($this->_token, 0, 16);
-	}
-
-	public function addToken() {
-		$token = uniqid();
-		$token .= mb_rand(16 - strlen($token), '0123456789qwertyuiopasdfghjklzxcvbnm');
-		$token .= Code::key(__CLASS__ . self::TOKEN_HEADER . $token, 16);
-		return $this->setToken($token);
 	}
 
 	public function setToken($token) {
@@ -507,7 +674,6 @@ class Request{
 		}
 		return $this;
 	}
-
 
 
 
@@ -638,4 +804,4 @@ class Request{
 		}
 		return $matches[1];
 	}
-}
+}*/

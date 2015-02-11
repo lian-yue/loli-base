@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-15 14:00:37
-/*	Updated: UTC 2015-02-07 15:38:08
+/*	Updated: UTC 2015-02-10 06:26:54
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -27,7 +27,7 @@ class Debug {
 	// dir 首页目录
 	public $dir = '';
 
-	public function __construct($args = []) {
+	public function __construct(array $args = []) {
 		foreach($args as $k => $v) {
 			if (in_array($k, ['display', 'args', 'log', 'dir'])) {
 				$this->$k = $v;

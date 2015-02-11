@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 09:43:36
-/*	Updated: UTC 2015-02-09 17:15:17
+/*	Updated: UTC 2015-02-10 06:44:05
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -116,7 +116,7 @@ class Query{
 	*
 	*	返回值 字符串
 	**/
-	public function str($query) {
+	public function str(array $query) {
 		$query += $this->query;
 
 
@@ -290,7 +290,7 @@ class Query{
 	*
 	*	返回值 true false
 	**/
-	public function results($query) {
+	public function results(array $query) {
 		$query['$count'] = null;
 		$r = [];
 		foreach($this->DB->results($this->str($query), $this->slave) as $v) {
@@ -307,7 +307,7 @@ class Query{
 	*
 	*	返回值 true false
 	**/
-	public function row($query) {
+	public function row(array $query) {
 		$query['$count'] = null;
 		$query['$limit'] = 1;
 		if ($r = $this->DB->row($this->str($query), $this->slave)) {
@@ -325,7 +325,7 @@ class Query{
 	*
 	*	返回值 数量和
 	*/
-	public function count($query) {
+	public function count(array $query) {
 		$query['$count'] = true;
 		return $this->DB->count($this->str($query), $this->slave);
 	}
@@ -443,7 +443,7 @@ class Query{
 	*
 	*	返回值 bool
 	**/
-	public function add($args) {
+	public function add(array $args) {
 		// 过滤数组
 		if (!($a = $this->defaults($args, ['add'], true)) || !($table = $this->table($a + $args, 1))) {
 			return false;
@@ -502,7 +502,7 @@ class Query{
 	}
 
 
-	public function set($args) {
+	public function set(array $args) {
 		// 过滤数组
 		if (!($a = $this->defaults($args, ['set'], true)) || !($table = $this->table($a + $args, 1))) {
 			return false;
@@ -547,7 +547,7 @@ class Query{
 	}
 
 
-	public function update($args, $b) {
+	public function update(array $args, $b) {
 		if (!$b || !$this->primary || count(array_filter(func_get_args())) <= count($this->primary)) {
 			return false;
 		}
@@ -660,7 +660,7 @@ class Query{
 	*
 	*	返回值 false 或者 添加的数量  带有自增ID的能使用
 	**/
-	public function adds($args) {
+	public function adds(array $args) {
 		$a = [];
 		$table = false;
 		foreach ($args as $k => $v) {
@@ -762,7 +762,7 @@ class Query{
 	*
 	*	返回值 false 或者 影响的数量  带有自增ID的能使用
 	**/
-	public function sets($args) {
+	public function sets(array $args) {
 		$a = [];
 		$table = false;
 		foreach ($args as $k => $v) {
@@ -848,8 +848,8 @@ class Query{
 	}
 
 
-	public function updates($args, $b, $c = true) {
-		if (!$b  || !is_array($b)) {
+	public function updates(array $args, array $b, $c = true) {
+		if (!$b) {
 			return false;
 		}
 		if (!$a = $this->defaults($args, ['updates', 'update'])) {
@@ -931,7 +931,7 @@ class Query{
 
 
 
-	public function deletes($a, $c = true) {
+	public function deletes(array $a, $c = true) {
 		if (!$a || !$this->deletes || !is_array($a)) {
 			return false;
 		}
@@ -1018,8 +1018,8 @@ class Query{
 
 
 	// 整理数据类型
-	public function defaults($args, $key = [], $merge = false) {
-		if (!$args || !is_array($args) || empty($this->{$key[0]})) {
+	public function defaults(array $args, $key = [], $merge = false) {
+		if (!$args || empty($this->{$key[0]})) {
 			return false;
 		}
 		if ($this->defaults) {

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-09 16:37:15
+/*	Updated: UTC 2015-02-10 05:44:46
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -97,9 +97,10 @@ class Router{
 		}
 		self::$_request[self::$_ID] = &$request;
 		self::$_response[self::$_ID] = &$response;
+
+		// 初始化 语言 时间
 		Lang::init();
 		Date::init();
-		Page::init();
 
 		try {
 			$method = $request->getMethod();

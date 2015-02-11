@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-08 16:54:58
+/*	Updated: UTC 2015-02-10 15:58:59
 /*
 /* ************************************************************************** */
 
@@ -77,7 +77,7 @@ function merge_string($a) {
 	if (!is_array($a) && !is_object($a)) {
 		return (string) $a;
 	}
-	return http_build_query(to_array($a));
+	return http_build_query(to_array($a), null, '&');
 }
 
 /**
@@ -262,17 +262,6 @@ function nl2p($str) {
  return str_replace('<p></p>', '', '<p>' . preg_replace('#\n|\r#', '</p>$0<p>', $str) . '</p>');
 }
 
-
-/**
-*	转换成非负数的整数
-*
-*	1 参数 int
-*
-*	返回值 字符串的数字
-*/
-function absint($int) {
-	return abs(intval($int));
-}
 
 
 
