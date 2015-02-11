@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-02-11 05:41:45
+/*	Updated: UTC 2015-02-11 07:24:16
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -43,7 +43,6 @@ if (!headers_sent()) {
 	// 版权信息
 	header('X-Support: ' . SUPPORT);
 }
-
 
 
 // Debug
