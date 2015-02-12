@@ -18,14 +18,15 @@ class Request{
 
 	private static $_g, $_postsLength = 2097152, $_defaultHost = 'localhost', $_methodsList = ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
-	private $_version = 1.1;
-	private $_method = 'GET';
+	private $_version = null;
+	private $_method = null;
 
-	private $_URL = '/';
-	private $_scheme = 'http';
-	private $_host = '';
-	private $_path = '/';
-	private $_querys = [];
+	private $_URL = null;
+	private $_scheme = null;
+	private $_host = null;
+	private $_path = null;
+	private $_querys = null;
+
 	private $_headers = [];
 	private $_posts = [];
 	private $_files = [];
@@ -157,7 +158,24 @@ class Request{
 
 	// 默认文件
 	public static function defaultFiles() {
-		return self::$_g['_FILES'];
+		$files = [];
+		foreach (self::$_g['_FILES'] as $key => $value) {
+			$files[$key] = self::_files($value['name'], $value['type'], $value['tmp_name'], $value['error'], $value['size']);
+		}
+		return $files;
+	}
+
+
+	private static function _files($name, $type, $tmp_name, $error, $size) {
+		$files = [];
+		if (is_array($name)) {
+			foreach ($name as $key => $value) {
+				$files[] = array_merge($name, self::_files($name[$key], $type[$key], $tmp_name[$key], $error[$key], $size[$key]));
+			}
+		} else {
+			$files[] = ['name' => $name, 'type' => $type, 'tmp_name' => $tmp_name, 'error' => $error, 'size' => $size];
+		}
+		return $files;
 	}
 
 
@@ -200,6 +218,16 @@ class Request{
 	}
 
 
+	public function getVersion(){
+		return $this->_version;
+	}
+
+	public function setVersion($version) {
+		$this->_version = $version == 1.0 ? 1.0 : 1.1;
+		$_SERVER['SERVER_PROTOCOL'] = 'HTTP/' . ($this->_version == 1.0 ? '1.0' : '1.1');
+		return $this;
+	}
+
 
 	// 获方法
 	public function getMethod() {
@@ -212,6 +240,7 @@ class Request{
 			throw new Exception('Set token:' . $method);
 		}
 		$this->_method = $method;
+		$_SERVER['REQUEST_METHOD'] = $method;
 		return $this;
 	}
 
@@ -222,12 +251,103 @@ class Request{
 
 	// 设置 url
 	public function setURL($URL) {
-		$parse = parse_url($URL) + parse_url($this->_URL);
+		$parse = parse_url($URL);
+		unset($parse['user'], $parse['pass'], $parse['fragment']);
+
+		if (!empty($parse['scheme'])) {
+			$parse['scheme'] = strtolower(trim($parse['scheme']));
+		}
+		if (!empty($parse['host'])) {
+			$parse['host'] = strtolower($parse['host']);
+			if (!preg_match('/^[0-9a-z_.:-]+$/', $parse['host'])) {
+				throw new Exception('Set Host:' . $host);
+			}
+		}
+
+		if (!empty($parse['port'])) {
+			$parse['port'] = (string) abs((int)$parse['port']);
+			if (in_array($parse['port'], ['80', '443'])) {
+				unset($parse['port']);
+			}
+		}
+
+
+		if (!empty($parse['path'])) {
+			$parse['path'] = preg_replace('/[\x00-\x1F?#]+/x', '', $parse['path']);
+			$parse['path'] = preg_replace('/[\/\\\\]+/', '/', $parse['path']);
+			$parse['path'] = preg_replace('/\/\.+\//', '/', $parse['path']);
+			$parse['path'] =  '/' . rtrim(trim($parse['path']), '/');
+		}
+
+
+
+
+		if ($this->_URL) {
+			foreach($parse as $key => $value) {
+				if (!$value && in_array($key, ['scheme', 'host', 'port', 'path'])){
+					unset($parse[$key]);
+				}
+			}
+			$parse += parse_url($this->_URL);
+		}
+
+		if (!empty($parse['scheme']) || $this->_scheme === null) {
+			$this->_scheme = $parse['scheme'];
+			$_SERVER['REQUEST_SCHEME'] = $this->_scheme;
+			if ($this->_scheme == 'https') {
+				$_SERVER['HTTPS'] = 'on';
+			} else {
+				unset($_SERVER['HTTPS']);
+			}
+		}
+
+
+		if (!empty($parse['host']) || !empty($parse['port']) || $this->_host === null) {
+			$this->_host = empty($parse['host']) ? ($this->_host ? $this->_host : self::_defaultHost()) : $this->_host;
+			$_SERVER['SERVER_PORT'] = empty($parse['port']) ? ($this->_scheme == 'https' ? '443' : '80') : $parse['port'];
+			$_SERVER['SERVER_HOST'] = $this->_host . (empty($parse['port']) || in_array($parse['port'], ['80', '443']) ? '' : ':' . $parse['port']);
+		}
+
+
+		if (!$this->_path || (isset($parse['path']) && $parse['path'] !== $this->_path)) {
+			$this->_path = empty($parse['path']) ? '/' : $parse['path'];
+		}
+
+
+		if (isset($parse['query']) || $this->_querys === null) {
+			$this->_querys = empty($parse['query']) ? parse_string($parse['query']) : [];
+		}
+		$queryString = merge_string($this->_querys);
+		
+
+
+		$URI = $this->_path . ($queryString ? '?' . $queryString : '');
+		$_SERVER['REQUEST_URI'] = $URI;
+		$_SERVER['QUERY_STRING'] = $queryString;
+
+		// URL 地址
+		$this->_URL = $this->_scheme . '://' . $this->_host . $this->_path . $URI;
+
+		return $this;
+		//if () {
+		 //+ parse_url($this->_URL);
+		//}
+
+		/*
+
+		 + parse_url($this->_URL);
 		unset($parse['user'], $parse['pass'], $parse['fragment']);
 
 		$parse['host'] = strtolower(empty($parse['host']) ? self::$_defaultHost : $parse['host']);
 		$parse['scheme'] = empty($parse['scheme']) ? 'http' : strtolower($parse['scheme']);
-		$parse['path'] = isset($parse['path']) ? '/'. rtrim($parse['path'], '/') : '/';
+		if (empty($parse['path'])) {
+			$path = preg_replace('/[\x00-\x1F?]+/x', '', $path);
+			$path = preg_replace('/[\/\\\\]+/', '/', $path);
+			$path = preg_replace('/\/\.+\//', '/', $path);
+		} else {
+			$parse['path'] = '';
+		}
+		$parse['path'] = isset($parse['path']) ? '/'. rtrim(strtr($parse['path'], ['#' => '', '?' => '', ' ' => '%20']), '/') : '/';
 
 
 		$this->_URL = mrege_url($parse);
@@ -237,6 +357,17 @@ class Request{
 		$_GET = $this->_querys = parse_string($parse['query']);
 
 		$_REQUEST = array_merge($this->_querys, $this->_posts);
+
+		$_SERVER['REQUEST_SCHEME'] = $this->_scheme;
+		$_SERVER['SERVER_HOST'] = $this->_host;
+		$_SERVER['SERVER_PORT'] = empty($parse['port']) ? ($this->_scheme == 'http' ? '80' : '443') : $parse['port'];
+		if ($this->_scheme == 'https') {
+			$_SERVER['HTTPS'] = 'on';
+		} else {
+			unset($_SERVER['HTTPS']);
+		}
+		$_SERVER['REQUEST_URI'] = strtr($this->_path, ['#' => '', '?' => '', ' ' => '%20']);
+		$_SERVER['QUERY_STRING'] = $this->_querys? merge_string($this->_querys) : '';
 
 		return $this;
 		/*if (!in_array($method = strtoupper($method), ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'])) {
@@ -309,12 +440,63 @@ class Request{
 		return $this;
 	}
 
-	public function getFiles($name, $value) {
+	public function getFiles($name) {
 		return $this->_files;
 	}
 
-	public function addFiles($key, array $files) {
-		if (is_int(key($files))) {
+
+
+	public function addFiles(array $files) {
+		foreach ($files as $key => $value) {
+			foreach ($value as $file) {
+				if (empty($file['tmp_name'])) {
+					throw new Exception('File address can not be empty');
+				}
+				$file['error'] = isset($file['error']) ? $file['error'] : UPLOAD_ERR_OK;
+				if ($file['error'] === UPLOAD_ERR_OK) {
+					if (!is_file($file['tmp_name'])) {
+						throw new Exception('File does not exist');
+					}
+					$file['name'] = empty($file['name']) ? 'Unknown' : (string) $file['name'];
+					$file['type'] = empty($file['type']) ? (($mime = Storage::mime($file['tmp_name'])) ? $mime['type'] : 'application/octet-stream') : (string) $file['type'];
+					$file['size'] = filesize($file['tmp_name']);
+				} else {
+					$file += ['name' => 'Unknown', 'type' => 'application/octet-stream', 'size' => 0];
+				}
+				$this->_files[$key][] = $file;
+			}
+		}
+		return $this;
+	}
+
+
+	public function addFile($key, array $file) {
+		return $this->addFiles([$key => [$file]]);
+		if (empty($file['tmp_name'])) {
+			throw new Exception('File address can not be empty');
+		}
+		$file['error'] = isset($file['error']) ? $file['error'] : UPLOAD_ERR_OK;
+		
+		if ($file['error'] === UPLOAD_ERR_OK) {
+			if (!is_file($file['tmp_name'])) {
+				throw new Exception('File does not exist');
+			}
+			$file['name'] = empty($file['name']) ? 'Unknown' : (string) $file['name'];
+			$file['type'] = empty($file['type']) ? (($mime = Storage::mime($file['tmp_name'])) ? $mime['type'] : 'application/octet-stream') : (string) $file['type'];
+			$file['size'] = filesize($file['tmp_name']);
+		} else {
+			$file += ['name' => 'Unknown', 'type' => 'application/octet-stream', 'size' => 0];
+		}
+		if (empty($this->_files[$name])) {
+			$this->_files[$name] = $file;
+		} else {
+			if (!is_int(key($this->_files[$name]))) {
+				$this->_files[$name];
+			}
+			$this->_files[$name] = array_merge($file);
+		}
+
+		/*if (is_int(key($files))) {
 			foreach ($files as $file) {
 				$this->addFiles($key, $file);
 			}
@@ -342,8 +524,8 @@ class Request{
 					$this->_files[$name];
 				}
 				$this->_files[$name] = array_merge($file);
-			}
-		}
+			}*/
+		//}
 		return $this;
 	}
 
@@ -351,9 +533,15 @@ class Request{
 	// 设置 headers
 
 
-	public function __construct($method = 'GET', $url = false, $headers = null, $posts = null, $files = null, $params = []) {
-		$method;
-
+	public function __construct($method = 'GET', $URL = false, $headers = null, $posts = null, $files = null, $params = []) {
+		foreach($_SERVER as $key => $value) {
+			if (in_array($key, ['REDIRECT_QUERY_STRING', 'REDIRECT_URL']) || substr($key, 0, 5) == 'HTTP_') {
+				unset($_SERVER[$key]);
+			}
+		}
+		$this->setMethod($method);
+		$this->setURL(self::defaultURL());
+		$URL && $this->setURL($URL);
 	}
 }
 
