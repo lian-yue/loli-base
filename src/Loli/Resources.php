@@ -8,10 +8,10 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-16 08:32:09
-/*	Updated: UTC 2015-01-21 14:45:40
+/*	Updated: UTC 2015-02-11 10:32:19
 /*
 /* ************************************************************************** */
-namespace Loli\Controller;
+namespace Loli;
 abstract class Resources{
 
 	// 全部注册信息

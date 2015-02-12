@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 09:43:36
-/*	Updated: UTC 2015-02-10 06:44:05
+/*	Updated: UTC 2015-02-11 10:22:44
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -37,10 +37,6 @@ class Query{
 
 	// 默认查询数组
 	public $query = [];
-
-
-	// lists 查询数组
-	public $lists = [];
 
 
 	//  关联 joins
@@ -380,7 +376,7 @@ class Query{
 	*
 	*
 	**/
-	public function lists() {
+	/*public function lists() {
 		if (!$this->lists) {
 			return [];
 		}
@@ -400,7 +396,7 @@ class Query{
 		}
 
 
-		/*//if ($this->lists['$count'] && !empty($this->lists['$limit'])) {
+		/*//*/if ($this->lists['$count'] && !empty($this->lists['$limit'])) {
 
 
 		//}
@@ -430,8 +426,8 @@ class Query{
 		foreach($this->lists['$results'] as $k => $v) {
 			$r[$k] = clone $v;
 		}*/
-		return ['results' => $r, 'count' => $this->lists['$count']];
-	}
+		/*return ['results' => $r, 'count' => $this->lists['$count']];
+	}*/
 
 
 

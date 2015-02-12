@@ -8,13 +8,382 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-06 14:16:56
-/*	Updated: UTC 2015-02-10 19:11:17
+/*	Updated: UTC 2015-02-12 06:37:58
 /*
 /* ************************************************************************** */
 namespace Loli;
 
+class Request{
 
 
+	private static $_g, $_postsLength = 2097152, $_defaultHost = 'localhost', $_methodsList = ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+
+	private $_version = 1.1;
+	private $_method = 'GET';
+
+	private $_URL = '/';
+	private $_scheme = 'http';
+	private $_host = '';
+	private $_path = '/';
+	private $_querys = [];
+	private $_headers = [];
+	private $_posts = [];
+	private $_files = [];
+	private $_content = false;
+
+
+	public static function start() {
+		if (!self::$_g) {
+			self::$_g = array_intersect_key($GLOBALS, ['_SERVER' => '', '_GET' => '', '_POST' => '', '_COOKIE' => '', '_FILES' => '', '_ENV' => '', '_SESSION' => '']);
+		}
+		return true;
+	}
+
+
+
+
+	// 默认版本
+	public static function defaultVersion() {
+		return isset(self::$_g['_SERVER']['SERVER_PROTOCOL']) && self::$_g['_SERVER']['SERVER_PROTOCOL'] == 'HTTP/1.0' ? 1.0 : 1.1;
+	}
+
+
+
+	// 默认方法
+	public static function defaultMethod() {
+		if (isset(self::$_g['_SERVER']['REQUEST_METHOD'])) {
+			$method = self::$_g['_SERVER']['REQUEST_METHOD'];
+		} else {
+			$method = 'GET';
+		}
+		if (!in_array($method = strtoupper($method), self::$_methodsList)) {
+			$method = 'GET';
+		}
+		return $method;
+	}
+
+	public static function defaultHost(){
+		if (isset(self::$_g['_SERVER']['HTTP_HOST'])) {
+			$host = self::$_g['_SERVER']['HTTP_HOST'];
+		}  elseif (isset(self::$_g['_SERVER']['SERVER_NAME'])) {
+			$host = self::$_g['_SERVER']['SERVER_NAME'];
+			if (isset(self::$_g['_SERVER']['SERVER_PORT']) && !in_array(self::$_g['_SERVER']['SERVER_PORT'], ['80', '443'])) {
+				$host = ':' . self::$_g['_SERVER']['SERVER_PORT'];
+			}
+		} else {
+			$host = self::$_defaultHost;
+		}
+		return $host;
+	}
+
+
+	// 默认 URL
+	public static function defaultURL() {
+		if (isset(self::$_g['_SERVER']['REQUEST_SCHEME'])) {
+			$scheme = strtolower(self::$_g['_SERVER']['REQUEST_SCHEME']);
+		} elseif (isset(self::$_g['_SERVER']['HTTPS']) && ('on' == strtolower(self::$_g['_SERVER']['HTTPS']) || '1' == self::$_g['_SERVER']['HTTPS'])) {
+			$scheme = 'https';
+		} elseif (isset(self::$_g['_SERVER']['SERVER_PORT']) && '443' == self::$_g['_SERVER']['SERVER_PORT']) {
+			$scheme = 'https';
+		} elseif (isset(self::$_g['_SERVER']['SERVER_PORT_SECURE']) && '1' == self::$_g['_SERVER']['SERVER_PORT_SECURE']) {
+			$scheme = 'https';
+		} else {
+			$scheme = 'http';
+		}
+
+		$host = self::defaultHost();
+
+		if (isset(self::$_g['_SERVER']['REQUEST_URI'])) {
+			$URI = self::$_g['_SERVER']['REQUEST_URI'];
+		} elseif (isset(self::$_g['_SERVER']['HTTP_X_ORIGINAL_URL'])) {
+			$parse = parse_url(self::$_g['_SERVER']['HTTP_X_ORIGINAL_URL']);
+			$URI = urlencode(empty($parse['path']) ? '/' : $parse['path']) . (empty($parse['query']) ? '' : '?' . merge_string(parse_string($parse['query'])));
+		} elseif (isset(self::$_g['_SERVER']['PATH_INFO']) && isset(self::$_g['_SERVER']['SCRIPT_NAME'])) {
+			if (self::$_g['_SERVER']['PATH_INFO'] == self::$_g['_SERVER']['SCRIPT_NAME']) {
+				$URI = self::$_g['_SERVER']['PATH_INFO'];
+			} else {
+				$URI = self::$_g['_SERVER']['SCRIPT_NAME'] . self::$_g['_SERVER']['PATH_INFO'];
+			}
+		} else {
+			$URI = '/';
+		}
+		return $scheme .'://'. $host . '/' . ltrim($URI, '/');
+	}
+
+
+
+	// 默认 headers 头
+	public static function defaultHeaders() {
+		if (function_exists('getallheaders')) {
+			$headers = getallheaders();
+		} elseif (function_exists('http_get_request_headers')) {
+			$headers = http_get_request_headers();
+		} else {
+			$headers = [];
+			foreach (self::$_g['_SERVER'] as $name => $value) {
+				if (substr($name, 0, 5) === 'HTTP_') {
+					$headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+				}
+			}
+			if (!empty(self::$_g['_SERVER']['CONTENT_TYPE'])) {
+				$headers['Content-Type'] = self::$_g['_SERVER']['CONTENT_TYPE'];
+			}
+			if (!empty(self::$_g['_SERVER']['CONTENT_LENGTH']) && self::$_g['_SERVER']['CONTENT_LENGTH'] > 0) {
+				$headers['Content-Length'] = self::$_g['_SERVER']['CONTENT_LENGTH'];
+			}
+		}
+		$headers['Host'] = self::defaultHost();
+		return $headers;
+	}
+
+
+	// 默认内容数据
+	public static function defaultPosts() {
+		static $posts;
+		if (!isset($posts)) {
+			if (empty(self::$_g['_SERVER']['CONTENT_TYPE']) || empty(self::$_g['_SERVER']['CONTENT_LENGTH']) || self::$_g['_SERVER']['CONTENT_LENGTH'] < 1 || self::$_g['_SERVER']['CONTENT_LENGTH'] > self::$_postsLength) {
+				$posts = self::$_g['_POST'];
+			} elseif (in_array($method = self::defaultMethod(), ['POST', 'PUT', 'PATCH', 'DELETE']) && strpos(self::$_g['_SERVER']['CONTENT_TYPE'], '/json') !== false) {
+				$posts = ($jsons = json_decode(trim(file_get_contents('php://input', 'rb')), true)) ? $jsons : [];
+			} elseif (in_array($method, ['PUT', 'PATCH', 'DELETE']) && strpos(self::$_g['_SERVER']['CONTENT_TYPE'], 'application/x-www-form-urlencoded') !== false) {
+				$posts = ($arrays = parse_string(trim(file_get_contents('php://input', 'rb')), true)) ? $arrays : [];
+			} else {
+				$posts = self::$_g['_POST'];
+			}
+		}
+		return $posts;
+	}
+
+
+	// 默认文件
+	public static function defaultFiles() {
+		return self::$_g['_FILES'];
+	}
+
+
+
+	// 默认内容
+	public static function defaultContent() {
+		if (empty(self::$_g['_SERVER']['CONTENT_TYPE']) || empty(self::$_g['_SERVER']['CONTENT_LENGTH']) || self::$_g['_SERVER']['CONTENT_LENGTH'] < 1) {
+			return false;
+		}
+		return fopen('php://input', 'rb');
+	}
+
+
+
+	// 默认IP
+	public static function defaultIP() {
+		$ip = isset(self::$_g['_SERVER']['REMOTE_ADDR']) ? self::$_g['_SERVER']['REMOTE_ADDR'] : '127.0.0.1';
+		if (empty($_SERVER['LOLI']['IP'])) {
+
+		} elseif (isset(self::$_g['_SERVER']['HTTP_CLIENT_IP']) && filter_var(self::$_g['_SERVER']['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP)) {
+			$ip = self::$_g['_SERVER']['HTTP_CLIENT_IP'];
+		} elseif (isset(self::$_g['_SERVER']['HTTP_X_FORWARDED_FOR'])) {
+			foreach (explode(',', self::$_g['_SERVER']['HTTP_X_FORWARDED_FOR']) as $v) {
+				$v = trim($v);
+				if (filter_var($v, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) && (empty(self::$_g['_SERVER']['SERVER_ADDR']) || self::$_g['_SERVER']['SERVER_ADDR'] != $v)) {
+					$ip = $v;
+					break;
+				}
+			}
+		}
+
+		if ($ip) {
+			$ip = inet_ntop(inet_pton($ip));
+			// 兼容请求地址
+			if (preg_match('/\:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/', $ip, $matches)) {
+				$ip = $matches[1];
+			}
+		}
+		return $ip;
+	}
+
+
+
+	// 获方法
+	public function getMethod() {
+		return $this->_method;
+	}
+
+	// 设置方法
+	public function setMethod($method) {
+		if (!in_array($method = strtoupper($method), self::$_methodsList)) {
+			throw new Exception('Set token:' . $method);
+		}
+		$this->_method = $method;
+		return $this;
+	}
+
+	// 设置 GET
+	public function getURL() {
+		return $this->_URL;
+	}
+
+	// 设置 url
+	public function setURL($URL) {
+		$parse = parse_url($URL) + parse_url($this->_URL);
+		unset($parse['user'], $parse['pass'], $parse['fragment']);
+
+		$parse['host'] = strtolower(empty($parse['host']) ? self::$_defaultHost : $parse['host']);
+		$parse['scheme'] = empty($parse['scheme']) ? 'http' : strtolower($parse['scheme']);
+		$parse['path'] = isset($parse['path']) ? '/'. rtrim($parse['path'], '/') : '/';
+
+
+		$this->_URL = mrege_url($parse);
+		$this->_scheme = $parse['scheme'];
+		$this->_host = $parse['host'] . (empty($parse['port']) || in_array($parse['port'], ['80', '443']) ? '' : ':' . $parse['port']);
+		$this->_path = $parse['path'];
+		$_GET = $this->_querys = parse_string($parse['query']);
+
+		$_REQUEST = array_merge($this->_querys, $this->_posts);
+
+		return $this;
+		/*if (!in_array($method = strtoupper($method), ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'])) {
+			throw new Exception('Set token:' . $method);
+		}
+		$this->_method = $method;
+		return $this;*/
+	}
+
+	public function getScheme() {
+		return $this->_Scheme;
+	}
+
+	public function getHost() {
+		return $this->_host;
+	}
+
+	public function getPath() {
+		return $this->_path;
+	}
+
+	public function getQuerys() {
+		return $this->_querys;
+	}
+
+	public function getQuery($name, $defaultValue = null) {
+		return isset($this->_Querys[$name]) ? $this->_Querys[$name] : $defaultValue;
+	}
+
+
+	public function getHeaders() {
+		return $this->_headers;
+	}
+
+	public function getHeader($name, $defaultValue = null) {
+		return isset($this->_headers[$name]) ? $this->_headers[$name] : $defaultValue;
+	}
+
+	public function setHeader($name, $value) {
+		if ($value === null) {
+			unset($this->_headers[$name]);
+		} else {
+			$this->_headers[$name] = rtrim(trim((string)$value), ';');
+		}
+		return $this;
+	}
+
+	public function getPosts() {
+		return $this->_posts;
+	}
+
+	public function getPost($name, $defaultValue = null) {
+		return isset($this->_posts[$name]) ? $this->_posts[$name] : $defaultValue;
+	}
+
+	public function setPosts($posts) {
+		$_POST = $this->_posts = to_array($posts);
+		$_REQUEST = array_merge($this->_querys, $this->_posts);
+		return $this;
+	}
+
+	public function setPost($name, $value) {
+		if ($value === null) {
+			unset($this->_posts[$name], $_POST[$name]);
+			$_REQUEST = array_merge($this->_querys, $this->_posts);
+		} else {
+			$this->_posts[$name] = is_array($value) || is_object($value) ? to_array($value) : $value;
+			$_REQUEST = array_merge($this->_querys, $this->_posts);
+		}
+		return $this;
+	}
+
+	public function getFiles($name, $value) {
+		return $this->_files;
+	}
+
+	public function addFiles($key, array $files) {
+		if (is_int(key($files))) {
+			foreach ($files as $file) {
+				$this->addFiles($key, $file);
+			}
+		} else {
+			$file = $files;
+			if (empty($file['tmp_name'])) {
+				throw new Exception('File address can not be empty');
+			}
+			$file['error'] = isset($file['error']) ? $file['error'] : UPLOAD_ERR_OK;
+			if ($file['error'] === UPLOAD_ERR_OK) {
+				if (!is_file($file['tmp_name'])) {
+					throw new Exception('File does not exist');
+				}
+				$file['name'] = empty($file['name']) ? 'Unknown' : $file['name'];
+				$file['type'] = empty($file['type']) ? (($mime = Storage::mime($file['tmp_name'])) ? $mime['type'] : 'application/octet-stream') : $file['type'];
+				$file['size'] = filesize($file['tmp_name']);
+			} else {
+				$file += ['name' => 'Unknown', 'type' => 'application/octet-stream', 'size' => 0];
+			}
+
+			if (empty($this->_files[$name])) {
+				$this->_files[$name] = $file;
+			} else {
+				if (!is_int(key($this->_files[$name]))) {
+					$this->_files[$name];
+				}
+				$this->_files[$name] = array_merge($file);
+			}
+		}
+		return $this;
+	}
+
+
+	// 设置 headers
+
+
+	public function __construct($method = 'GET', $url = false, $headers = null, $posts = null, $files = null, $params = []) {
+		$method;
+
+	}
+}
+
+Request::start();
+		/*self::_start();
+		$version = $version ? $version : self::defaultValue();
+		$method = $method ? $method : self::defaultMethod();
+		$_SESSION = $_GET = $_POST = $_COOKIE = $_FILES = $_ENV = [];
+		$_SERVER = self::$_g[0];
+		foreach ($_SERVER as $name => $value) {
+			if ((substr($name, 0, 5) === 'HTTP_') || in_array(['UNENCODED_URL', 'X_ORIGINAL_URL', 'HTTP_X_ORIGINAL_URL', 'IIS_WasUrlRewritten'])) {
+				unset($_SERVER[$name]);
+			}
+		}
+		//$_SERVER['SERVER_PROTOCOL'] = 'HTTP/' . $version;
+
+		//self::init();
+		//$this->defaultContent;
+	}
+}
+
+//echo setcookie('test', 'asdiouasdxczxs', time() + 86400, '/');
+
+//$uri = urldecode(
+//	parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)
+//);
+//print_r($uri);
+Request::start();
+//echo Request::defaultURI();
+/*
 class Request{
 
 	private static $_g, $_input;
@@ -182,7 +551,7 @@ class Request{
 		//self::init();
 		//$this->defaultContent;
 	}*/
-}
+//}
 
 
 /*
@@ -804,4 +1173,5 @@ class Request{
 		}
 		return $matches[1];
 	}
-}*/
+}
+*/

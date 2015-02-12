@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-18 07:04:24
-/*	Updated: UTC 2015-02-10 06:55:56
+/*	Updated: UTC 2015-02-11 10:14:27
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -29,8 +29,6 @@ class Page{
 	public $maxOffset = 0;
 
 	public $isOffset = -1;
-
-	private $_request;
 
 
 
@@ -60,10 +58,12 @@ class Page{
 
 
 
-	public function __construct($url = false, $offset = false, $limit = false) {
+	public function __construct($url = false, $offset = false, $limit = false, $maxLimit = 50, $maxOffset = 0) {
 		$this->url = $url;
 		$this->offset = $offset;
 		$this->limit = $limit;
+		$this->maxLimit = $maxLimit;
+		$this->maxOffset = $maxOffset;
 	}
 
 
@@ -88,13 +88,18 @@ class Page{
 
 	// 偏移
 	public function offset() {
-		if ($this->offset !== false) {
-			return $this->offset;
+		if ($this->offset === false) {
+			if ($this->isOffset()) {
+				$offset = ($offset = (int) r('$offset', 0)) < 0 ? 0 : $offset;
+			} else {
+				$offset = ($page = (int) r('$page', 1)) < 0 ? 0 : ($page - 1) * $this->limit();
+			}
+			if ($offset && $this->maxOffset && $offset > $this->maxOffset) {
+				$offset = $this->maxOffset;
+			}
+			 $this->offset = $offset;
 		}
-		if ($this->isOffset()) {
-			return $this->offset = ($offset = (int) r('$offset', 0)) < 0 ? 0 : $offset;
-		}
-		return $this->offset = ($page = (int) r('$page', 1)) < 0 ? 0 : ($page - 1) * $this->limit();
+		return $this->offset;
 	}
 
 	// 是否允许偏移
@@ -219,7 +224,7 @@ class Page{
 	public function url($more = false) {
 		$value = $this->value();
 		if (!$this->url) {
-			$parse = parse_url($this->_request->getUrl());
+			$parse = parse_url(current_url());
 			$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 			$parse['query'][$this->isOffset() ? '$offset': '$page'] = $value;
 			$parse['query'] = merge_string($parse['query']);
@@ -265,7 +270,7 @@ class Page{
 		if (!$this->more ||$this->count() < $this->limit()) {
 			return false;
 		}
-		$parse = parse_url($this->_request->getUrl());
+		$parse = parse_url(current_url());
 		$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 		unset($parse['query']['$offset'], $parse['query']['$page']);
 		$parse['query'] = $this->more + $parse['query'];

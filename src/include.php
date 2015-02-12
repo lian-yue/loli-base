@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-02-11 07:24:16
+/*	Updated: UTC 2015-02-11 13:11:13
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -24,6 +24,10 @@ mb_internal_encoding('UTF-8');
 
 // 禁用 XML 外部实体
 libxml_disable_entity_loader(true);
+
+// 打开缓冲区
+//ob_start(null, 4096);
+
 
 
 // 系统版本号
@@ -55,7 +59,7 @@ if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 Model::__reg('DB', function() {
 	empty($_SERVER['LOLI']['DB']) && trigger_error( 'Variables $_SERVER[\'LOLI\'][\'DB\'] does not exist', E_USER_ERROR);
 	$class = __NAMESPACE__ . '\DB\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? (class_exists('MySQLi') ? 'MySQLi' : 'MySQL') : $_SERVER['LOLI']['DB']['type']);
-	return $class($_SERVER['LOLI']['DB']);
+	return new $class($_SERVER['LOLI']['DB']);
 });
 
 

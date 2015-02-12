@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-03 09:19:27
+/*	Updated: UTC 2015-02-12 06:55:36
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
@@ -186,16 +186,7 @@ abstract class Base{
 		}
 
 		// 整理 文件数组
-		$files = [];
-		if (is_array($_FILES[$key]['name'])) {
-			foreach ($_FILES[$key] as $k => $v) {
-				foreach ($v as $kk => $vv) {
-					$files[$kk][$k] = $vv;
-				}
-			}
-		} else {
-			$files[] = $_FILES[$key];
-		}
+		$files = $this->_files($_FILES[$key]['name'], $_FILES[$key]['type'], $_FILES[$key]['tmp_name'], $_FILES[$key]['error'], $_FILES[$key]['size']);
 
 		$a = [];
 		foreach ($files as $v) {
@@ -232,5 +223,17 @@ abstract class Base{
 
 		}
 		return $a;
+	}
+
+	private function _files($name, $type, $tmp_name, $error, $size) {
+		$files = [];
+		if (is_array($name)) {
+			foreach ($name as $key => $value) {
+				$files = array_merge($files, $this->_files($name[$key], $type[$key], $tmp_name[$key], $error[$key], $size[$key]));
+			}
+		} else {
+			$files[] = ['name' => $name, 'type' => $type, 'tmp_name' => $tmp_name, 'error' => $error, 'size' => $size];
+		}
+		return $files;
 	}
 }

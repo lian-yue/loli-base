@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-10 05:44:46
+/*	Updated: UTC 2015-02-11 16:39:21
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -130,7 +130,7 @@ class Router{
 				}
 
 				// 允许的方法
-				if (!in_array($method, $value['method'] ? (in_array('*', (array)$value['method']) ? ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE', 'TRACE', 'CONNECT'] : (array) $value['method']) : self::$method)) {
+				if (!in_array($method, $value['method'] ? (in_array('*', (array)$value['method']) ? ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE', 'TRACE'] : (array) $value['method']) : self::$method)) {
 					continue;
 				}
 
