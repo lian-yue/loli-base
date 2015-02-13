@@ -28,7 +28,7 @@ class Cookie{
 	}
 
 	public static function delete($name) {
-			unset($_COOKIE[self::$prefix .$name]);
+		unset($_COOKIE[self::$prefix .$name]);
 		@setcookie(self::$prefix .$name, 'deleted', 1, self::$path, self::$domain, self::$secure, self::$httponly);
 		return true;
 	}
@@ -38,12 +38,12 @@ class Cookie{
 	}
 
 	public static function set($name, $value, $ttl = 0, $httponly = null, $secure = null) {
-			if (is_array($value) || is_object($value)) {
-				foreach ($value as $k => $v) {
-					self::set($name . '[' . rawurlencode($k) . ']', $value, $ttl, $httponly, $secure);
+		if (is_array($value) || is_object($value)) {
+			foreach ($value as $k => $v) {
+				self::set($name . '[' . rawurlencode($k) . ']', $value, $ttl, $httponly, $secure);
 			}
 		} else {
-				$_COOKIE[self::$prefix .$name] = $value;
+			$_COOKIE[self::$prefix .$name] = $value;
 			@setcookie(self::$prefix .$name, $value, $ttl ? time() + $ttl : $ttl, self::$path, self::$domain, $secure == null ? self::$secure : $secure, $httponly == null ? self::$httponly : $httponly);
 		}
 		return true;
@@ -51,9 +51,9 @@ class Cookie{
 }
 
 if (!empty($_SERVER['LOLI']['COOKIE'])) {
-		foreach ($_SERVER['LOLI']['COOKIE'] as $key => $value) {
-			if (in_array($key, ['prefix', 'path', 'domain', 'secure', 'httponly'])) {
-				Cookie::$$key = $value;
+	foreach ($_SERVER['LOLI']['COOKIE'] as $key => $value) {
+		if (in_array($key, ['prefix', 'path', 'domain', 'secure', 'httponly'])) {
+			Cookie::$$key = $value;
 		}
 	}
 	unset($key, $value);

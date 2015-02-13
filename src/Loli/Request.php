@@ -31,6 +31,8 @@ class Request{
 	private $_querys = [];
 
 	private $_headers = [];
+	
+	private $_cookies = [];
 
 	private $_posts = [];
 
@@ -267,9 +269,6 @@ class Request{
 	}
 
 
-
-
-
 	public function getPath() {
 		return $this->_path;
 	}
@@ -462,6 +461,7 @@ class Request{
 
 	public function setHeaders(array $headers) {
 		$this->_headers = [];
+		$_COOKIE = [];
 		foreach($headers as $name => $value) {
 			$this->setHeader($name, $value);
 		}
@@ -478,6 +478,8 @@ class Request{
 			unset($_SERVER['HTTP_'. $nameKey]);
 			if (in_array($name, ['Content-Type', 'Content-length'])) {
 				unset($_SERVER[$nameKey]);
+			} elseif ($name == 'Cookie') {
+				$this->_cookies = $_COOKIE = [];
 			}
 		} else {
 			if (in_array($name, ['Content-Type'])) {
@@ -486,6 +488,8 @@ class Request{
 			$value = rtrim(trim((string)$value), ';');
 			if (in_array($name, ['Content-Type', 'Content-length'])) {
 				$_SERVER[$nameKey] = $value;
+			} elseif ($name == 'Cookie') {
+				$this->_cookies = $_COOKIE = parse_string(preg_replace('/;\s*/', '&', $value));
 			}
 			$_SERVER['HTTP_'. $nameKey] = $value;
 			$this->_headers[$name] = $value;
@@ -493,7 +497,36 @@ class Request{
 		return $this;
 	}
 
+	public function getCookies() {
+		return $this->_cookies;
+	}
 
+	public function getCookie($key, $defaultValue = null){
+		return isset($this->_cookies[$key]) ? $this->_cookies[$key] : $defaultValue;
+	}
+
+	public function setCookies(array $cookies) {
+		//=,; \t\r\n\013\014
+		$_COOKIE = $this->_cookies = array_unnull(to_array($cookies));
+		$_SERVER['HTTP_COOKIE'] = http_build_query($_COOKIE, null, '; ');
+		return $this;
+	}
+
+	public function setCookie($name, $value) {
+		if ($value === null || !empty($this->_cookies[$name])) {
+			$this->setCookies([$name => $value]+ $this->_cookies);
+		} else {
+			$_COOKIE = $this->_cookies[$name] = is_array($value) || is_object($value) ? array_unnull(to_array($value)) : $value;
+			$value = http_build_query([$key => $value], null, '; ');
+			if (empty($this->_headers['Cookie'])) {
+				$this->_headers['Cookie'] = $value;
+			} else {
+				$this->_headers['Cookie'] .= '; ' . $value;
+			}
+			$_SERVER['HTTP_COOKIE'] = $this->_headers['Cookie'];
+		}
+		return $this;
+	}
 
 	public function getPosts() {
 		return $this->_posts;
@@ -504,7 +537,7 @@ class Request{
 	}
 
 	public function setPosts($posts) {
-		$_POST = $this->_posts = to_array($posts);
+		$_POST = $this->_posts = array_unnull(to_array($posts));
 		$_REQUEST = array_merge($this->_querys, $_POST);
 		return $this;
 	}
@@ -529,18 +562,8 @@ class Request{
 		return empty($this->_files[$key]) ? false : $this->_files[$key];
 	}
 
-
-	$files = [];
-	if (is_array($name)) {
-		foreach ($name as $key => $value) {
-			$files[] = array_merge($name, self::_files($name[$key], $type[$key], $tmp_name[$key], $error[$key], $size[$key]));
-		}
-	} else {
-		$files[] = ['name' => $name, 'type' => $type, 'tmp_name' => $tmp_name, 'error' => $error, 'size' => $size];
-	}
-	return $files;
-
 	public function setFiles(array $files) {
+		$_FILES = [];
 		$this->_files = [];
 		foreach ($files as $key => $value) {
 			$this->setFile($key, $value);
@@ -550,21 +573,41 @@ class Request{
 
 	public function setFile($key, array $value) {
 		$this->_files[$key] = [];
-		if (empty($value['tmp_name'])) {
-			throw new Exception('Set file empty file tmp_name');
-		}
-		if (is_array($value['tmp_name'])) {
-			foreach($value['tmp_name'] as $k => $v) {
-				$this->addFile($key, $value['tmp_name'][$k], empty($value['name'][$k]) ? false : $value['name'][$k], empty($value['type'][$k]) ? false : $value['type'][$k], isset($value['error'][$k]) ? $value['error'][$k] : UPLOAD_ERR_OK, isset($value['size'][$k]) ? $value['size'][$k] : false);
-			}
-		} else {
-			$this->addFile($key, $value);
-		}
+		unset($_FILES[$key]);
 
+		if ($value) {
+			if (empty($value['tmp_name'])) {
+				throw new Exception('Set file path can not be empty');
+			}
+			if (is_array($value['tmp_name'])) {
+				foreach($value['tmp_name'] as $k => $v) {
+					$this->addFile($key, $value['tmp_name'][$k], empty($value['name'][$k]) ? false : $value['name'][$k], empty($value['type'][$k]) ? false : $value['type'][$k], isset($value['error'][$k]) ? $value['error'][$k] : UPLOAD_ERR_OK, isset($value['size'][$k]) ? $value['size'][$k] : false);
+				}
+			} else {
+				$this->addFile($key, $value);
+			}
+		}
+		return $this;
 	}
 
-	public function addFile($key, $tmp_name, $name, $type, $error , $size = false) {
-
+	public function addFile($key, $tmp_name, $name, $type, $error = UPLOAD_ERR_OK, $size = false) {
+		if (!$tmp_name || !is_string($tmp_name)) {
+			throw new Exception('Add file path can not be empty');
+		}
+		$error = abs((int) $error);
+		if (!$error || $error === UPLOAD_ERR_OK) {
+			if (!is_file($tmp_name)) {
+				throw new Exception('File does not exist');
+			}
+		}
+		$size = $size === false && $error === UPLOAD_ERR_OK ? filesize($tmp_name) : abs((int)$size);
+		$name = $name ? (string) pathinfo((string) $name, PATHINFO_BASENAME) : 'Unknown';
+		$type = $type ? (string) $type : ($error === UPLOAD_ERR_OK && ($mime = File::mime($tmp_name)) ? $mime['type'] : 'application/octet-stream');
+		$file = ['tmp_name' => $tmp_name, 'name' => $name, 'type' => $type, 'error' => $error];
+		foreach ($file as $k => $v) {
+			$this->_files[$key][$k] = array_merge(isset($this->_files[$key][$k]) ? (array) $this->_files[$key][$k] : [], [$v]);
+		}
+		return $this;
 	}
 
 
@@ -716,7 +759,6 @@ class Request{
 		$this->setContent($content === null ? self::defaultContent() : $content);
 	}
 }
-
 Request::start();
 
 
