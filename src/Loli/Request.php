@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-06 14:16:56
-/*	Updated: UTC 2015-02-12 06:37:58
+/*	Updated: UTC 2015-02-13 07:21:03
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -18,19 +18,27 @@ class Request{
 
 	private static $_g, $_postsLength = 2097152, $_defaultHost = 'localhost', $_methodsList = ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
-	private $_version = null;
-	private $_method = null;
 
-	private $_URL = null;
-	private $_scheme = null;
-	private $_host = null;
-	private $_path = null;
-	private $_querys = null;
+	private $_scheme = 'http';
+
+	private $_version = 1.1;
+	private $_method = 'GET';
+
+	private $_URI = '/';
+
+	private $_path = '/';
+
+	private $_querys = [];
 
 	private $_headers = [];
+
 	private $_posts = [];
+
 	private $_files = [];
+
 	private $_content = false;
+
+	private $_IP = false;
 
 
 	public static function start() {
@@ -40,8 +48,20 @@ class Request{
 		return true;
 	}
 
-
-
+	public static function defaultScheme() {
+		if (isset(self::$_g['_SERVER']['REQUEST_SCHEME'])) {
+			$scheme = strtolower(self::$_g['_SERVER']['REQUEST_SCHEME']);
+		} elseif (isset(self::$_g['_SERVER']['HTTPS']) && ('on' == strtolower(self::$_g['_SERVER']['HTTPS']) || '1' == self::$_g['_SERVER']['HTTPS'])) {
+			$scheme = 'https';
+		} elseif (isset(self::$_g['_SERVER']['SERVER_PORT']) && '443' == self::$_g['_SERVER']['SERVER_PORT']) {
+			$scheme = 'https';
+		} elseif (isset(self::$_g['_SERVER']['SERVER_PORT_SECURE']) && '1' == self::$_g['_SERVER']['SERVER_PORT_SECURE']) {
+			$scheme = 'https';
+		} else {
+			$scheme = 'http';
+		}
+		return $scheme;
+	}
 
 	// 默认版本
 	public static function defaultVersion() {
@@ -63,37 +83,8 @@ class Request{
 		return $method;
 	}
 
-	public static function defaultHost(){
-		if (isset(self::$_g['_SERVER']['HTTP_HOST'])) {
-			$host = self::$_g['_SERVER']['HTTP_HOST'];
-		}  elseif (isset(self::$_g['_SERVER']['SERVER_NAME'])) {
-			$host = self::$_g['_SERVER']['SERVER_NAME'];
-			if (isset(self::$_g['_SERVER']['SERVER_PORT']) && !in_array(self::$_g['_SERVER']['SERVER_PORT'], ['80', '443'])) {
-				$host = ':' . self::$_g['_SERVER']['SERVER_PORT'];
-			}
-		} else {
-			$host = self::$_defaultHost;
-		}
-		return $host;
-	}
-
-
 	// 默认 URL
-	public static function defaultURL() {
-		if (isset(self::$_g['_SERVER']['REQUEST_SCHEME'])) {
-			$scheme = strtolower(self::$_g['_SERVER']['REQUEST_SCHEME']);
-		} elseif (isset(self::$_g['_SERVER']['HTTPS']) && ('on' == strtolower(self::$_g['_SERVER']['HTTPS']) || '1' == self::$_g['_SERVER']['HTTPS'])) {
-			$scheme = 'https';
-		} elseif (isset(self::$_g['_SERVER']['SERVER_PORT']) && '443' == self::$_g['_SERVER']['SERVER_PORT']) {
-			$scheme = 'https';
-		} elseif (isset(self::$_g['_SERVER']['SERVER_PORT_SECURE']) && '1' == self::$_g['_SERVER']['SERVER_PORT_SECURE']) {
-			$scheme = 'https';
-		} else {
-			$scheme = 'http';
-		}
-
-		$host = self::defaultHost();
-
+	public static function defaultURI() {
 		if (isset(self::$_g['_SERVER']['REQUEST_URI'])) {
 			$URI = self::$_g['_SERVER']['REQUEST_URI'];
 		} elseif (isset(self::$_g['_SERVER']['HTTP_X_ORIGINAL_URL'])) {
@@ -108,7 +99,7 @@ class Request{
 		} else {
 			$URI = '/';
 		}
-		return $scheme .'://'. $host . '/' . ltrim($URI, '/');
+		return '/' . ltrim($URI, '/');
 	}
 
 
@@ -123,7 +114,7 @@ class Request{
 			$headers = [];
 			foreach (self::$_g['_SERVER'] as $name => $value) {
 				if (substr($name, 0, 5) === 'HTTP_') {
-					$headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+					$headers[strtr(ucwords(strtolower(strtr(substr($name, 5), '_', ' '))), ' ', '-')] = $value;
 				}
 			}
 			if (!empty(self::$_g['_SERVER']['CONTENT_TYPE'])) {
@@ -133,7 +124,19 @@ class Request{
 				$headers['Content-Length'] = self::$_g['_SERVER']['CONTENT_LENGTH'];
 			}
 		}
-		$headers['Host'] = self::defaultHost();
+		if (empty($headers['Host'])) {
+			if (isset(self::$_g['_SERVER']['HTTP_HOST'])) {
+				$headers['Host'] = self::$_g['_SERVER']['HTTP_HOST'];
+			}  elseif (isset(self::$_g['_SERVER']['SERVER_NAME'])) {
+				$headers['Host'] = self::$_g['_SERVER']['SERVER_NAME'];
+				if (isset(self::$_g['_SERVER']['SERVER_PORT']) && !in_array(self::$_g['_SERVER']['SERVER_PORT'], ['80', '443'])) {
+					$headers['Host'] = ':' . self::$_g['_SERVER']['SERVER_PORT'];
+				}
+			} else {
+				$headers['Host'] = self::$_defaultHost;
+			}
+		}
+		unset($headers['X-Original-Url']);
 		return $headers;
 	}
 
@@ -165,7 +168,6 @@ class Request{
 		return $files;
 	}
 
-
 	private static function _files($name, $type, $tmp_name, $error, $size) {
 		$files = [];
 		if (is_array($name)) {
@@ -185,40 +187,61 @@ class Request{
 		if (empty(self::$_g['_SERVER']['CONTENT_TYPE']) || empty(self::$_g['_SERVER']['CONTENT_LENGTH']) || self::$_g['_SERVER']['CONTENT_LENGTH'] < 1) {
 			return false;
 		}
-		return fopen('php://input', 'rb');
+		return 'php://input';
 	}
 
 
 
 	// 默认IP
 	public static function defaultIP() {
-		$ip = isset(self::$_g['_SERVER']['REMOTE_ADDR']) ? self::$_g['_SERVER']['REMOTE_ADDR'] : '127.0.0.1';
+		$IP = isset(self::$_g['_SERVER']['REMOTE_ADDR']) ? self::$_g['_SERVER']['REMOTE_ADDR'] : '127.0.0.1';
 		if (empty($_SERVER['LOLI']['IP'])) {
 
 		} elseif (isset(self::$_g['_SERVER']['HTTP_CLIENT_IP']) && filter_var(self::$_g['_SERVER']['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP)) {
-			$ip = self::$_g['_SERVER']['HTTP_CLIENT_IP'];
+			$IP = self::$_g['_SERVER']['HTTP_CLIENT_IP'];
 		} elseif (isset(self::$_g['_SERVER']['HTTP_X_FORWARDED_FOR'])) {
 			foreach (explode(',', self::$_g['_SERVER']['HTTP_X_FORWARDED_FOR']) as $v) {
 				$v = trim($v);
 				if (filter_var($v, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) && (empty(self::$_g['_SERVER']['SERVER_ADDR']) || self::$_g['_SERVER']['SERVER_ADDR'] != $v)) {
-					$ip = $v;
+					$IP = $v;
 					break;
 				}
 			}
 		}
 
-		if ($ip) {
-			$ip = inet_ntop(inet_pton($ip));
+		if ($IP) {
+			$IP = inet_ntop(inet_pton($IP));
 			// 兼容请求地址
-			if (preg_match('/\:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/', $ip, $matches)) {
-				$ip = $matches[1];
+			if (preg_match('/\:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/', $IP, $matches)) {
+				$IP = $matches[1];
 			}
 		}
-		return $ip;
+		return $IP;
 	}
 
 
-	public function getVersion(){
+
+	public function getScheme() {
+		return $this->_scheme;
+	}
+
+	public function setScheme($scheme) {
+		if (!in_array($scheme, ['http', 'https'])) {
+			if (!in_array($method = strtoupper($method), self::$_methodsList)) {
+				throw new Exception('Set scheme:' . $method);
+			}
+		}
+		$this->_scheme = $scheme;
+		$_SERVER['REQUEST_SCHEME'] = $scheme;
+		if ($scheme == 'https') {
+			$_SERVER['HTTPS'] = 'on';
+		} else {
+			unset($_SERVER['HTTPS']);
+		}
+		return $this;
+	}
+
+	public function getVersion() {
 		return $this->_version;
 	}
 
@@ -227,7 +250,6 @@ class Request{
 		$_SERVER['SERVER_PROTOCOL'] = 'HTTP/' . ($this->_version == 1.0 ? '1.0' : '1.1');
 		return $this;
 	}
-
 
 	// 获方法
 	public function getMethod() {
@@ -244,14 +266,58 @@ class Request{
 		return $this;
 	}
 
-	// 设置 GET
-	public function getURL() {
-		return $this->_URL;
+
+
+
+
+	public function getPath() {
+		return $this->_path;
 	}
 
-	// 设置 url
-	public function setURL($URL) {
-		$parse = parse_url($URL);
+	public function getQuerys() {
+		return $this->_querys;
+	}
+
+	public function getQuery($name, $defaultValue = null) {
+		return isset($this->_querys[$name]) ? $this->_querys[$name] : $defaultValue;
+	}
+
+	public function getURI() {
+		return $this->_URI;
+	}
+
+	public function setURI($URI) {
+		list($path, $queryString) = explode('?', $URI, 2) + [1 => ''];
+		$path = preg_replace('/[\x00-\x1F?#]+/x', '', $path);
+		$path = preg_replace('/[\/\\\\]+/', '/', $path);
+		$path = preg_replace('/\/\.+\//', '/', $path);
+		$path =  '/' . rtrim(trim($path), '/');
+		$querys = $queryString ? parse_string($queryString) : [];
+		$queryString = merge_string($querys);
+		$URI = $path . ($queryString ? '?' . $queryString : '');
+
+
+		$this->_URI = $URI;
+		$this->_path = $path;
+		$this->_querys = $querys;
+
+		$_REQUEST = array_merge($querys, $this->_posts);
+		$_GET = $querys;
+		$_SERVER['REQUEST_URI'] = $URI;
+		$_SERVER['QUERY_STRING'] = $queryString;
+
+		return $this;
+
+		//$URI = $this->_path . ($queryString ? '?' . $queryString : '');
+		//$_SERVER['REQUEST_URI'] = $URI;
+		//$_SERVER['QUERY_STRING'] = $queryString;
+
+		// URL 地址
+		//$this->_URL = $this->_scheme . '://' . $this->_host . $this->_path . $URI;
+
+
+
+		/*$parse = parse_url($URL);
 		unset($parse['user'], $parse['pass'], $parse['fragment']);
 
 		if (!empty($parse['scheme'])) {
@@ -305,7 +371,7 @@ class Request{
 		if (!empty($parse['host']) || !empty($parse['port']) || $this->_host === null) {
 			$this->_host = empty($parse['host']) ? ($this->_host ? $this->_host : self::_defaultHost()) : $this->_host;
 			$_SERVER['SERVER_PORT'] = empty($parse['port']) ? ($this->_scheme == 'https' ? '443' : '80') : $parse['port'];
-			$_SERVER['SERVER_HOST'] = $this->_host . (empty($parse['port']) || in_array($parse['port'], ['80', '443']) ? '' : ':' . $parse['port']);
+			$this->_headers['Host'] = $_SERVER['HTTP_POST'] = $_SERVER['SERVER_HOST'] = $this->_host . (empty($parse['port']) || in_array($parse['port'], ['80', '443']) ? '' : ':' . $parse['port']);
 		}
 
 
@@ -318,7 +384,7 @@ class Request{
 			$this->_querys = empty($parse['query']) ? parse_string($parse['query']) : [];
 		}
 		$queryString = merge_string($this->_querys);
-		
+
 
 
 		$URI = $this->_path . ($queryString ? '?' . $queryString : '');
@@ -377,25 +443,13 @@ class Request{
 		return $this;*/
 	}
 
-	public function getScheme() {
-		return $this->_Scheme;
+
+	public function getURL() {
+		return $this->_scheme . '://' . $this->getHeader('Host') . $this->_URI;
 	}
 
-	public function getHost() {
-		return $this->_host;
-	}
 
-	public function getPath() {
-		return $this->_path;
-	}
 
-	public function getQuerys() {
-		return $this->_querys;
-	}
-
-	public function getQuery($name, $defaultValue = null) {
-		return isset($this->_Querys[$name]) ? $this->_Querys[$name] : $defaultValue;
-	}
 
 
 	public function getHeaders() {
@@ -406,14 +460,40 @@ class Request{
 		return isset($this->_headers[$name]) ? $this->_headers[$name] : $defaultValue;
 	}
 
-	public function setHeader($name, $value) {
-		if ($value === null) {
-			unset($this->_headers[$name]);
-		} else {
-			$this->_headers[$name] = rtrim(trim((string)$value), ';');
+	public function setHeaders(array $headers) {
+		$this->_headers = [];
+		foreach($headers as $name => $value) {
+			$this->setHeader($name, $value);
+		}
+		if (empty($this->_headers['Host'])) {
+			$this->_headers['Host'] = self::defaultHeaders()['Host'];
 		}
 		return $this;
 	}
+
+	public function setHeader($name, $value) {
+		$nameKey = strtoupper(strtr($name, '-', '_'));
+		if ($value === null && $name !== 'Host') {
+			unset($this->_headers[$name]);
+			unset($_SERVER['HTTP_'. $nameKey]);
+			if (in_array($name, ['Content-Type', 'Content-length'])) {
+				unset($_SERVER[$nameKey]);
+			}
+		} else {
+			if (in_array($name, ['Content-Type'])) {
+				$value = explode(';', $value, 2)[0];
+			}
+			$value = rtrim(trim((string)$value), ';');
+			if (in_array($name, ['Content-Type', 'Content-length'])) {
+				$_SERVER[$nameKey] = $value;
+			}
+			$_SERVER['HTTP_'. $nameKey] = $value;
+			$this->_headers[$name] = $value;
+		}
+		return $this;
+	}
+
+
 
 	public function getPosts() {
 		return $this->_posts;
@@ -425,7 +505,7 @@ class Request{
 
 	public function setPosts($posts) {
 		$_POST = $this->_posts = to_array($posts);
-		$_REQUEST = array_merge($this->_querys, $this->_posts);
+		$_REQUEST = array_merge($this->_querys, $_POST);
 		return $this;
 	}
 
@@ -440,13 +520,90 @@ class Request{
 		return $this;
 	}
 
-	public function getFiles($name) {
+
+	public function getFiles() {
 		return $this->_files;
+	}
+
+	public function getFile($key) {
+		return empty($this->_files[$key]) ? false : $this->_files[$key];
+	}
+
+
+	$files = [];
+	if (is_array($name)) {
+		foreach ($name as $key => $value) {
+			$files[] = array_merge($name, self::_files($name[$key], $type[$key], $tmp_name[$key], $error[$key], $size[$key]));
+		}
+	} else {
+		$files[] = ['name' => $name, 'type' => $type, 'tmp_name' => $tmp_name, 'error' => $error, 'size' => $size];
+	}
+	return $files;
+
+	public function setFiles(array $files) {
+		$this->_files = [];
+		foreach ($files as $key => $value) {
+			$this->setFile($key, $value);
+		}
+		return $this;
+	}
+
+	public function setFile($key, array $value) {
+		$this->_files[$key] = [];
+		if (empty($value['tmp_name'])) {
+			throw new Exception('Set file empty file tmp_name');
+		}
+		if (is_array($value['tmp_name'])) {
+			foreach($value['tmp_name'] as $k => $v) {
+				$this->addFile($key, $value['tmp_name'][$k], empty($value['name'][$k]) ? false : $value['name'][$k], empty($value['type'][$k]) ? false : $value['type'][$k], isset($value['error'][$k]) ? $value['error'][$k] : UPLOAD_ERR_OK, isset($value['size'][$k]) ? $value['size'][$k] : false);
+			}
+		} else {
+			$this->addFile($key, $value);
+		}
+
+	}
+
+	public function addFile($key, $tmp_name, $name, $type, $error , $size = false) {
+
 	}
 
 
 
-	public function addFiles(array $files) {
+	public function getContent() {
+		return $this->_content;
+	}
+
+	public function setContent($content) {
+		$this->_content = $content;
+		return $this;
+	}
+
+	public function getIP() {
+		return $this->_IP;
+	}
+
+	public function setIP($IP) {
+		if($IP && !($value = filter_var($IP, FILTER_VALIDATE_IP))) {
+			throw new Exception('Set IP:' . $IP);
+		}
+		if ($IP) {
+			$IP = inet_ntop(inet_pton($IP));
+			// 兼容请求地址
+			if (preg_match('/\:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/', $IP, $matches)) {
+				$IP = $matches[1];
+			}
+		}
+		$this->_IP = (string) $IP;
+		return $this;
+	}
+
+	//public function getFiles($name) {
+	//	return $this->_files;
+	//}
+
+
+
+	/*public function addFiles(array $files) {
 		foreach ($files as $key => $value) {
 			foreach ($value as $file) {
 				if (empty($file['tmp_name'])) {
@@ -476,7 +633,7 @@ class Request{
 			throw new Exception('File address can not be empty');
 		}
 		$file['error'] = isset($file['error']) ? $file['error'] : UPLOAD_ERR_OK;
-		
+
 		if ($file['error'] === UPLOAD_ERR_OK) {
 			if (!is_file($file['tmp_name'])) {
 				throw new Exception('File does not exist');
@@ -526,26 +683,47 @@ class Request{
 				$this->_files[$name] = array_merge($file);
 			}*/
 		//}
-		return $this;
-	}
+	//	return $this;
+	//}
 
 
 	// 设置 headers
 
 
-	public function __construct($method = 'GET', $URL = false, $headers = null, $posts = null, $files = null, $params = []) {
+	public function __construct($method = 'GET', $URI = false, $headers = [], $posts = null, $files = null, $content = null) {
 		foreach($_SERVER as $key => $value) {
-			if (in_array($key, ['REDIRECT_QUERY_STRING', 'REDIRECT_URL']) || substr($key, 0, 5) == 'HTTP_') {
+			if (in_array($key, ['ORIG_PATH_INFO', 'REDIRECT_QUERY_STRING', 'REDIRECT_URL', 'SERVER_PORT_SECURE', 'CONTENT_TYPE', 'CONTENT_LENGTH', 'UNENCODED_URL']) || substr($key, 0, 5) == 'HTTP_') {
 				unset($_SERVER[$key]);
 			}
 		}
+
+		// 写入 方法
 		$this->setMethod($method);
-		$this->setURL(self::defaultURL());
-		$URL && $this->setURL($URL);
+
+		// 写入 URI
+		$this->setURI($URI || is_string($URI) ? $URI : self::defaultURI());
+
+		// 写入 header 头
+		$this->setHeaders($headers ? $headers : self::defaultHeaders());
+
+		// 写入 post 数组
+		$this->setPosts($posts || is_array($posts) ? $posts : self::defaultPosts());
+
+		// 写入 文件
+		$this->setFiles($files || is_array($files) ? $files : self::defaultFiles());
+
+		// 写入 内容
+		$this->setContent($content === null ? self::defaultContent() : $content);
 	}
 }
 
 Request::start();
+
+
+
+
+
+
 		/*self::_start();
 		$version = $version ? $version : self::defaultValue();
 		$method = $method ? $method : self::defaultMethod();
