@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-06 14:16:56
-/*	Updated: UTC 2015-02-13 07:21:03
+/*	Updated: UTC 2015-02-14 15:47:27
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -19,9 +19,18 @@ class Request{
 	private static $_g, $_postsLength = 2097152, $_defaultHost = 'localhost', $_methodsList = ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
 
+	const TOKEN_HEADER = 'X-Token';
+
+	const TOKEN_COOKIE = 'token';
+
+	const AJAX_HEADER = 'X-Ajax';
+
+	const AJAX_PARAM = 'ajax';
+
 	private $_scheme = 'http';
 
 	private $_version = 1.1;
+
 	private $_method = 'GET';
 
 	private $_URI = '/';
@@ -31,16 +40,30 @@ class Request{
 	private $_querys = [];
 
 	private $_headers = [];
-	
+
 	private $_cookies = [];
 
 	private $_posts = [];
+
+	private $_params = [];
 
 	private $_files = [];
 
 	private $_content = false;
 
 	private $_IP = false;
+
+	private $_token = null;
+
+	private $_ajax = null;
+
+	private $_ranges = null;
+
+	private $_mobile = null;
+
+	private $_API = null;
+
+
 
 
 	public static function start() {
@@ -49,6 +72,8 @@ class Request{
 		}
 		return true;
 	}
+
+
 
 	public static function defaultScheme() {
 		if (isset(self::$_g['_SERVER']['REQUEST_SCHEME'])) {
@@ -290,7 +315,7 @@ class Request{
 		$path = preg_replace('/[\x00-\x1F?#]+/x', '', $path);
 		$path = preg_replace('/[\/\\\\]+/', '/', $path);
 		$path = preg_replace('/\/\.+\//', '/', $path);
-		$path =  '/' . rtrim(trim($path), '/');
+		$path =  '/' . ltrim(trim($path), '/');
 		$querys = $queryString ? parse_string($queryString) : [];
 		$queryString = merge_string($querys);
 		$URI = $path . ($queryString ? '?' . $queryString : '');
@@ -461,6 +486,7 @@ class Request{
 
 	public function setHeaders(array $headers) {
 		$this->_headers = [];
+		$this->_API = $this->_mobile = $this->_ranges = null;
 		$_COOKIE = [];
 		foreach($headers as $name => $value) {
 			$this->setHeader($name, $value);
@@ -480,6 +506,10 @@ class Request{
 				unset($_SERVER[$nameKey]);
 			} elseif ($name == 'Cookie') {
 				$this->_cookies = $_COOKIE = [];
+			} elseif ($name == 'Range') {
+				$this->_ranges = null;
+			} elseif ($name == 'User-Agent') {
+				$this->_API = $this->_mobile = null;
 			}
 		} else {
 			if (in_array($name, ['Content-Type'])) {
@@ -490,6 +520,10 @@ class Request{
 				$_SERVER[$nameKey] = $value;
 			} elseif ($name == 'Cookie') {
 				$this->_cookies = $_COOKIE = parse_string(preg_replace('/;\s*/', '&', $value));
+			} elseif ($name == 'Range') {
+				$this->_ranges = null;
+			} elseif ($name == 'User-Agent') {
+				$this->_API = $this->_mobile = null;
 			}
 			$_SERVER['HTTP_'. $nameKey] = $value;
 			$this->_headers[$name] = $value;
@@ -501,7 +535,7 @@ class Request{
 		return $this->_cookies;
 	}
 
-	public function getCookie($key, $defaultValue = null){
+	public function getCookie($key, $defaultValue = null) {
 		return isset($this->_cookies[$key]) ? $this->_cookies[$key] : $defaultValue;
 	}
 
@@ -640,97 +674,114 @@ class Request{
 		return $this;
 	}
 
-	//public function getFiles($name) {
-	//	return $this->_files;
-	//}
+	public function getParams(){
+		return $this->_params;
+	}
 
+	public function getParam($name, $defaultValue = null) {
+		return isset($this->_params[$name]) ? $this->_params[$name] : $defaultValue;
+	}
 
+	public function createToken() {
+		$token = uniqid();
+		$token .= mb_rand(16 - strlen($token), '0123456789qwertyuiopasdfghjklzxcvbnm');
+		$token .= Code::key(__CLASS__ . self::TOKEN_HEADER . $token, 16);
+		return $token;
+	}
 
-	/*public function addFiles(array $files) {
-		foreach ($files as $key => $value) {
-			foreach ($value as $file) {
-				if (empty($file['tmp_name'])) {
-					throw new Exception('File address can not be empty');
-				}
-				$file['error'] = isset($file['error']) ? $file['error'] : UPLOAD_ERR_OK;
-				if ($file['error'] === UPLOAD_ERR_OK) {
-					if (!is_file($file['tmp_name'])) {
-						throw new Exception('File does not exist');
-					}
-					$file['name'] = empty($file['name']) ? 'Unknown' : (string) $file['name'];
-					$file['type'] = empty($file['type']) ? (($mime = Storage::mime($file['tmp_name'])) ? $mime['type'] : 'application/octet-stream') : (string) $file['type'];
-					$file['size'] = filesize($file['tmp_name']);
-				} else {
-					$file += ['name' => 'Unknown', 'type' => 'application/octet-stream', 'size' => 0];
-				}
-				$this->_files[$key][] = $file;
+	public function getToken($isKey = false) {
+		if ($this->_token === null) {
+			($token = $this->getHeader(self::TOKEN_HEADER)) || ($token = $this->getCookie(self::TOKEN_COOKIE));
+			try {
+				$this->setToken($token);
+			} catch (Exception $e) {
+				$this->setToken($this->createToken());
 			}
 		}
+		return $key ? $this->_token : substr($this->_token, 0, 16);
+	}
+
+	public function setToken($token) {
+		if (!is_string($token) || strlen($token) != 32 || Code::key(__CLASS__ . self::TOKEN_HEADER . substr($token, 0, 16), 16) !== substr($token, 16)) {
+			throw new Exception('Set token:' . $token);
+		}
+		$this->_token = $token;
 		return $this;
 	}
 
 
-	public function addFile($key, array $file) {
-		return $this->addFiles([$key => [$file]]);
-		if (empty($file['tmp_name'])) {
-			throw new Exception('File address can not be empty');
-		}
-		$file['error'] = isset($file['error']) ? $file['error'] : UPLOAD_ERR_OK;
-
-		if ($file['error'] === UPLOAD_ERR_OK) {
-			if (!is_file($file['tmp_name'])) {
-				throw new Exception('File does not exist');
-			}
-			$file['name'] = empty($file['name']) ? 'Unknown' : (string) $file['name'];
-			$file['type'] = empty($file['type']) ? (($mime = Storage::mime($file['tmp_name'])) ? $mime['type'] : 'application/octet-stream') : (string) $file['type'];
-			$file['size'] = filesize($file['tmp_name']);
-		} else {
-			$file += ['name' => 'Unknown', 'type' => 'application/octet-stream', 'size' => 0];
-		}
-		if (empty($this->_files[$name])) {
-			$this->_files[$name] = $file;
-		} else {
-			if (!is_int(key($this->_files[$name]))) {
-				$this->_files[$name];
-			}
-			$this->_files[$name] = array_merge($file);
-		}
-
-		/*if (is_int(key($files))) {
-			foreach ($files as $file) {
-				$this->addFiles($key, $file);
-			}
-		} else {
-			$file = $files;
-			if (empty($file['tmp_name'])) {
-				throw new Exception('File address can not be empty');
-			}
-			$file['error'] = isset($file['error']) ? $file['error'] : UPLOAD_ERR_OK;
-			if ($file['error'] === UPLOAD_ERR_OK) {
-				if (!is_file($file['tmp_name'])) {
-					throw new Exception('File does not exist');
-				}
-				$file['name'] = empty($file['name']) ? 'Unknown' : $file['name'];
-				$file['type'] = empty($file['type']) ? (($mime = Storage::mime($file['tmp_name'])) ? $mime['type'] : 'application/octet-stream') : $file['type'];
-				$file['size'] = filesize($file['tmp_name']);
+	public function isAjax() {
+		if ($this->_ajax === null) {
+			if ($param = $this->getParam(self::AJAX_PARAM)) {
+				$this->_ajax = (string) $param;
+			} elseif (in_array($extension = strtolower(pathinfo($this->getPath(), PATHINFO_EXTENSION)), ['json', 'xml'])) {
+				$this->_ajax = $extension;
+			} elseif (in_array($accept = $this->getAccept() ? explode('/', $this->getAccept()[0])[1] : '', ['json', 'xml'])) {
+				$this->_ajax = $accept;
+			} elseif (strtolower($this->getHeader('X-Requested-with')) == 'xmlhttprequest') {
+				$this->_ajax = 'json';
 			} else {
-				$file += ['name' => 'Unknown', 'type' => 'application/octet-stream', 'size' => 0];
+				$this->_ajax = false;
 			}
+		}
+		return $this->_ajax;
+	}
 
-			if (empty($this->_files[$name])) {
-				$this->_files[$name] = $file;
-			} else {
-				if (!is_int(key($this->_files[$name]))) {
-					$this->_files[$name];
+	public function setAjax($ajax) {
+		$this->_ajax = (string) $ajax;
+		return $this;
+	}
+
+	public function isPjax() {
+		return $this->getHeader('X-Pjax', false);
+	}
+
+
+
+	public function getRanges() {
+		if ($this->_ranges === null) {
+			$this->_ranges = [];
+			if (($range = $this->getHeader('Range')) && preg_match('/bytes=\s*([0-9-,]+)/i', $range, $matches)) {
+				foreach (explode(',', $matches[1]) as $subject) {
+					if (preg_match('/(\-?\d+)(?:\-(\d+)?)?/', $subject, $matches)) {
+						$offset = intval($matches[1]);
+						$length = isset($matches[2]) ? $matches[2] - $offset + 1 : false;
+						if ($length === false || $length > 0) {
+							$this->_ranges[] = ['offset' => $offset, 'length' => $length];
+						}
+					}
 				}
-				$this->_files[$name] = array_merge($file);
-			}*/
-		//}
-	//	return $this;
-	//}
+			}
+		}
+		return $this->_ranges;
+	}
+
+	public function isMobile() {
+		if ($this->_mobile === null) {
+			$this->_mobile = false;
+			if (!$userAgent = $this->getHeader('User-Agent')) {
+			} elseif (strpos($userAgent, 'Mobile') !== false || strpos($userAgent, 'Android') !== false || strpos($userAgent, 'Silk/') !== false || strpos($userAgent, 'Kindle') !== false || strpos($userAgent, 'BlackBerry') !== false || strpos($userAgent, 'Opera Mini') !== false || strpos($userAgent, 'Opera Mobi') !== false) {
+				$this->_mobile = true;
+			}
+		}
+		return false;
+	}
 
 
-	// 设置 headers
+	public function isAPI() {
+		if ($this->_API === null) {
+			$this->_API = false;
+			if (!$userAgent = $this->getHeader('User-Agent')) {
+				return false;
+			} elseif (preg_match('/(^| )'. self::API_USER_AGENT .'\/([0-9a-z._-]+)/i', trim($userAgent), $matches)) {
+				$this->_API = $matches[1];
+			}
+		}
+		return $this->_API;
+	}
+
+
+
 
 
 	public function __construct($method = 'GET', $URI = false, $headers = [], $posts = null, $files = null, $content = null) {
@@ -755,7 +806,7 @@ class Request{
 		// 写入 文件
 		$this->setFiles($files || is_array($files) ? $files : self::defaultFiles());
 
-		// 写入 内容
+		// 写入 输入内容
 		$this->setContent($content === null ? self::defaultContent() : $content);
 	}
 }
@@ -794,7 +845,7 @@ Request::start();
 /*
 class Request{
 
-	private static $_g, $_input;
+	private static $_g, $_content;
 
 	private static function _start() {
 		if (!self::$_g) {
@@ -933,8 +984,8 @@ class Request{
 	// 默认内容
 	//public static function defaultContent() {
 		//self::_start();
-		//if (self::$_input === null) {
-		//	$content = empty(self::$_g[0]['CONTENT_TYPE']) || empty(self::$_g[0]['CONTENT_LENGTH']) || strpos(strtolower(self::$_g[0]['CONTENT_TYPE']), 'multipart/form-data') !== false ||  ? false : fopen('php://input', 'rb');
+		//if (self::$_content === null) {
+		//	$content = empty(self::$_g[0]['CONTENT_TYPE']) || empty(self::$_g[0]['CONTENT_LENGTH']) || strpos(strtolower(self::$_g[0]['CONTENT_TYPE']), 'multipart/form-data') !== false || ? false : fopen('php://input', 'rb');
 		//}
 		//return $content;
 	//}
@@ -1046,7 +1097,7 @@ class Request{
 		} else {
 			$this->_headers[$name] = (string) $value;
 		}
-		return  $this;
+		return $this;
 	}
 
 
@@ -1060,7 +1111,7 @@ class Request{
 				$this->_method = 'GET';
 			}
 			if (!preg_match('/^[A-Z]+$/', $this->_method)) {
-				$this->_method  = 'GET';
+				$this->_method = 'GET';
 			}
 		}
 		return $this->_method;
@@ -1175,10 +1226,10 @@ class Request{
 	}
 
 	public function getContent($isResource = true) {
-        if ($this->_content === null) {
-        	if (in_array($this->getMethod(), ['GET', 'OPTIONS'])) {
-        		$this->_content = false;
-        	} elseif ($isResource) {
+ if ($this->_content === null) {
+ 	if (in_array($this->getMethod(), ['GET', 'OPTIONS'])) {
+ 		$this->_content = false;
+ 	} elseif ($isResource) {
 				$this->_content = fopen('php://input', 'rb');
 			} else {
 				$this->_content = file_get_contents('php://input');
@@ -1190,7 +1241,7 @@ class Request{
 		if (($isResource && is_resource($this->_content)) || (!$isResource && is_string($this->_content))) {
 			return $this->_content;
 		}
-        return false;
+ return false;
     }
 
     public function setContent($content) {
