@@ -80,7 +80,7 @@ class Date{
 		'+14:00',
 	];
 
-	public static $name = '';
+	public static $name = 'timezone';
 
 	public static function init() {
 		if (!empty($_SERVER['LOLI']['DATE'])) {
@@ -154,7 +154,7 @@ class Date{
 			return false;
 		}
 		self::$timezone = $timezone;
-		$cookie && self::$name && Router::response()->setCookie(self::$name, $timezone, 86400 * 365);
+		$cookie && self::$name && Cookie::set(self::$name, $timezone, 86400 * 365);
 		return true;
 	}
 

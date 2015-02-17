@@ -15,8 +15,8 @@ namespace Loli;
 class_exists('Loli\Resources') || exit;
 class Style extends Resources{
 	public $default = ['type' => 'text/css', 'media' => 'all', 'priority' => 10];
-	public function call($value, $args, $key) {
-		$k =  'style_' . preg_replace('/[^0-9a-z_-]/i','-', $key);
+	protected function call($value, $args, $key) {
+		$k =  'style-' . preg_replace('/[^0-9a-z_-]/i','-', $key);
  		if (empty($args['id'])) {
 			$args['id'] = $k;
 		}

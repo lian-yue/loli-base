@@ -60,7 +60,7 @@ function load_file() {
 **/
 function parse_string($s) {
 	if (is_array($s)) {
-		return $s;
+		return to_array($s);
 	}
 	parse_str($s, $r);
 	return $r;
@@ -259,20 +259,36 @@ function timems() {
 *	返回值 str
 **/
 function nl2p($str) {
- return str_replace('<p></p>', '', '<p>' . preg_replace('#\n|\r#', '</p>$0<p>', $str) . '</p>');
+ return str_replace('<p></p>', '', '<p>' . preg_replace('/\n|\r/', '</p>$0<p>', $str) . '</p>');
 }
 
 
+/**
+ * 读取 get or post 的 value
+ * @param  string
+ * @param  string
+ * @return string
+ */
 function r($name, $defaltValue = '') {
 	return isset($_REQUEST[$name]) ? (is_array($_REQUEST[$name]) ? ($_REQUEST[$name] ? '1' : $defaltValue) : (string) $_REQUEST[$name]) : $defaltValue;
 }
 
-
+/**
+ * 读取 get 的 value
+ * @param  string 字段key
+ * @param  string 默认值
+ * @return string
+ */
 function g($name, $defaltValue = '') {
 	return isset($_GET[$name]) ? (is_array($_GET[$name]) ? ($_GET[$name] ? '1' : $defaltValue) : (string) $_GET[$name]) : $defaltValue;
 }
 
-
+/**
+ * 读取 post 的 value
+ * @param  string
+ * @param  string
+ * @return string
+ */
 function p($name, $defaltValue = '') {
 	return isset($_POST[$name]) ? (is_array($_POST[$name]) ? ($_POST[$name] ? '1' : $defaltValue) : (string) $_POST[$name]) : $defaltValue;
 }

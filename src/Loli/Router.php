@@ -14,9 +14,12 @@
 namespace Loli;
 use Loli\HMVC\View;
 class Router{
+	private static $_reset = [];
 
-
-
+	public static function reset($id, $call) {
+		self::$_reset[$id] = $call;
+		return true;
+	}
 }
 /*
 class Router{

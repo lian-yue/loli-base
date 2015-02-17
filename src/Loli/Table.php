@@ -39,9 +39,8 @@ class Table{
 			if ($v['class']) {
 				$class = array_merge($class, (array) $v['class']);
 			}
-			if (!is_numeric($k)) {
-				$class[] ='tr-'. $k;
-			}
+			$class[] ='tr-'. $k;
+
 			if (isset($v['title']) || isset($v['value'])) {
 				$r .= '<tr class="'. implode(' ', $class) .'">';
 				if (isset($v['title'])) {
@@ -85,8 +84,9 @@ class Table{
 
 					// 自动设置url
 					if (!$v['url'] || is_array($v['url'])) {
-						$parse = parse_url(Router::request()->getUrl());
+						$parse = empty($_SERVER['REQUEST_URI']) ? [] : parse_url($_SERVER['REQUEST_URI']);
 						$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
+						unset($parse['user'], $parse['pass'], $parse['host'], $parse['scheme']);
 						if (is_array($v['url'])) {
 							$parse['query'] = array_intersect_key($parse['query'],  ['$order' => null] + array_flip($v['url']));
 						}
@@ -99,7 +99,7 @@ class Table{
 					}
 					$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 					$order = '';
-					if (Router::request()->getQueryParam('$orderby') == $k) {
+					if (r('$orderby') == $k) {
 						if ($parse['query'] && !empty($parse['query']['$order']) && strtoupper($parse['query']['$order']) == 'ASC') {
 							$order = 'desc';
 						} else {
@@ -119,10 +119,8 @@ class Table{
 
 		$all_key = array_keys($thead ? $thead : reset($tbody));
 		foreach ($tbody as $k => $v) {
-			$class =  [$i % 2 ? 'odd' : 'even'];
-			if (!is_numeric($k)) {
-				$class[] = $k;
-			}
+			$class = [$i % 2 ? 'odd' : 'even'];
+			$class[] = 'tr-' . $k;
 			$r .= '<tr class="' .implode(' ', $class). '" >';
 			foreach ($all_key as $vv) {
 				$r .= '<td class="td-'. $vv .'">' . (isset($v[$vv]) ? $v[$vv] : '') . '</td>';
