@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-17 13:39:48
+/*	Updated: UTC 2015-02-17 13:50:00
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -22,7 +22,26 @@ class Router{
 	public function response() {
 		return self::$_response;
 	}
+}
+	/*
+<<<<<<< HEAD
+	public static $_request;
+	public static $_response;
+	public function request() {
+		return self::$_response;
+	}
+	public function response() {
+		return self::$_response;
+	}
 
+=======
+	private static $_reset = [];
+
+	public static function reset($id, $call) {
+		self::$_reset[$id] = $call;
+		return true;
+	}
+>>>>>>> a575566acf86936c7087ef9a24eb9a29dd660b98
 }
 /*
 class Router{

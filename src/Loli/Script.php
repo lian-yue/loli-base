@@ -11,11 +11,11 @@
 /*	Updated: UTC 2015-01-21 14:43:38
 /*
 /* ************************************************************************** */
-namespace Loli\Controller;
-class_exists('Loli\Controller\Resources') || exit;
+namespace Loli;
+class_exists('Loli\Resources') || exit;
 class Script extends Resources{
 	public $default = ['type' => 'text/javascript', 'priority' => 10];
-	public function call($value, $args, $key) {
+	protected function call($value, $args, $key) {
 		if (!$if = empty($args['if'])) {
 			echo '<!--[if '. $args['if'] .']>';
 		}
