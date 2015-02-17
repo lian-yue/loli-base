@@ -8,11 +8,10 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-06 14:16:56
-/*	Updated: UTC 2015-02-14 15:47:27
+/*	Updated: UTC 2015-02-16 13:36:47
 /*
 /* ************************************************************************** */
 namespace Loli;
-
 class Request{
 
 
@@ -55,6 +54,8 @@ class Request{
 
 	private $_token = null;
 
+	private $_newToken = false;
+
 	private $_ajax = null;
 
 	private $_ranges = null;
@@ -70,7 +71,6 @@ class Request{
 		if (!self::$_g) {
 			self::$_g = array_intersect_key($GLOBALS, ['_SERVER' => '', '_GET' => '', '_POST' => '', '_COOKIE' => '', '_FILES' => '', '_ENV' => '', '_SESSION' => '']);
 		}
-		return true;
 	}
 
 
@@ -151,6 +151,10 @@ class Request{
 				$headers['Content-Length'] = self::$_g['_SERVER']['CONTENT_LENGTH'];
 			}
 		}
+		if (!empty($headers['Content-Type'])) {
+			$headers['Content-Type'] = strtolower(trim(explode(';', $headers['Content-Type'], 2)[0]));
+		}
+
 		if (empty($headers['Host'])) {
 			if (isset(self::$_g['_SERVER']['HTTP_HOST'])) {
 				$headers['Host'] = self::$_g['_SERVER']['HTTP_HOST'];
@@ -174,7 +178,7 @@ class Request{
 		if (!isset($posts)) {
 			if (empty(self::$_g['_SERVER']['CONTENT_TYPE']) || empty(self::$_g['_SERVER']['CONTENT_LENGTH']) || self::$_g['_SERVER']['CONTENT_LENGTH'] < 1 || self::$_g['_SERVER']['CONTENT_LENGTH'] > self::$_postsLength) {
 				$posts = self::$_g['_POST'];
-			} elseif (in_array($method = self::defaultMethod(), ['POST', 'PUT', 'PATCH', 'DELETE']) && strpos(self::$_g['_SERVER']['CONTENT_TYPE'], '/json') !== false) {
+			} elseif (in_array($method = self::defaultMethod(), ['POST', 'PUT', 'PATCH', 'DELETE']) && in_array(self::$_g['_SERVER']['CONTENT_TYPE'], ['application/json', 'text/json'])) {
 				$posts = ($jsons = json_decode(trim(file_get_contents('php://input', 'rb')), true)) ? $jsons : [];
 			} elseif (in_array($method, ['PUT', 'PATCH', 'DELETE']) && strpos(self::$_g['_SERVER']['CONTENT_TYPE'], 'application/x-www-form-urlencoded') !== false) {
 				$posts = ($arrays = parse_string(trim(file_get_contents('php://input', 'rb')), true)) ? $arrays : [];
@@ -199,10 +203,12 @@ class Request{
 		$files = [];
 		if (is_array($name)) {
 			foreach ($name as $key => $value) {
-				$files[] = array_merge($name, self::_files($name[$key], $type[$key], $tmp_name[$key], $error[$key], $size[$key]));
+				foreach (self::_files($name[$key], $type[$key], $tmp_name[$key], $error[$key], $size[$key]) as $k => $v) {
+					$files[$k] = array_merge(empty($files[$k]) ? [] : $files[$k], $v);
+				}
 			}
 		} else {
-			$files[] = ['name' => $name, 'type' => $type, 'tmp_name' => $tmp_name, 'error' => $error, 'size' => $size];
+			$files = ['name' => [$name], 'type' => [$type], 'tmp_name' => [$tmp_name], 'error' => [$error], 'size' => [$size]];
 		}
 		return $files;
 	}
@@ -211,7 +217,7 @@ class Request{
 
 	// 默认内容
 	public static function defaultContent() {
-		if (empty(self::$_g['_SERVER']['CONTENT_TYPE']) || empty(self::$_g['_SERVER']['CONTENT_LENGTH']) || self::$_g['_SERVER']['CONTENT_LENGTH'] < 1) {
+		if (empty(self::$_g['_SERVER']['CONTENT_TYPE']) || self::$_g['_SERVER']['CONTENT_TYPE'] != 'multipart/form-data' || empty(self::$_g['_SERVER']['CONTENT_LENGTH']) || self::$_g['_SERVER']['CONTENT_LENGTH'] < 1) {
 			return false;
 		}
 		return 'php://input';
@@ -331,140 +337,6 @@ class Request{
 		$_SERVER['QUERY_STRING'] = $queryString;
 
 		return $this;
-
-		//$URI = $this->_path . ($queryString ? '?' . $queryString : '');
-		//$_SERVER['REQUEST_URI'] = $URI;
-		//$_SERVER['QUERY_STRING'] = $queryString;
-
-		// URL 地址
-		//$this->_URL = $this->_scheme . '://' . $this->_host . $this->_path . $URI;
-
-
-
-		/*$parse = parse_url($URL);
-		unset($parse['user'], $parse['pass'], $parse['fragment']);
-
-		if (!empty($parse['scheme'])) {
-			$parse['scheme'] = strtolower(trim($parse['scheme']));
-		}
-		if (!empty($parse['host'])) {
-			$parse['host'] = strtolower($parse['host']);
-			if (!preg_match('/^[0-9a-z_.:-]+$/', $parse['host'])) {
-				throw new Exception('Set Host:' . $host);
-			}
-		}
-
-		if (!empty($parse['port'])) {
-			$parse['port'] = (string) abs((int)$parse['port']);
-			if (in_array($parse['port'], ['80', '443'])) {
-				unset($parse['port']);
-			}
-		}
-
-
-		if (!empty($parse['path'])) {
-			$parse['path'] = preg_replace('/[\x00-\x1F?#]+/x', '', $parse['path']);
-			$parse['path'] = preg_replace('/[\/\\\\]+/', '/', $parse['path']);
-			$parse['path'] = preg_replace('/\/\.+\//', '/', $parse['path']);
-			$parse['path'] =  '/' . rtrim(trim($parse['path']), '/');
-		}
-
-
-
-
-		if ($this->_URL) {
-			foreach($parse as $key => $value) {
-				if (!$value && in_array($key, ['scheme', 'host', 'port', 'path'])){
-					unset($parse[$key]);
-				}
-			}
-			$parse += parse_url($this->_URL);
-		}
-
-		if (!empty($parse['scheme']) || $this->_scheme === null) {
-			$this->_scheme = $parse['scheme'];
-			$_SERVER['REQUEST_SCHEME'] = $this->_scheme;
-			if ($this->_scheme == 'https') {
-				$_SERVER['HTTPS'] = 'on';
-			} else {
-				unset($_SERVER['HTTPS']);
-			}
-		}
-
-
-		if (!empty($parse['host']) || !empty($parse['port']) || $this->_host === null) {
-			$this->_host = empty($parse['host']) ? ($this->_host ? $this->_host : self::_defaultHost()) : $this->_host;
-			$_SERVER['SERVER_PORT'] = empty($parse['port']) ? ($this->_scheme == 'https' ? '443' : '80') : $parse['port'];
-			$this->_headers['Host'] = $_SERVER['HTTP_POST'] = $_SERVER['SERVER_HOST'] = $this->_host . (empty($parse['port']) || in_array($parse['port'], ['80', '443']) ? '' : ':' . $parse['port']);
-		}
-
-
-		if (!$this->_path || (isset($parse['path']) && $parse['path'] !== $this->_path)) {
-			$this->_path = empty($parse['path']) ? '/' : $parse['path'];
-		}
-
-
-		if (isset($parse['query']) || $this->_querys === null) {
-			$this->_querys = empty($parse['query']) ? parse_string($parse['query']) : [];
-		}
-		$queryString = merge_string($this->_querys);
-
-
-
-		$URI = $this->_path . ($queryString ? '?' . $queryString : '');
-		$_SERVER['REQUEST_URI'] = $URI;
-		$_SERVER['QUERY_STRING'] = $queryString;
-
-		// URL 地址
-		$this->_URL = $this->_scheme . '://' . $this->_host . $this->_path . $URI;
-
-		return $this;
-		//if () {
-		 //+ parse_url($this->_URL);
-		//}
-
-		/*
-
-		 + parse_url($this->_URL);
-		unset($parse['user'], $parse['pass'], $parse['fragment']);
-
-		$parse['host'] = strtolower(empty($parse['host']) ? self::$_defaultHost : $parse['host']);
-		$parse['scheme'] = empty($parse['scheme']) ? 'http' : strtolower($parse['scheme']);
-		if (empty($parse['path'])) {
-			$path = preg_replace('/[\x00-\x1F?]+/x', '', $path);
-			$path = preg_replace('/[\/\\\\]+/', '/', $path);
-			$path = preg_replace('/\/\.+\//', '/', $path);
-		} else {
-			$parse['path'] = '';
-		}
-		$parse['path'] = isset($parse['path']) ? '/'. rtrim(strtr($parse['path'], ['#' => '', '?' => '', ' ' => '%20']), '/') : '/';
-
-
-		$this->_URL = mrege_url($parse);
-		$this->_scheme = $parse['scheme'];
-		$this->_host = $parse['host'] . (empty($parse['port']) || in_array($parse['port'], ['80', '443']) ? '' : ':' . $parse['port']);
-		$this->_path = $parse['path'];
-		$_GET = $this->_querys = parse_string($parse['query']);
-
-		$_REQUEST = array_merge($this->_querys, $this->_posts);
-
-		$_SERVER['REQUEST_SCHEME'] = $this->_scheme;
-		$_SERVER['SERVER_HOST'] = $this->_host;
-		$_SERVER['SERVER_PORT'] = empty($parse['port']) ? ($this->_scheme == 'http' ? '80' : '443') : $parse['port'];
-		if ($this->_scheme == 'https') {
-			$_SERVER['HTTPS'] = 'on';
-		} else {
-			unset($_SERVER['HTTPS']);
-		}
-		$_SERVER['REQUEST_URI'] = strtr($this->_path, ['#' => '', '?' => '', ' ' => '%20']);
-		$_SERVER['QUERY_STRING'] = $this->_querys? merge_string($this->_querys) : '';
-
-		return $this;
-		/*if (!in_array($method = strtoupper($method), ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'])) {
-			throw new Exception('Set token:' . $method);
-		}
-		$this->_method = $method;
-		return $this;*/
 	}
 
 
@@ -513,7 +385,7 @@ class Request{
 			}
 		} else {
 			if (in_array($name, ['Content-Type'])) {
-				$value = explode(';', $value, 2)[0];
+				$value = strtolower(trim(explode(';', $value, 2)[0]));
 			}
 			$value = rtrim(trim((string)$value), ';');
 			if (in_array($name, ['Content-Type', 'Content-length'])) {
@@ -608,7 +480,6 @@ class Request{
 	public function setFile($key, array $value) {
 		$this->_files[$key] = [];
 		unset($_FILES[$key]);
-
 		if ($value) {
 			if (empty($value['tmp_name'])) {
 				throw new Exception('Set file path can not be empty');
@@ -625,7 +496,7 @@ class Request{
 	}
 
 	public function addFile($key, $tmp_name, $name, $type, $error = UPLOAD_ERR_OK, $size = false) {
-		if (!$tmp_name || !is_string($tmp_name)) {
+		if (!is_string($tmp_name)) {
 			throw new Exception('Add file path can not be empty');
 		}
 		$error = abs((int) $error);
@@ -695,16 +566,21 @@ class Request{
 			try {
 				$this->setToken($token);
 			} catch (Exception $e) {
-				$this->setToken($this->createToken());
+				$this->setToken($this->createToken(), true);
 			}
 		}
 		return $key ? $this->_token : substr($this->_token, 0, 16);
 	}
 
-	public function setToken($token) {
+	public function isNewToken() {
+		return $this->_newToken;
+	}
+
+	public function setToken($token, $isNew = false) {
 		if (!is_string($token) || strlen($token) != 32 || Code::key(__CLASS__ . self::TOKEN_HEADER . substr($token, 0, 16), 16) !== substr($token, 16)) {
 			throw new Exception('Set token:' . $token);
 		}
+		$this->_newToken = $isNew;
 		$this->_token = $token;
 		return $this;
 	}
@@ -733,7 +609,7 @@ class Request{
 	}
 
 	public function isPjax() {
-		return $this->getHeader('X-Pjax', false);
+		return $this->isAjax() && $this->getHeader('X-Pjax', false);
 	}
 
 
@@ -809,8 +685,45 @@ class Request{
 		// 写入 输入内容
 		$this->setContent($content === null ? self::defaultContent() : $content);
 	}
+
+
+
+
+	public function clear() {
+		$this->_scheme = 'http';
+		$this->_version = 1.1;
+		$this->_method = 'GET';
+		$this->_URI = '/';
+		$this->_path = '/';
+		$this->_querys = [];
+		$this->_headers = [];
+		$this->_cookies = [];
+		$this->_posts = [];
+		$this->_params = [];
+		$this->_files = [];
+		$this->_content = false;
+		$this->_IP = false;
+		$this->_token = null;
+		$this->_newToken = false;
+		$this->_ajax = null;
+		$this->_ranges = null;
+		$this->_mobile = null;
+		$this->_API = null;
+		unset($GLOBALS['_SERVER'], $GLOBALS['_GET'], $GLOBALS['_POST'], $GLOBALS['_COOKIE'], $GLOBALS['_FILES'], $GLOBALS['_ENV'], $GLOBALS['_SESSION']);
+		extract(self::$_g);
+		return $this;
+	}
 }
 Request::start();
+
+
+
+
+
+
+
+
+
 
 
 

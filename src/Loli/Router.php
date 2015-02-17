@@ -8,11 +8,17 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-11 16:39:21
+/*	Updated: UTC 2015-02-16 13:37:47
 /*
 /* ************************************************************************** */
 namespace Loli;
 use Loli\HMVC\View;
+class Router{
+
+
+
+}
+/*
 class Router{
 
 	private static $_request = [];
@@ -31,7 +37,7 @@ class Router{
 	//
 	public static $scheme = ['http', 'https'];
 
-
+/*
 	public static function ID() {
 		return end(self::$_stacks);
 	}
@@ -66,7 +72,7 @@ class Router{
 
 
 	// 添加路由 添加后允许多个访问那命名空间下的数据 比如多域名什么的
-	public static function add() {
+	/*public static function add() {
 		if (self::$_groups) {
 			foreach (array_reverse(self::$_groups) as $value) {
 				if (!$host && $value['host']) {

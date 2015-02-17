@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-03 16:33:56
-/*	Updated: UTC 2015-02-06 14:03:57
+/*	Updated: UTC 2015-02-16 11:03:40
 /*
 /* ************************************************************************** */
 namespace Loli\Search;
@@ -54,11 +54,23 @@ class Keyword extends Query{
 
 	public $delete = true;
 
-
-	public $country;
-
-	function country() {
+	public function lowerCase() {
 
 	}
 
+	public function split() {
+
+	}
+
+	public function replace() {
+
+	}
+
+	public function Pinyin() {
+
+	}
+
+	public function Pinyin() {
+
+	}
 }

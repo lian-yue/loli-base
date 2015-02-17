@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-02-09 17:12:17
+/*	Updated: UTC 2015-02-16 13:53:39
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
@@ -16,7 +16,7 @@ use Loli\Model;
 trait_exists('Loli\Model', true) || exit;
 class Controller{
 	use Model;
-	protected $request, $response;
+	protected $request, $response, $message;
 
 	public $allows = [
 		'index' => [
@@ -75,10 +75,11 @@ class Controller{
 	public function __construct(Request &$request, Response &$response) {
 		$this->request &= $request;
 		$this->response &= $response;
+		$this->message = new Message;
 	}
 
 	// 不支持的方法
 	public function __call($name, $args) {
-		$this->response->addMessage(404);
+		$this->message->add(404);
 	}
 }

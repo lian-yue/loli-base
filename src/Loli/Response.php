@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 05:34:04
-/*	Updated: UTC 2015-02-09 14:18:29
+/*	Updated: UTC 2015-02-16 13:22:25
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -20,9 +20,7 @@ class Response{
 
 	private $_content;
 
-	private $_request;
-
-	private $_token = '';
+	protected $request;
 
 
 	public $ajaxJS = false;
@@ -37,7 +35,7 @@ class Response{
 	public $cookieHttponly = false;
 
 	public function __construct(Request &$request) {
-		$this->_request = &$request;
+		$this->request = &$request;
 	}
 
 	public function getStatus() {
@@ -166,28 +164,11 @@ class Response{
 	}
 
 
-
-	public function getToken($token) {
-		return $this->_token;
-	}
-
-	public function addToken($token) {
-		if (!$this->_token) {
-			$this->_token = $token;
-		}
-		return $this;
-	}
-
-	public function setToken($token) {
-		$this->token = $token;
-		return $this;
-	}
-
 	public function sendToken() {
-		if ($this->_token) {
-			$this->_request->tokenParam && $this->setCookie($this->_request->tokenParam, $this->_token, 86400 * 365 * 3);
-			$request = $this->_request;
-			$this->setHeader($request::TOKEN_HEADER, $this->_token);
+		$request = $this->request;
+		if ($request->isNewToken()) {
+			$this->setCookie($request::TOKEN_COOKIE, $request->getToken(true), 86400 * 365 * 10);
+			$this->setHeader($request::TOKEN_HEADER, $request->getToken(true));
 		}
 		return $this;
 	}
@@ -199,31 +180,36 @@ class Response{
 
 	public function setHeaders(array $headers) {
 		$this->_headers = [];
-		foreach ($headers as $name => $value) {
-			if ($value === null) {
+		foreach ($headers as $name => $values) {
+			if ($values === null) {
 				continue;
 			}
-			$this->_headers[$name] = (string) $value;
+			foreach ((array)$values as $value) {
+				$this->_headers[$name][] = (string) $value;
+			}
 		}
 		return $this;
 	}
 
-	public function getHeader($name, $defaultValue = null) {
-		return isset($this->_headers[$name]) ? $this->_headers[$name] : $defaultValue;
+	public function getHeader($name) {
+		return isset($this->_headers[$name]) ? $this->_headers[$name] : [];
 	}
 
-	public function addHeader($name, $value) {
-		if(!isset($this->_headers[$name]) && $value !== null) {
-			$this->_headers[$name] = (string) $value;
+	public function addHeader($name, $values, $exists = true) {
+		if ($exists || empty($this->_headers[$name])) {
+			foreach ((array)$values as $value) {
+				$this->_headers[$name][] = (string) $value;
+			}
 		}
 		return $this;
 	}
 
-	public function setHeader($name, $value) {
-		if ($value === null) {
-			unset($this->_headers[$name]);
-		} else {
-			$this->_headers[$name] = (string) $value;
+	public function setHeader($name, $values) {
+		unset($this->_headers[$name]);
+		if ($values !== null) {
+			foreach ((array)$values as $value) {
+				$this->_headers[$name][] = (string) $value;
+			}
 		}
 		return $this;
 	}
@@ -233,93 +219,44 @@ class Response{
 		if (headers_sent()) {
 			return $this;
 		}
-		$this->addHeader('Content-Type', 'text/html');
+		$this->addHeader('Content-Type', 'text/html', false);
 		http_response_code($this->_status);
-
 		$this->sendToken();
 		$this->sendCaches();
-		foreach ($this->getHeaders() as $name => $value) {
-			$value = trim($value,  " \t\n\r\0\x0B;");
-
-			if ($name == 'Content-Type') {
-				if (strpos($value, ';') === false && ($arrays = explode('/', strtolower($value))) && (in_array($arrays[0], ['text']) || (isset($arrays[1]) && in_array($arrays[1], ['javascript', 'x-javascript', 'js', 'plain', 'html', 'xml', 'css'])))) {
-					$value = $value . '; charset=UTF-8';
-				}
-			} elseif ($name == 'Content-Disposition') {
-				if (preg_match('/\s*(?:([0-9a-z_-]+)\s*;)?\s*filename\s*=\s*("[^"]+"|[^;]+)/i', $value, $matches)) {
-					$type = trim($matches[1]);
-					$filename = trim($matches[2], " \t\n\r\0\x0B\"");
-					if (!($userAgent = $this->_request->getHeader('User-Agent')) || strpos($userAgent, 'MSIE ') !== false || (strpos($userAgent, 'Trident/') !== false && strpos($userAgent, 'rv:') !== false && strpos($userAgent, 'opera') === false)) {
-						$filename = strtr(urlencode($filename), ['+'=>'%20', '"' => '']);
+		foreach ($this->getHeaders() as $name => $values) {
+			foreach ($values as $value) {
+				$value = trim($value,  " \t\n\r\0\x0B;");
+				if ($name == 'Content-Type') {
+					if (strpos($value, ';') === false && ($arrays = explode('/', strtolower($value))) && (in_array($arrays[0], ['text']) || (isset($arrays[1]) && in_array($arrays[1], ['javascript', 'x-javascript', 'js', 'plain', 'html', 'xml', 'css'])))) {
+						$value = $value . '; charset=UTF-8';
 					}
+				} elseif ($name == 'Content-Disposition') {
+					if (preg_match('/\s*(?:([0-9a-z_-]+)\s*;)?\s*filename\s*=\s*("[^"]+"|[^;]+)/i', $value, $matches)) {
+						$type = trim($matches[1]);
+						$filename = trim($matches[2], " \t\n\r\0\x0B\"");
+						if (!($userAgent = $this->request->getHeader('User-Agent')) || strpos($userAgent, 'MSIE ') !== false || (strpos($userAgent, 'Trident/') !== false && strpos($userAgent, 'rv:') !== false && strpos($userAgent, 'opera') === false)) {
+							$filename = strtr(urlencode($filename), ['+'=>'%20', '"' => '']);
+						}
 
-					$value = [$type];
-					if ($filename) {
-						$value[] = 'filename="' . $filename . '"';
-						$value[] = 'filename*=UTF-8 \'\'"'.$filename.'"';
+						$value = [$type];
+						if ($filename) {
+							$value[] = 'filename="' . $filename . '"';
+							$value[] = 'filename*=UTF-8 \'\'"'.$filename.'"';
+						}
+						$value = implode('; ', array_filter($value));
 					}
-					$value = implode('; ', array_filter($value));
 				}
+				header($name . ': '. $value);
 			}
-			header($name . ': '. $value);
 		}
 		$this->sendCookies();
 		return $this;
 	}
 
 
-	public function getMessages() {
-		return $this->_messages;
-	}
-
-	public function getMessage($code) {
-		return empty($this->_messages[$code]) ? false : $this->_messages[$code];
-	}
-
-	public function addMessage($error, $data = [], $severity = E_USER_WARNING, $file = __FILE__, $line = __LINE__) {
-		try {
-			throw new Message($error, $data, $severity, $file, $line);
-		} catch (Message $e) {
-			if (empty($this->_messages[$e->getCode()])) {
-				$this->_messages[$e->getCode()] = $e;
-			}
-		}
-		return $this;
-	}
-
-	public function setMessage($error, $data = [], $severity = E_USER_WARNING, $file = __FILE__, $line = __LINE__) {
-		try {
-			throw new Message($error, $data, $severity, $file, $line);
-		} catch (Message $e) {
-			$this->_messages[$e->getCode()] = $e;
-		}
-		return $this;
-	}
-
-	public function hasMessage($codes = []) {
-		if (!$codes) {
-			return !empty($this->_messages);
-		}
-		foreach ((array) $codes as $code) {
-			if (!empty($this->_messages[$code])) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public function removeMessage($code) {
-		if (!empty($this->_messages[$code])) {
-			unset($this->_messages[$code]);
-		}
-		return $this;
-	}
 
 
-	public function clearMessages() {
-		$this->_messages = [];
-		return $this;
-	}
+
 
 	public function getContent($content) {
 		return $this->_content;
@@ -340,7 +277,7 @@ class Response{
 
 	public function sendContent() {
 		// 204 205 304 和 HEAD 不发送内容
-		if (in_array($this->_status, [204, 205, 304]) || $this->_request->getMethod()  == 'OPTIONS' ||  ($this->_request->getMethod() == 'HEAD' && $this->getHeader('Content-Length') !== null)) {
+		if (in_array($this->_status, [204, 205, 304]) || $this->request->getMethod()  == 'OPTIONS' ||  ($this->request->getMethod() == 'HEAD' && $this->getHeader('Content-Length') !== null)) {
 			return $this;
 		}
 
@@ -373,32 +310,32 @@ class Response{
 
 
 		// 没匹配到 412 文件已被改变
-		if (($ifMatch = $this->_request->getHeader('If-Match')) && $etag != $ifMatch) {
+		if (($ifMatch = $this->request->getHeader('If-Match')) && $etag != $ifMatch) {
 			return 412;
 		}
 
 		// 没匹配到 412 文件已被改变
-		if (($ifUnmodifiedSince = $this->_request->getHeader('If-Unmodified-Since')) && $ifUnmodifiedSince != $modified) {
+		if (($ifUnmodifiedSince = $this->request->getHeader('If-Unmodified-Since')) && $ifUnmodifiedSince != $modified) {
 			return 412;
 		}
 
 		// 没匹配到 200 文件已被改变
-		if (($IfNoneMatch = $this->_request->getHeader('If-None-Match', '')) && $IfNoneMatch !=  $etag) {
+		if (($IfNoneMatch = $this->request->getHeader('If-None-Match', '')) && $IfNoneMatch !=  $etag) {
 			return 200;
 		}
 
 		// 没匹配到 200 文件已被改变
-		if (($ifModifiedSince = $this->_request->getHeader('If-Modified-Since', '')) && $ifModifiedSince != $modified) {
+		if (($ifModifiedSince = $this->request->getHeader('If-Modified-Since', '')) && $ifModifiedSince != $modified) {
 			return 200;
 		}
 
 		// ifRange 已被修改
-		if (($ifRange = $this->_request->getHeader('If-Range')) && $ifRange != $etag && $ifRange != $modified) {
+		if (($ifRange = $this->request->getHeader('If-Range')) && $ifRange != $etag && $ifRange != $modified) {
 			return 200;
 		}
 
 		// 没有范围
-		if (!$this->_request->getRanges()) {
+		if (!$this->request->getRanges()) {
 			return $IfNoneMatch || $ifModifiedSince ? 304 : 200;
 		}
 
@@ -414,7 +351,7 @@ class Response{
 
 	public function setAjax($data) {
 		$this->setHeader('X-Ajax', 'true');
-		$type = strtolower($this->_request->isAjax());
+		$type = strtolower($this->request->isAjax());
 
 		if ($type == 'query') {
 			$data = merge_string($data);
@@ -436,7 +373,7 @@ class Response{
 				$this->setHeader('Content-Type', 'application/x-javascript');
 				$data = $function . '(' . json_encode($data) . ')';
 		} else {
-			if ($this->_request->getMethod() != 'POST'|| strtolower($this->_request->getHeader('X-Requested-with')) == 'xmlhttprequest') {
+			if ($this->request->getMethod() != 'POST'|| strtolower($this->request->getHeader('X-Requested-with')) == 'xmlhttprequest') {
 				$this->setHeader('Content-Type', 'application/json');
 			}
 			$data = json_encode($data);
@@ -462,17 +399,17 @@ class Response{
 	}
 
 	public function getRedirect($redirects = [], $defaults = []) {
-		$path = $this->_request->getPath();
-		$host = $this->_request->getHost();
+		$path = $this->request->getPath();
+		$host = $this->request->getHost();
 		$redirects = (array) $redirects;
 		$defaults = $defaults ? (array) $defaults : [];
 		if ($host) {
 			$defaults = array_merge($defaults, ['http://' . $host]);
 		}
-		if ($redirect = $this->_request->getParam('redirect')) {
+		if ($redirect = $this->request->getParam('redirect')) {
 			$redirects[] = $redirect;
 		}
-		if (in_array('referer',  $redirects) && !($referer = $this->_request->getHeader('Referer'))) {
+		if (in_array('referer',  $redirects) && !($referer = $this->request->getHeader('Referer'))) {
 			$redirects[] = $referer;
 		}
 		$ret = reset($defaults);

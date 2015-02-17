@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-02-11 13:11:13
+/*	Updated: UTC 2015-02-16 09:34:15
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -48,7 +48,6 @@ if (!headers_sent()) {
 	header('X-Support: ' . SUPPORT);
 }
 
-
 // Debug
 if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 	new Debug($_SERVER['LOLI']['DEBUG']);
@@ -68,3 +67,9 @@ Model::__reg('Query', function() {
 	$class = __NAMESPACE__. '\Query\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? 'MySQL' : $_SERVER['LOLI']['DB']['type']);
 	return new $class;
 });
+
+
+
+
+
+//

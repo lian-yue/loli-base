@@ -8,31 +8,31 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 12:09:10
-/*	Updated: UTC 2015-02-08 17:52:54
+/*	Updated: UTC 2015-02-16 07:51:31
 /*
 /* ************************************************************************** */
 namespace Loli;
 class Curl{
 
 	// curl 文件保存途径
-	public $cookie = './';
+	protected $cookie = './';
 
 	// 默认
 	public $defaults = [];
 
 	// info 信息
-	public $info = [];
+	public $_info = [];
 
 	// curl
-	public $curl = [];
+	private $_options = [];
 
 	// 资源
-	public $resources = [];
+	private $_chs = [];
 
 	// 自动加载
-	public function __construct(array $a = [], $cookie = false) {
+	public function __construct(array $defaults = [], $cookie = false) {
 		$this->cookie = $cookie == false ? (empty($_SERVER['LOLI']['CURL']['cookie']) ? './' : $_SERVER['LOLI']['CURL']['cookie']) : $cookie;
-		$this->defaults = $a + [
+		$this->defaults = $defaults + [
 			CURLOPT_SSL_VERIFYPEER => false,
 			CURLOPT_DNS_CACHE_TIMEOUT => 300,
 			CURLOPT_DNS_USE_GLOBAL_CACHE => true,
@@ -51,7 +51,7 @@ class Curl{
 	}
 
 
-	public function __invoke(){
+	public function __invoke() {
 		return call_user_func_array([$this, 'get'], func_get_args());
 	}
 	/**
@@ -96,11 +96,11 @@ class Curl{
 	*
 	*	bool
 	**/
-	public function add($key, $url, array $curl = []) {
+	public function add($key, $options) {
 		if (!empty($this->curl[$key])) {
 			return false;
 		}
-		return $this->set($key, $url, $curl);
+		return $this->set($key, $options);
 	}
 
 
@@ -113,22 +113,34 @@ class Curl{
 	*
 	*	bool
 	**/
-	public function set($key, $url, array $curl = []) {
-		$this->curl[$key] = ['url' => $url, 'curl' => $curl];
-		$this->info[$key] = [];
+	public function set($key, $options) {
+		$options = is_array($options) ? $options : [CURLOPT_URL => $options];
+		if (empty($options[CURLOPT_URL])) {
+			return false;
+		}
+		$this->_options[$key] = $options;
+		$this->_info[$key] = [];
 		return true;
 	}
 
-	public function opt($key, $curl) {
-		if (empty($this->curl[$key])) {
+
+
+	/**
+	 * 修改一个选项
+	 * @param  [type] $key  key
+	 * @param  [type] $curl [description]
+	 * @return [type]       [description]
+	 */
+	public function edit($key, array $options) {
+		if (empty($this->_options[$key])) {
 			return false;
 		}
-		foreach ($curl as $k => $v) {
-			$this->curl[$key]['curl'][$k] = $v;
+		foreach ($options as $option => $value) {
+			$this->_options[$key][$option] = $value;
 		}
-		if (!empty($this->resources[$key])) {
-			foreach ($curl as $k => $v) {
-				$v === null || curl_setopt($this->resources[$key], $k, $v);
+		if (!empty($this->_chs[$key])) {
+			foreach ($options as $option => $value) {
+				$v === null || curl_setopt($this->_chs[$key], $option, $value);
 			}
 		}
 		return true;
@@ -144,27 +156,209 @@ class Curl{
 	*	bool
 	**/
 	public function remove($key) {
-		if (empty($this->curl[$key])) {
+		if (empty($this->_options[$key])) {
 			return false;
 		}
-		unset($this->curl[$key], $this->info[$key], $this->resources[$key]);
+		unset($this->_options[$key], $this->_info[$key], $this->_chs[$key]);
 		return true;
 	}
 
 
 	public function clear() {
-		$this->info = $this->curl = $this->resources = [];
+		$this->_info = $this->_options = $this->_chs = [];
 		return true;
+	}
+
+	public function info($all = false) {
+		return $all ? $this->_info : reset($this->_info);
+	}
+
+	public function error($key) {
+		return isset($this->_info[$key]['error']) ? $this->_info[$key]['error'] : false;
+	}
+
+	public function errno($key) {
+		return isset($this->_info[$key]['errno']) ? $this->_info[$key]['errno'] : false;
 	}
 
 
 	public function get($all = false) {
-		if (!$this->curl) {
+		if (!$this->_options) {
+			return $all ? [] : false;
+		}
+		$this->_chs = [];
+		foreach ($this->_options as $key => $options) {
+			$this->_chs[$key] = curl_init();
+
+
+			$options += $this->defaults;
+			foreach ($options as $optoin => $value) {
+ 				if ($value === null) {
+ 					continue;
+ 				}
+ 				if ($optoin == CURLOPT_URL) {
+ 					if (substr($value, 0, 2) == '//') {
+						$value = 'http:' . $value;
+					}
+ 				} elseif ($optoin == CURLOPT_PROGRESSFUNCTION) {
+ 					if (!isset($options[CURLOPT_NOPROGRESS])) {
+						curl_setopt($this->_chs[$key], CURLOPT_NOPROGRESS, false);
+					}
+				} elseif ($optoin == CURLOPT_COOKIEJAR || $optoin == CURLOPT_COOKIEFILE) {
+					$value = $this->cookie($value);
+				} elseif ($optoin == CURLOPT_FILE) {
+					if (!is_resource($value)) {
+						$downloads[$key]['file'] = $value;
+						$downloads[$key]['temp'] = $value = tmpfile();
+					}
+					curl_setopt($this->_chs[$key], CURLOPT_RETURNTRANSFER, false);
+				}
+				curl_setopt($this->_chs[$key], $optoin, $value);
+			}
+			if (!$all) {
+				break;
+			}
+
+
+			/*$this->_chs[$k] = curl_init()
+			;
+			$curl = [];
+			$curl[CURLOPT_URL] = $v['url'];
+			$curl += $this->defaults;
+			foreach ($v['curl'] as $kk => $vv) {
+				if ($kk != CURLOPT_URL) {
+					unset($curl[$kk]);
+					$curl[$kk] = $vv;
+				}
+			}
+ 			foreach ($curl as $kk => $vv) {
+ 				if ($vv === null) {
+ 					continue;
+ 				}
+				if ($kk == CURLOPT_PROGRESSFUNCTION && !isset($curl[CURLOPT_NOPROGRESS])) {
+					curl_setopt($this->resources[$k], CURLOPT_NOPROGRESS, false);
+				} elseif ($kk == CURLOPT_COOKIEJAR ) {
+					$vv = $this->cookie($vv);
+				} elseif ($kk == CURLOPT_COOKIEFILE || $kk == CURLOPT_COOKIEFILE ) {
+					$vv = $this->cookie($vv);
+				} elseif ($kk == CURLOPT_FILE) {
+					if (!is_resource($vv)) {
+						$downloads[$k]['file'] = $vv;
+						$downloads[$k]['temp'] = $vv = tmpfile();
+					}
+					curl_setopt($this->resources[$k], CURLOPT_RETURNTRANSFER, false);
+				}
+				curl_setopt($this->resources[$k], $kk, $vv);
+			}
+
+			if (!$all) {
+				break;
+			}*/
+		}
+
+
+
+		$this->_info = [];
+
+		// 单个获取的
+		if (!$all) {
+			foreach ($this->_chs as $key => &$ch) {
+				// 结果
+				$content = curl_exec($ch);
+
+				// 信息
+				$this->_info[$key] = curl_getinfo($ch);
+				$this->_info[$key]['error'] = curl_error($ch);
+				$this->_info[$key]['errno'] = curl_errno($ch);
+				$this->_info[$key]['content'] = $content;
+
+				// 关闭
+				curl_close($ch);
+
+				// 如果有下载就移动文件
+				if (!empty($downloads[$key])) {
+					$fp = fopen($downloads[$key]['file'], 'wb');
+					fseek($downloads[$key]['temp'], 0);
+					while (!feof($downloads[$key]['temp'])) {
+					   fwrite($fp, fgets($downloads[$key]['temp']));
+					}
+					fclose($downloads[$key]['temp']);
+				}
+
+				$this->_options = $this->_chs = [];
+				return $content;
+			}
 			return false;
 		}
-		$this->resources = [];
+
+
+
+
+
+
+
+
+		// 是否执行中
+		$running = false;
+
+		// 创建一个列队
+		$mh = curl_multi_init();
+
+		// 加入列队
+		foreach ($this->_chs as $key => $ch) {
+			curl_multi_add_handle($mh, $ch);
+		}
+
+		// 等待执行完毕
+		do {
+			usleep(10000);
+			curl_multi_exec($mh, $running);
+		} while($running > 0);
+
+
+
+
+		// 遍历返回值
+		$results = [];
+		foreach ($this->_chs as $key => $ch) {
+
+			// 结果
+			$results[$key] = curl_multi_getcontent($ch);
+
+			// 信息
+			$this->_info[$key] = curl_getinfo($ch);
+			$this->_info[$key]['error'] = curl_error($ch);
+			$this->_info[$key]['errno'] = curl_errno($ch);
+			$this->_info[$key]['content'] = $results[$key];
+
+			// 移出列队
+			curl_multi_remove_handle($mh, $ch);
+
+			// 如果有下载就移动文件
+			if (!empty($downloads[$key])) {
+				$fp = fopen($downloads[$key]['file'], 'wb');
+				fseek($downloads[$key]['temp'], 0);
+				while (!feof($downloads[$key]['temp'])) {
+				   fwrite($fp, fgets($downloads[$key]['temp']));
+				}
+				fclose($downloads[$key]['temp']);
+			}
+		}
+
+		// 关闭列队
+		curl_multi_close($mh);
+
+		$this->_options = $this->_chs = [];
+		return $results;
+
+
+
+
+
+
+		/*$this->_chs = [];
 		foreach ($this->curl as $k => $v) {
-			$this->resources[$k] = curl_init();
+			$this->_chs[$k] = curl_init();
 			$curl = [];
 			$curl[CURLOPT_URL] = $v['url'];
 			$curl += $this->defaults;
@@ -281,6 +475,6 @@ class Curl{
 
 		// 关闭列队
 		curl_multi_close($mh);
-		return $r;
+		return $r;*/
 	}
 }
