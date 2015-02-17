@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-07 16:02:19
+/*	Updated: UTC 2015-02-17 13:41:29
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -27,7 +27,7 @@ class Lang{
 	public static $current = '';
 
 	// 请求中的参数
-	public static $name = '';
+	public static $name = 'lang';
 
 	// 浏览器有的语言
 	public static $userAll = [];
@@ -44,7 +44,6 @@ class Lang{
 	// 载入过的列表
 	private static $_lists = [];
 
-
 	public static function init() {
 		if (!empty($_SERVER['LOLI']['LANG'])) {
 			foreach ($_SERVER['LOLI']['LANG'] as $k => $v) {
@@ -58,27 +57,26 @@ class Lang{
 		self::_userAll();
 
 		// COOKIE
-		self::$name && ($value = Cookie::get(self::$name)) && self::set((string)$value);
+		self::$name && ($value = Router::request()->getCookie(self::$name)) && self::set((string)$value);
 
 		// GET POST
-		self::$name && ($value = r(self::$name)) && self::set((string)$value);
+		self::$name && ($value = Router::request()->getParam(self::$name)) && self::set((string)$value);
 	}
 
 	private static function _userAll() {
 		self::$userAll = [];
 
  		// 正则表达提取语言
-		if (preg_match_all("/(([a-z]{2})[a-z_\-]{0,8})/i", isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '', $arr)) {
-			foreach ($arr[1] as $k => $v) {
+		if (preg_match_all("/(([a-z]{2})[a-z_\-]{0,8})/i", Router::request()->getHeader('Accept-Language', ''), $matches)) {
+			foreach ($matches[1] as $k => $v) {
 				self::$userAll[] = $v;
-				if ($v != $arr[2][$k]) {
-					self::$userAll[] = $arr[2][$k];
+				if ($v != $matches[2][$k]) {
+					self::$userAll[] = $matches[2][$k];
 				}
 			}
 		}
 
 		// 2. 整理语言
-		$lang_all = [];
 		foreach (self::$userAll as $k => &$lang) {
 			if (!$lang = self::format($lang)) {
 				unset(self::$userAll[$k]);
@@ -166,7 +164,7 @@ class Lang{
 		self::$userAll = array_values(array_intersect(array_unique(self::$userAll), array_keys(self::$all)));
 		self::$current = reset(self::$userAll);
 
-		$cookie && self::$name && Router::response()->setCookie(self::$name, self::$current, 86400 * 365);
+		$cookie && self::$name && Router::response()->setCookie(self::$name, self::$current, -1);
 		return self::$current;
 	}
 
@@ -241,4 +239,3 @@ class Lang{
 		return true;
 	}
 }
-Lang::init();

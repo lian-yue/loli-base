@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-16 13:35:56
+/*	Updated: UTC 2015-02-17 13:40:40
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -94,10 +94,10 @@ class Date{
 		//self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
 
 		// COOKIE
-		self::$name && ($value = Cookie::get(self::$name)) && self::setTimezone((string)$value);
+		self::$name && ($value = Router::request()->getCookie(self::$name)) && self::setTimezone((string)$value);
 
 		// GET POST
-		self::$name && ($value = r(self::$name)) && self::setTimezone((string)$value);
+		self::$name && ($value = Router::request()->getParam(self::$name)) && self::setTimezone((string)$value);
 	}
 
 

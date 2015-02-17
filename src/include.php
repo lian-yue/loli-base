@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-02-16 09:34:15
+/*	Updated: UTC 2015-02-17 11:24:21
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -25,10 +25,13 @@ mb_internal_encoding('UTF-8');
 // 禁用 XML 外部实体
 libxml_disable_entity_loader(true);
 
+// 关闭缓冲区
+while(ob_get_level()) {
+	ob_end_flush();
+}
+
 // 打开缓冲区
 //ob_start(null, 4096);
-
-
 
 // 系统版本号
 const VERSION = '0.0.2';
@@ -67,9 +70,3 @@ Model::__reg('Query', function() {
 	$class = __NAMESPACE__. '\Query\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? 'MySQL' : $_SERVER['LOLI']['DB']['type']);
 	return new $class;
 });
-
-
-
-
-
-//

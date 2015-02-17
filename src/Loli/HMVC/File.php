@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 16:58:27
-/*	Updated: UTC 2015-02-09 15:49:26
+/*	Updated: UTC 2015-02-17 09:16:41
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
@@ -46,15 +46,28 @@ class File{
 		$this->header = $header;
 
 
+
+		// 开启允许分段下载
+		$response->setHeader('Accept-Ranges', 'bytes');
+
+
 		// 用 header 发送文件的
 		if ($this->header && is_string($this->_stream)) {
 			$response->setStatus(200);
+			if (is_string($this->header)) {
+				$name = $this->header;
+			} elseif (isset($_SERVER['SERVER_SOFTWARE']) && stripos($_SERVER['SERVER_SOFTWARE'], 'nginx') !== false) {
+				$name = 'X-Accel-Redirect';
+			} elseif (isset($_SERVER['SERVER_SOFTWARE']) && stripos($_SERVER['SERVER_SOFTWARE'], 'lighttpd') !== false && $_SERVER['SERVER_SOFTWARE'] < 'lighttpd/1.5') {
+				$name = 'X-LIGHTTPD-send-file';
+			} else {
+				$name = 'X-Sendfile';
+			}
+			$response->setHeader($name, $this->_stream);
 			return;
 		}
 
 
-		// 开启允许分段下载
-		$response->setHeader('Accept-Ranges', 'bytes');
 
 
 		// 需要分段的
@@ -115,9 +128,11 @@ class File{
 			return;
 		}
 
-		// 关闭缓冲区
-		$this->flag && ob_end_clean();
 
+		// 关闭缓冲区
+		while($this->flag && ob_get_level()) {
+			ob_end_clean();
+		}
 
 		// 绝对刷送
 		ob_implicit_flush($this->flag);

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 06:47:03
-/*	Updated: UTC 2015-02-10 06:49:11
+/*	Updated: UTC 2015-02-17 09:37:52
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -85,8 +85,9 @@ class Table{
 
 					// 自动设置url
 					if (!$v['url'] || is_array($v['url'])) {
-						$parse = parse_url(Router::request()->getUrl());
+						$parse = parse_url($_SERVER['REQUEST_URI']);
 						$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
+						unset($parse['user'], $parse['pass'], $parse['scheme'], $parse['host'], $parse['port']);
 						if (is_array($v['url'])) {
 							$parse['query'] = array_intersect_key($parse['query'],  ['$order' => null] + array_flip($v['url']));
 						}
@@ -99,7 +100,7 @@ class Table{
 					}
 					$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 					$order = '';
-					if (Router::request()->getQueryParam('$orderby') == $k) {
+					if (r('$orderby') == $k) {
 						if ($parse['query'] && !empty($parse['query']['$order']) && strtoupper($parse['query']['$order']) == 'ASC') {
 							$order = 'desc';
 						} else {

@@ -8,14 +8,20 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-16 13:37:47
+/*	Updated: UTC 2015-02-17 13:39:48
 /*
 /* ************************************************************************** */
 namespace Loli;
 use Loli\HMVC\View;
 class Router{
-
-
+	public static $_request;
+	public static $_response;
+	public function request() {
+		return self::$_response;
+	}
+	public function response() {
+		return self::$_response;
+	}
 
 }
 /*

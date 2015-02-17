@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-08 08:27:43
-/*	Updated: UTC 2015-02-07 09:42:29
+/*	Updated: UTC 2015-02-17 08:56:06
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -70,6 +70,7 @@ trait Model{
 		return true;
 	}
 
+
 	public function __get($key) {
 		++self::$__COUNT;
 
@@ -87,7 +88,7 @@ trait Model{
 			if ($is = isset($this->$key->__ID)) {
 				$this->$key->__ID = $ID;
 			}
-			do_array_call('Model.' . implode('\\', $ID), [&$this->$key, &$this]);
+			Filter::run('Model.' . implode('\\', $ID), [&$this->$key, &$this]);
 			if ($is && !$this->$key->__ID) {
 				$this->$key->__ID = $ID;
 			}
@@ -108,7 +109,7 @@ trait Model{
 			if ($is = isset($_MODEL[$key]->__ID)) {
 				$_MODEL[$key]->__ID = [$key];
 			}
-			do_array_call('Model.' . $key, [&$_MODEL[$key]]);
+			Filter::run('Model.' . $key, [&$_MODEL[$key]]);
 			if ($is && !$_MODEL[$key]->__ID) {
 				 $_MODEL[$key]->__ID = $key;
 			}
