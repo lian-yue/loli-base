@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-17 13:41:29
+/*	Updated: UTC 2015-02-18 10:29:48
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -56,18 +56,18 @@ class Lang{
 
 		self::_userAll();
 
-		// COOKIE
-		self::$name && ($value = Router::request()->getCookie(self::$name)) && self::set((string)$value);
 
-		// GET POST
-		self::$name && ($value = Router::request()->getParam(self::$name)) && self::set((string)$value);
+		if (self::$name) {
+			empty($_COOKIE[self::$name]) || is_array($_COOKIE[self::$name]) || self::set($_COOKIE[self::$name]);
+			empty($_REQUEST[self::$name]) || is_array($_REQUEST[self::$name]) || self::set($_REQUEST[self::$name]);
+		}
 	}
 
 	private static function _userAll() {
 		self::$userAll = [];
 
  		// 正则表达提取语言
-		if (preg_match_all("/(([a-z]{2})[a-z_\-]{0,8})/i", Router::request()->getHeader('Accept-Language', ''), $matches)) {
+		if ( isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) && preg_match_all("/(([a-z]{2})[a-z_\-]{0,8})/i", $_SERVER['HTTP_ACCEPT_LANGUAGE'], $matches)) {
 			foreach ($matches[1] as $k => $v) {
 				self::$userAll[] = $v;
 				if ($v != $matches[2][$k]) {
@@ -239,3 +239,8 @@ class Lang{
 		return true;
 	}
 }
+
+
+// 注册过滤
+Filter::add('Router', [__NAMESPACE__ . '\Lang', 'init']);
+Filter::count() && Lang::init();

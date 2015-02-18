@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 05:34:04
-/*	Updated: UTC 2015-02-16 13:22:25
+/*	Updated: UTC 2015-02-18 10:07:22
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -16,7 +16,7 @@ class Response{
 
 	private $_status = 200;
 
-	private $_headers = [], $_caches = [], $_cookies = [], $_messages = [];
+	private $_headers = [], $_caches = [], $_cookies = [];
 
 	private $_content;
 
@@ -392,7 +392,7 @@ class Response{
 	}
 
 	public function clear() {
-		$this->_headers = $this->_caches = $this->_cookies = $this->_messages  = [];
+		$this->_headers = $this->_caches = $this->_cookies = [];
 		$this->_status = 200;
 		$this->_content = null;
 		return $this;

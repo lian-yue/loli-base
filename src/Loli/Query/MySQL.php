@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-10 06:25:53
+/*	Updated: UTC 2015-02-18 03:12:18
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -268,9 +268,14 @@ class MySQL extends Base{
 		// 语句信息
 		$q .= 'SELECT ';
 
+
+
+
 		// 是否记录查询 数量
 		if ($count) {
 			$q .= 'COUNT(' . ($groupby ? 'DISTINCT ' . $groupby : '*') . ') AS count';
+		} elseif (!empty($query['$foundRows']) && $query['$foundRows'] === true) {
+			$q .= ' SQL_CALC_FOUND_ROWS ' . implode(', ', $fields) . ' ';
 		} else {
 			$q .= ' ' . implode(', ', $fields) . ' ';
 		}
@@ -383,7 +388,7 @@ class MySQL extends Base{
 
 		$q .= 'SET ';
 
-		$q .= implode( ' , ', $arrays);
+		$q .= implode(' , ', $arrays);
 
 		$q .= $this->_where($query, $logical);
 
@@ -697,7 +702,7 @@ class MySQL extends Base{
 		$_false = false;
 
 		$objects = [];
-		foreach ( $this->parse($query) as $k => $v) {
+		foreach ($this->parse($query) as $k => $v) {
 			if ($k && $k{0} == '$') {
 				continue;
 			}
@@ -733,7 +738,7 @@ class MySQL extends Base{
 			$v->compare = empty($v->compare) ? (isset($v->compare) && $v->compare === false ? false : '') : strtoupper($v->compare);
 
 			// 自动 IN 运算符
-			if ( !$v->compare && $v->compare !== false && is_array( $v->value ) ) {
+			if (!$v->compare && $v->compare !== false && is_array($v->value)) {
 				$v->compare = 'IN';
 			}
 
@@ -833,14 +838,22 @@ class MySQL extends Base{
 				continue;
 			}
 
+
+			// 全文索引
+			if ($v->compare == 'MATCH' || $v->compare == 'TEXT') {
+				$v->mode = empty($v->mode) ? '' : strtoupper(' ' . $v->mode);
+				$arrays[] = 'MATCH('. $v->column .') AGAINST(' ($this->_whereHavingEscape(is_array($v->value) ? implode(' +', $v->value) : $v->value, $v->escape) . $v->mode .')';
+				continue;
+			}
+
 			// 其他
 			$arrays[] = $v->column .' '. $v->not .' '. $v->compare .' ' . $this->_whereHavingEscape($v->value, $v->escape);
 		}
 
-		if ( !$arrays ) {
+		if (!$arrays) {
 			return ' ';
 		}
-		return ' ' . $type . ' ' . implode( ' '. $logical .' ', $arrays) . ' ';
+		return ' ' . $type . ' ' . implode(' '. $logical .' ', $arrays) . ' ';
 	}
 
 

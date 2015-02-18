@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-09 15:15:25
-/*	Updated: UTC 2015-02-10 05:36:15
+/*	Updated: UTC 2015-02-18 06:43:31
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
@@ -82,7 +82,6 @@ class  RESTFul extends Controller{
 		];
 
 		$this->allows = array_merge($allows, $this->allows);
-
 		parent::__construct($request, $response);
 	}
 }

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 09:43:36
-/*	Updated: UTC 2015-02-11 10:22:44
+/*	Updated: UTC 2015-02-18 10:25:21
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -17,6 +17,7 @@ trait_exists('Loli\Model', true) || exit;
 class Query{
 	use Model;
 
+	// 缓存时间
 	public $ttl = 0;
 
 	// 缓存数据
@@ -102,7 +103,7 @@ class Query{
 		return call_user_func_array([$this, 'get'], func_get_args());
 	}
 
-	public function table($args = [], $do = 0) {
+	public function table(array $args, $do = 0) {
 		return $this->table;
 	}
 	/**
@@ -362,7 +363,7 @@ class Query{
 				break;
 		}
 
-		if ($this->ttl && ($r = Cache::get($count == 1? reset($a) : json_encode($a), get_class($this)))) {
+		if ($this->ttl && ($r = Cache::get($count == 1 ? reset($a) : json_encode($a), get_class($this)))) {
 			return $this->r($r, false);
 		}
 		return $this->row($a);

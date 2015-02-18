@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-02-16 13:53:39
+/*	Updated: UTC 2015-02-18 10:07:50
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
@@ -16,7 +16,9 @@ use Loli\Model;
 trait_exists('Loli\Model', true) || exit;
 class Controller{
 	use Model;
-	protected $request, $response, $message;
+	protected $request, $response;
+
+	public $message;
 
 	public $allows = [
 		'index' => [

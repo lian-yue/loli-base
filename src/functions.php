@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-17 08:55:29
+/*	Updated: UTC 2015-02-18 06:18:48
 /*
 /* ************************************************************************** */
 
@@ -291,6 +291,28 @@ function g($name, $defaltValue = '') {
  */
 function p($name, $defaltValue = '') {
 	return isset($_POST[$name]) ? (is_array($_POST[$name]) ? ($_POST[$name] ? '1' : $defaltValue) : (string) $_POST[$name]) : $defaltValue;
+}
+
+/**
+ * 读取 COOKIE 的 value
+ * @param  [type] $name        [description]
+ * @param  string $defaltValue [description]
+ * @return [type]              [description]
+ */
+function c($name, $defaltValue = '') {
+	return isset($_COOKIE[$name]) ? (is_array($_COOKIE[$name]) ? ($_COOKIE[$name] ? '1' : $defaltValue) : (string) $_COOKIE[$name]) : $defaltValue;
+}
+
+
+/**
+ * 读取 header 的 value
+ * @param  [type] $name        [description]
+ * @param  string $defaltValue [description]
+ * @return [type]              [description]
+ */
+function h($name, $defaltValue = '') {
+	$name = 'HTTP_'. strtoupper(strtr($name, '-', '_'));
+	return isset($_SERVER[$name]) ? (string) $_SERVER[$name] : $defaltValue;
 }
 
 

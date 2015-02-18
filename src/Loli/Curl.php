@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 12:09:10
-/*	Updated: UTC 2015-02-16 07:51:31
+/*	Updated: UTC 2015-02-18 10:11:28
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -218,42 +218,6 @@ class Curl{
 			if (!$all) {
 				break;
 			}
-
-
-			/*$this->_chs[$k] = curl_init()
-			;
-			$curl = [];
-			$curl[CURLOPT_URL] = $v['url'];
-			$curl += $this->defaults;
-			foreach ($v['curl'] as $kk => $vv) {
-				if ($kk != CURLOPT_URL) {
-					unset($curl[$kk]);
-					$curl[$kk] = $vv;
-				}
-			}
- 			foreach ($curl as $kk => $vv) {
- 				if ($vv === null) {
- 					continue;
- 				}
-				if ($kk == CURLOPT_PROGRESSFUNCTION && !isset($curl[CURLOPT_NOPROGRESS])) {
-					curl_setopt($this->resources[$k], CURLOPT_NOPROGRESS, false);
-				} elseif ($kk == CURLOPT_COOKIEJAR ) {
-					$vv = $this->cookie($vv);
-				} elseif ($kk == CURLOPT_COOKIEFILE || $kk == CURLOPT_COOKIEFILE ) {
-					$vv = $this->cookie($vv);
-				} elseif ($kk == CURLOPT_FILE) {
-					if (!is_resource($vv)) {
-						$downloads[$k]['file'] = $vv;
-						$downloads[$k]['temp'] = $vv = tmpfile();
-					}
-					curl_setopt($this->resources[$k], CURLOPT_RETURNTRANSFER, false);
-				}
-				curl_setopt($this->resources[$k], $kk, $vv);
-			}
-
-			if (!$all) {
-				break;
-			}*/
 		}
 
 
@@ -352,129 +316,5 @@ class Curl{
 		return $results;
 
 
-
-
-
-
-		/*$this->_chs = [];
-		foreach ($this->curl as $k => $v) {
-			$this->_chs[$k] = curl_init();
-			$curl = [];
-			$curl[CURLOPT_URL] = $v['url'];
-			$curl += $this->defaults;
-			foreach ($v['curl'] as $kk => $vv) {
-				if ($kk != CURLOPT_URL) {
-					unset($curl[$kk]);
-					$curl[$kk] = $vv;
-				}
-			}
- 			foreach ($curl as $kk => $vv) {
- 				if ($vv === null) {
- 					continue;
- 				}
-				if ($kk == CURLOPT_PROGRESSFUNCTION && !isset($curl[CURLOPT_NOPROGRESS])) {
-					curl_setopt($this->resources[$k], CURLOPT_NOPROGRESS, false);
-				} elseif ($kk == CURLOPT_COOKIEJAR ) {
-					$vv = $this->cookie($vv);
-				} elseif ($kk == CURLOPT_COOKIEFILE || $kk == CURLOPT_COOKIEFILE ) {
-					$vv = $this->cookie($vv);
-				} elseif ($kk == CURLOPT_FILE) {
-					if (!is_resource($vv)) {
-						$downloads[$k]['file'] = $vv;
-						$downloads[$k]['temp'] = $vv = tmpfile();
-					}
-					curl_setopt($this->resources[$k], CURLOPT_RETURNTRANSFER, false);
-				}
-				curl_setopt($this->resources[$k], $kk, $vv);
-			}
-
-			if (!$all) {
-				break;
-			}
-		}
-		$this->curl = [];
-		$this->info = [];
-
-		// 单个获取的
-		if (!$all) {
-			foreach ($this->resources as $k => &$_v) {
-				// 结果
-				$r = curl_exec($_v);
-
-				// 信息
-				$this->info[$k] = curl_getinfo($_v);
-				$this->info[$k]['error'] = curl_error($_v);
-				$this->info[$k]['errno'] = curl_errno($_v);
-				$this->info[$k]['content'] = $r;
-
-				// 关闭
-				curl_close($_v);
-
-				// 如果有下载就移动文件
-				if (!empty($downloads[$k])) {
-
-					$fopen = fopen($downloads[$k]['file'], 'wb');
-					fseek($downloads[$k]['temp'], 0);
-					while (!feof($downloads[$k]['temp'])) {
-					   fwrite($fopen, fgets($downloads[$k]['temp']));
-					}
-					fclose($downloads[$k]['temp']);
-				}
-				return $r;
-			}
-			return false;
-		}
-
-		// 异步多个
-
-
-		// 是否执行中
-		$running = false;
-
-		// 创建一个列队
-		$mh = curl_multi_init();
-
-		// 创建并句柄
-		foreach ($this->resources as $k => $v) {
-			curl_multi_add_handle($mh, $v);
-		}
-
-		// 等待执行完毕
-		do {
-			usleep(10000);
-			curl_multi_exec($mh, $running);
-		} while($running > 0);
-
-
-		// 遍历返回值
-		$r = [];
-		foreach ($this->resources as $k => $v) {
-
-			// 结果
-			$r[$k] = curl_multi_getcontent($v);
-
-			// 信息
-			$this->info[$k] = curl_getinfo($v);
-			$this->info[$k]['error'] = curl_error($v);
-			$this->info[$k]['errno'] = curl_errno($v);
-			$this->info[$k]['content'] = $r[$k];
-
-			// 移出列队
-			curl_multi_remove_handle($mh, $v);
-
-			// 如果有下载就移动文件
-			if (!empty($downloads[$k])) {
-				$fp = fopen($downloads[$k]['file'], 'wb');
-				fseek($downloads[$k]['temp'], 0);
-				while (!feof($downloads[$k]['temp'])) {
-				   fwrite($fp, fgets($downloads[$k]['temp']));
-				}
-				fclose($downloads[$k]['temp']);
-			}
-		}
-
-		// 关闭列队
-		curl_multi_close($mh);
-		return $r;*/
 	}
 }

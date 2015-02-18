@@ -8,12 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-16 13:21:40
-/*	Updated: UTC 2015-02-16 13:28:29
+/*	Updated: UTC 2015-02-18 10:12:47
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
-use Loli\Message as Message_;
-class Message{
+use Loli\ErrorException;
+class Message extends ErrorException{
 	public function all() {
 		return $this->_messages;
 	}

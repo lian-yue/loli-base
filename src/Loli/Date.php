@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-17 13:40:40
+/*	Updated: UTC 2015-02-18 10:29:30
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -93,11 +93,10 @@ class Date{
 
 		//self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
 
-		// COOKIE
-		self::$name && ($value = Router::request()->getCookie(self::$name)) && self::setTimezone((string)$value);
-
-		// GET POST
-		self::$name && ($value = Router::request()->getParam(self::$name)) && self::setTimezone((string)$value);
+		if (self::$name) {
+			empty($_COOKIE[self::$name]) || is_array($_COOKIE[self::$name]) || self::setTimezone($_COOKIE[self::$name]);
+			empty($_REQUEST[self::$name]) || is_array($_REQUEST[self::$name]) || self::setTimezone($_REQUEST[self::$name]);
+		}
 	}
 
 
@@ -110,7 +109,7 @@ class Date{
 	*	返回值 译文
 	**/
 	public static function lang($d, $original = true) {
-		return Lang::get($d, 'date', $original);
+		return Lang::get($d, ['date'], $original);
 	}
 
 
@@ -304,3 +303,6 @@ class Date{
 		return ltrim($r ,' :-');
 	}
 }
+
+Filter::add('Router', [__NAMESPACE__ . '\Date', 'init']);
+Filter::count() && Date::init();

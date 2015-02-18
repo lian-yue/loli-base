@@ -8,19 +8,218 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-17 13:50:00
+/*	Updated: UTC 2015-02-18 10:57:37
 /*
 /* ************************************************************************** */
 namespace Loli;
 use Loli\HMVC\View;
 class Router{
-	public static $_request;
-	public static $_response;
-	public function request() {
-		return self::$_response;
+	public static $_this;
+
+	public $request;
+	public $response;
+
+
+	// 默认参数
+	public static $defaults = [
+		'host' => '',
+		'scheme' => ['http', 'https'],
+	];
+
+	public static function request() {
+		return current(self::$_this)->request;
 	}
-	public function response() {
-		return self::$_response;
+
+	public static function response() {
+		return current(self::$_this)->response;
+	}
+	public static function add($nameSpace, $host = false, $path = '/', $scheme = []) {
+		self::$_nameSpaces[$nameSpace] = ['host' => $host, 'path' => $path, 'scheme' => $scheme];
+	}
+
+	//public static function addClass($nameSpace, $host = false, $path = '/', $scheme = []) {
+	//	self::$_nameSpaces[$nameSpace] = ['host' => $host, 'path' => $path, 'scheme' => $scheme];
+	//}
+
+	//public static function addClass($nameSpace, $host = false, $path = '/', $scheme = []) {
+	//	self::$_nameSpaces[$nameSpace] = ['host' => $host, 'path' => $path, 'scheme' => $scheme];
+	//}
+	//
+
+	//public static function add($nameSpace, $host = false, $path = '/', $scheme = []) {
+//		self::$_nameSpaces[$nameSpace] = ['host' => $host, 'path' => $path, 'scheme' => $scheme];
+//	}
+
+	//public function add(Request $request, Response $response = null) {
+
+	//}
+	//
+	//
+
+	public static function add($space, $path, $host = '', $scheme = []) {
+		self::$_nameSpaces[] = ['space' => trim(strtr($space, '\\', '/'), '/'), 'path' => $path, 'host' => $host, 'scheme' => $scheme];
+		return true;
+	}
+
+
+	public function __construct(Request $request, Response $response = null) {
+		if (!$response instanceof Response) {
+			$response = new Response($request);
+		}
+		self::$_this[] =& $this;
+		end(self::$_this);
+		$this->request = $request;
+		$this->response = $response;
+
+		Filter::run('Router', $this);
+		array_pop(self::$_this);
+		end(self::$_this);
+
+		/*try {
+			$method = $request->getMethod();
+			$scheme = $request->getScheme();
+			$host = $request->getHost();
+			$path = $request->getPath();
+			$uniqid = 'ID' . uniqid();
+			$strtr = [
+				'/' => '\\/',
+				'(?<$' => '(?<' . $uniqid,
+				'(?\'$' => '(?\'' . $uniqid,
+				'(?"$' => '(?"' . $uniqid,
+				'\p{$' => '\p{'. $uniqid,
+				'(?($' => '(?(' . $uniqid
+			];
+
+			//$defaultHosts = array_map(function($host){ return preg_quote($host, ''); }, (array) self::$hosts);
+			//$defaultHosts = implode('|', $defaultHosts);
+
+			Lang::init();
+			foreach (self::$_nameSpaces as $value) {
+				$params = [];
+
+				$value = array_filter($value) + ['path' => '/'];
+				$value += sekf::$defaults;
+
+				// 允许的协议
+				if (!empty($value['scheme']) && !in_array($scheme, (array)$value['scheme'])) {
+					continue;
+				}
+
+				// 允许的 host
+				if (!empty($value['host']) && !preg_match('/^'.strtr($value['host'], $strtr). '$/', $host, $matches)) {
+					continue;
+				}
+				$params += $matches;
+
+				// 允许的路径
+				if (!preg_match('/^'.strtr($value['path'], $strtr). '$/', $path, $matches)) {
+					continue;
+				}
+				$params = $matches + $params;
+				$break = true;
+				break;
+
+				//$params = [];
+				//$value['scheme'] = $value['scheme'] ? (array) $value['scheme'] : self::$scheme;
+				//$value['host'] = $value['host'] ? array_map(function($host){ return preg_quote($host, '');} : $defaultHosts;
+
+
+
+
+
+			//}
+
+
+			/*foreach (self::$_routers as $value) {
+
+
+
+
+
+
+
+
+
+
+				/*$params = [];
+				$value['scheme'] = $value['scheme'] ? (array) $value['scheme'] : self::$scheme;
+				$value['host'] = $value['host'] ? $value['host'] : $defaultHosts;
+
+				// 允许的协议
+				if (!in_array($scheme, $value['scheme'] ? (array) $value['scheme'] : self::$scheme)) {
+					continue;
+				}
+
+				// 允许的方法
+				if (!in_array($method, $value['method'] ? (in_array('*', (array)$value['method']) ? ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE', 'TRACE'] : (array) $value['method']) : self::$method)) {
+					continue;
+				}
+
+				// 允许的 host
+				if (!preg_match('/^'.strtr($value['host'], $strtr). '$/', $host, $matches)) {
+					continue;
+				}
+				$params += $matches;
+
+				// 允许的路径
+				if (!preg_match('/^'.strtr($value['path'], $strtr). '$/', $path, $matches)) {
+					continue;
+				}
+
+				$params = $matches + $params;
+				$break = true;
+				break;
+			}
+
+
+			/*$host = $request->getHost();
+			$path = $request->getPath();
+			$uniqid = 'ID' . uniqid();
+			$strtr = [
+				'/' => '\\/',
+				'(?<$' => '(?<' . $uniqid,
+				'(?\'$' => '(?\'' . $uniqid,
+				'(?"$' => '(?"' . $uniqid,
+				'\p{$' => '\p{'. $uniqid,
+				'(?($' => '(?(' . $uniqid
+			];
+			$defaultHosts = array_map(function($host){ return preg_quote($host, ''); }, (array) self::$host);
+			$defaultHosts = implode('|', $defaultHosts);
+
+			foreach (self::$_routers as $value) {
+				$params = [];
+				$value['scheme'] = $value['scheme'] ? (array) $value['scheme'] : self::$scheme;
+				$value['host'] = $value['host'] ? $value['host'] : $defaultHosts;
+
+				// 允许的协议
+				if (!in_array($scheme, $value['scheme'] ? (array) $value['scheme'] : self::$scheme)) {
+					continue;
+				}
+
+				// 允许的方法
+				if (!in_array($method, $value['method'] ? (in_array('*', (array)$value['method']) ? ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE', 'TRACE'] : (array) $value['method']) : self::$method)) {
+					continue;
+				}
+
+				// 允许的 host
+				if (!preg_match('/^'.strtr($value['host'], $strtr). '$/', $host, $matches)) {
+					continue;
+				}
+				$params += $matches;
+
+				// 允许的路径
+				if (!preg_match('/^'.strtr($value['path'], $strtr). '$/', $path, $matches)) {
+					continue;
+				}
+
+				$params = $matches + $params;
+				$break = true;
+				break;
+			}
+			empty($break) && $response->addMessage(404);*/
+		/*} catch (Exception $e) {
+			$response->addMessage(500);
+		}*/
 	}
 }
 	/*

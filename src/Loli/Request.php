@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-06 14:16:56
-/*	Updated: UTC 2015-02-16 13:36:47
+/*	Updated: UTC 2015-02-18 07:25:28
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -63,7 +63,6 @@ class Request{
 	private $_mobile = null;
 
 	private $_API = null;
-
 
 
 
@@ -299,6 +298,16 @@ class Request{
 		return $this;
 	}
 
+	public function getHost() {
+		return $this->getHeader('Host');
+	}
+
+	public function setHost($host) {
+		return $this->setHeader('Host', $host);
+	}
+
+
+
 
 	public function getPath() {
 		return $this->_path;
@@ -345,9 +354,6 @@ class Request{
 	}
 
 
-
-
-
 	public function getHeaders() {
 		return $this->_headers;
 	}
@@ -357,6 +363,11 @@ class Request{
 	}
 
 	public function setHeaders(array $headers) {
+		foreach($_SERVER as $key => $value) {
+			if (in_array($key, ['PHP_AUTH_USER', 'PHP_AUTH_PW', 'ORIG_PATH_INFO', 'REDIRECT_QUERY_STRING', 'REDIRECT_URL', 'SERVER_PORT_SECURE', 'CONTENT_TYPE', 'CONTENT_LENGTH', 'UNENCODED_URL']) || substr($key, 0, 5) == 'HTTP_') {
+				unset($_SERVER[$key]);
+			}
+		}
 		$this->_headers = [];
 		$this->_API = $this->_mobile = $this->_ranges = null;
 		$_COOKIE = [];
@@ -382,6 +393,8 @@ class Request{
 				$this->_ranges = null;
 			} elseif ($name == 'User-Agent') {
 				$this->_API = $this->_mobile = null;
+			} elseif ($name == 'Authorization') {
+				$this->_user = $this->_password = false;
 			}
 		} else {
 			if (in_array($name, ['Content-Type'])) {
@@ -396,6 +409,16 @@ class Request{
 				$this->_ranges = null;
 			} elseif ($name == 'User-Agent') {
 				$this->_API = $this->_mobile = null;
+			} elseif ($name == 'Host') {
+				$value = $value ? strtolower($value) : self::$_defaultHost;
+			} elseif ($name == 'Authorization') {
+				$this->_user = $this->_password = false;
+				unset($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
+				if (count($auth = explode(' ', $value, 2)) == 2 && $auth[1] && ($auth = base64_decode(trim($auth[1])))) {
+					$auth = explode(':', $auth, 2);
+					$_SERVER['PHP_AUTH_USER'] = $this->_user = $auth[0];
+					$_SERVER['PHP_AUTH_PW'] = $this->_password = isset($auth[1]) ? $auth[1] : '';
+				}
 			}
 			$_SERVER['HTTP_'. $nameKey] = $value;
 			$this->_headers[$name] = $value;
@@ -442,23 +465,22 @@ class Request{
 		return isset($this->_posts[$name]) ? $this->_posts[$name] : $defaultValue;
 	}
 
-	public function setPosts($posts) {
+	public function setPosts(array $posts) {
 		$_POST = $this->_posts = array_unnull(to_array($posts));
-		$_REQUEST = array_merge($this->_querys, $_POST);
+		$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
 		return $this;
 	}
 
 	public function setPost($name, $value) {
 		if ($value === null) {
 			unset($this->_posts[$name], $_POST[$name]);
-			$_REQUEST = array_merge($this->_querys, $this->_posts);
+			$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
 		} else {
 			$this->_posts[$name] = is_array($value) || is_object($value) ? to_array($value) : $value;
-			$_REQUEST = array_merge($this->_querys, $this->_posts);
+			$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
 		}
 		return $this;
 	}
-
 
 	public function getFiles() {
 		return $this->_files;
@@ -545,13 +567,34 @@ class Request{
 		return $this;
 	}
 
-	public function getParams(){
+
+	public function getParams() {
 		return $this->_params;
 	}
 
 	public function getParam($name, $defaultValue = null) {
 		return isset($this->_params[$name]) ? $this->_params[$name] : $defaultValue;
 	}
+
+	public function setParams(array $params) {
+		$this->_params = array_unnull(to_array($params));
+		$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
+		return $this;
+	}
+
+	public function setParam($name, $value = null) {
+		if ($value === null) {
+			unset($this->_params[$name], $_POST[$name]);
+			$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
+		} else {
+			$this->_params[$name] = is_array($value) || is_object($value) ? to_array($value) : $value;
+			$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
+		}
+		return $this;
+	}
+
+
+
 
 	public function createToken() {
 		$token = uniqid();
@@ -608,12 +651,6 @@ class Request{
 		return $this;
 	}
 
-	public function isPjax() {
-		return $this->isAjax() && $this->getHeader('X-Pjax', false);
-	}
-
-
-
 	public function getRanges() {
 		if ($this->_ranges === null) {
 			$this->_ranges = [];
@@ -631,6 +668,17 @@ class Request{
 		}
 		return $this->_ranges;
 	}
+
+
+	public function getUser() {
+		return $this->_user;
+	}
+
+
+	public function getPassword() {
+		return $this->_password;
+	}
+
 
 	public function isMobile() {
 		if ($this->_mobile === null) {
@@ -657,38 +705,6 @@ class Request{
 	}
 
 
-
-
-
-	public function __construct($method = 'GET', $URI = false, $headers = [], $posts = null, $files = null, $content = null) {
-		foreach($_SERVER as $key => $value) {
-			if (in_array($key, ['ORIG_PATH_INFO', 'REDIRECT_QUERY_STRING', 'REDIRECT_URL', 'SERVER_PORT_SECURE', 'CONTENT_TYPE', 'CONTENT_LENGTH', 'UNENCODED_URL']) || substr($key, 0, 5) == 'HTTP_') {
-				unset($_SERVER[$key]);
-			}
-		}
-
-		// 写入 方法
-		$this->setMethod($method);
-
-		// 写入 URI
-		$this->setURI($URI || is_string($URI) ? $URI : self::defaultURI());
-
-		// 写入 header 头
-		$this->setHeaders($headers ? $headers : self::defaultHeaders());
-
-		// 写入 post 数组
-		$this->setPosts($posts || is_array($posts) ? $posts : self::defaultPosts());
-
-		// 写入 文件
-		$this->setFiles($files || is_array($files) ? $files : self::defaultFiles());
-
-		// 写入 输入内容
-		$this->setContent($content === null ? self::defaultContent() : $content);
-	}
-
-
-
-
 	public function clear() {
 		$this->_scheme = 'http';
 		$this->_version = 1.1;
@@ -709,10 +725,36 @@ class Request{
 		$this->_ranges = null;
 		$this->_mobile = null;
 		$this->_API = null;
+		$servers = $GLOBALS['_SERVER'];
 		unset($GLOBALS['_SERVER'], $GLOBALS['_GET'], $GLOBALS['_POST'], $GLOBALS['_COOKIE'], $GLOBALS['_FILES'], $GLOBALS['_ENV'], $GLOBALS['_SESSION']);
 		extract(self::$_g);
+		if (!empty($servers['LOLI'])) {
+			$GLOBALS['_SERVER']['LOLI'] = $servers['LOLI'];
+		}
 		return $this;
 	}
+
+
+
+
+
+
+
+
+
+	public function __construct($method = 'GET', $URI = false, $headers = []) {
+		// 写入 方法
+		$this->setMethod($method);
+
+		// 写入 URI
+		$this->setURI($URI || is_string($URI) ? $URI : self::defaultURI());
+
+		// 写入 header 头
+		$this->setHeaders($headers ? $headers : self::defaultHeaders());
+	}
+
+
+
 }
 Request::start();
 
