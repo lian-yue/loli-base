@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-18 06:18:48
+/*	Updated: UTC 2015-02-19 02:38:20
 /*
 /* ************************************************************************** */
 
@@ -64,20 +64,6 @@ function parse_string($s) {
 	}
 	parse_str($s, $r);
 	return $r;
-}
-
-/**
-*	数组转换成字符串
-*
-*	1 参数 数组
-*
-*	返回值 GET字符串
-**/
-function merge_string($a) {
-	if (!is_array($a) && !is_object($a)) {
-		return (string) $a;
-	}
-	return http_build_query(to_array($a), null, '&');
 }
 
 /**
@@ -186,6 +172,19 @@ function simplexml_uncdata($xml) {
 	return $xml;
 }
 
+/**
+*	数组转换成字符串
+*
+*	1 参数 数组
+*
+*	返回值 GET字符串
+**/
+function merge_string($a) {
+	if (!is_array($a) && !is_object($a)) {
+		return (string) $a;
+	}
+	return http_build_query(to_array($a), null, '&');
+}
 
 
 /**
@@ -254,12 +253,12 @@ function timems() {
 /**
 *	自动添加 p 标签
 *
-*	1 参数 str
+*	1 参数 string
 *
-*	返回值 str
+*	返回值 string
 **/
-function nl2p($str) {
- return str_replace('<p></p>', '', '<p>' . preg_replace('/\n|\r/', '</p>$0<p>', $str) . '</p>');
+function nl2p($string) {
+ return str_replace('<p></p>', '', '<p>' . preg_replace('/\n|\r/', '</p>$0<p>', $string) . '</p>');
 }
 
 
@@ -325,36 +324,34 @@ function h($name, $defaltValue = '') {
 *
 *	无返回值
 **/
-function prioritysort(array &$arr, $key = 'priority', $asc = true) {
-	$a = [];
+function prioritysort(array &$arrays, $key = 'priority', $asc = true) {
 	$i = 0;
-	foreach ($arr as $k => $v) {
-		$a[] = ['k' => $k, 'v' => $v, 'i' => $i, 's' => empty($v[$key]) ? 0 : $v[$key]];
-		$i++;
+	$sorts = [];
+	foreach ($arrays as $key => $value) {
+		$sorts[] = [$key, $value, $i, is_object($value) ? (isset($value->$key) ? $value->$key : 0) : (is_array($value) && isset($value[$key]) ? $value[$key] : 0)];
+		++$i;
 	}
 	$function = $asc ? 'uasort' : 'usort';
-	$function($a, 'prioritysortcall');
-	$arr = [];
-	foreach ($a as $v) {
-		$arr[$v['k']] = $v['v'];
+	$function($sorts, function($param0, $param1) {
+		if ($param0[3] > $param1[3]) {
+			return 1;
+		}
+		if ($param0[3] < $param1[3]) {
+			return -1;
+		}
+		if ($param0[2] > $param1[2]) {
+			return 1;
+		}
+		if ($param0[2] < $param1[2]) {
+			return -1;
+		}
+		return 0;
+	});
+	$arrays = [];
+	foreach ($sorts as $sort) {
+		$arrays[$sort[0]] = $sort[1];
 	}
 	return true;
-}
-
-function prioritysortcall($a, $b) {
-	if ($a['s'] > $b['s']) {
-		return 1;
-	}
-	if ($a['s'] < $b['s']) {
-		return -1;
-	}
-	if ($a['i'] > $b['i']) {
-		return 1;
-	}
-	if ($a['i'] < $b['i']) {
-		return -1;
-	}
-	return 0;
 }
 
 

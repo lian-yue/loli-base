@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-18 10:29:30
+/*	Updated: UTC 2015-02-19 02:24:38
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -304,5 +304,4 @@ class Date{
 	}
 }
 
-Filter::add('Router', [__NAMESPACE__ . '\Date', 'init']);
-Filter::count() && Date::init();
+Date::init();

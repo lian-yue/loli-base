@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-18 03:12:18
+/*	Updated: UTC 2015-02-19 07:58:07
 /*
 /* ************************************************************************** */
 namespace Loli\Query;
@@ -216,7 +216,7 @@ class MySQL extends Base{
 	}
 
 	public function get(array $query, $table, $fields = ['*'], $logical = 'AND') {
-		if (!is_array($query) || !$table) {
+		if (!$query || !$table) {
 			return false;
 		}
 		$having = [];
@@ -842,7 +842,7 @@ class MySQL extends Base{
 			// 全文索引
 			if ($v->compare == 'MATCH' || $v->compare == 'TEXT') {
 				$v->mode = empty($v->mode) ? '' : strtoupper(' ' . $v->mode);
-				$arrays[] = 'MATCH('. $v->column .') AGAINST(' ($this->_whereHavingEscape(is_array($v->value) ? implode(' +', $v->value) : $v->value, $v->escape) . $v->mode .')';
+				$arrays[] = 'MATCH('. $v->column .') AGAINST('. $this->_whereHavingEscape(is_array($v->value) ? implode(' +', $v->value) : $v->value, $v->escape) . $v->mode .')';
 				continue;
 			}
 

@@ -8,14 +8,18 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-18 10:57:37
+/*	Updated: UTC 2015-02-19 07:06:17
 /*
 /* ************************************************************************** */
 namespace Loli;
 use Loli\HMVC\View;
 class Router{
-	public static $_this;
 
+	//
+	private static $_this = [];
+
+	// 全部命名空间
+	private static $_all = [];
 	public $request;
 	public $response;
 
@@ -26,15 +30,26 @@ class Router{
 		'scheme' => ['http', 'https'],
 	];
 
+	// 当前请求
 	public static function request() {
 		return current(self::$_this)->request;
 	}
 
+	// 当前返回
 	public static function response() {
 		return current(self::$_this)->response;
 	}
-	public static function add($nameSpace, $host = false, $path = '/', $scheme = []) {
-		self::$_nameSpaces[$nameSpace] = ['host' => $host, 'path' => $path, 'scheme' => $scheme];
+
+	/**
+	 * 添加类或命名空间
+	 * @param string  $name      命名空间 或 class
+	 * @param string  $path      自定义定义 path
+	 * @param boolean $host      自定义定义 host
+	 * @param [type]  $scheme    允许的协议
+	 * @param boolean $recursive 递归... 命名空间用
+	 */
+	public static function add($name, $path = false, $scheme = [], $recursive = true, $priority = 10) {
+		self::$_all[] = ['name' => $name, 'path' => $path, 'host' => $host, 'scheme' => $scheme, 'recursive' => $recursive, 'priority' => $priority];
 	}
 
 	//public static function addClass($nameSpace, $host = false, $path = '/', $scheme = []) {
@@ -56,22 +71,45 @@ class Router{
 	//
 	//
 
-	public static function add($space, $path, $host = '', $scheme = []) {
-		self::$_nameSpaces[] = ['space' => trim(strtr($space, '\\', '/'), '/'), 'path' => $path, 'host' => $host, 'scheme' => $scheme];
-		return true;
-	}
+	//public static function add($space, $path, $host = '', $scheme = []) {
+	//	self::$_nameSpaces[] = ['space' => trim(strtr($space, '\\', '/'), '/'), 'path' => $path, 'host' => $host, 'scheme' => $scheme];
+	//	return true;
+	//}
 
 
-	public function __construct(Request $request, Response $response = null) {
+	public function __construct(Request &$request, Response &$response = null) {
 		if (!$response instanceof Response) {
 			$response = new Response($request);
 		}
 		self::$_this[] =& $this;
 		end(self::$_this);
-		$this->request = $request;
-		$this->response = $response;
+		$this->request =& $request;
+		$this->response =& $response;
 
-		Filter::run('Router', $this);
+		try {
+			Lang::init();
+			Filter::run('Router', $this);
+			$method = $request->getMethod();
+			$scheme = $request->getScheme();
+			$host = $request->getHost();
+			$path = $request->getPath();
+			$uniqid = 'ID' . uniqid() . mt_rand();
+			$strtr = [
+				'/' => '\\/',
+				'(?<$' => '(?<' . $uniqid,
+				'(?\'$' => '(?\'' . $uniqid,
+				'(?"$' => '(?"' . $uniqid,
+				'\p{$' => '\p{'. $uniqid,
+				'(?($' => '(?(' . $uniqid
+			];
+		} catch (Exception $e) {
+			$response->addMessage(500);
+		}
+
+
+
+
+
 		array_pop(self::$_this);
 		end(self::$_this);
 
@@ -93,7 +131,7 @@ class Router{
 			//$defaultHosts = array_map(function($host){ return preg_quote($host, ''); }, (array) self::$hosts);
 			//$defaultHosts = implode('|', $defaultHosts);
 
-			Lang::init();
+			/*Lang::init();
 			foreach (self::$_nameSpaces as $value) {
 				$params = [];
 

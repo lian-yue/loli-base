@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 12:09:10
-/*	Updated: UTC 2015-02-18 10:11:28
+/*	Updated: UTC 2015-02-19 08:22:48
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -215,6 +215,7 @@ class Curl{
 				}
 				curl_setopt($this->_chs[$key], $optoin, $value);
 			}
+			print_r($options);
 			if (!$all) {
 				break;
 			}

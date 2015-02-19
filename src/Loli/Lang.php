@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-18 10:29:48
+/*	Updated: UTC 2015-02-19 02:24:27
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -240,7 +240,4 @@ class Lang{
 	}
 }
 
-
-// 注册过滤
-Filter::add('Router', [__NAMESPACE__ . '\Lang', 'init']);
-Filter::count() && Lang::init();
+Lang::init();
