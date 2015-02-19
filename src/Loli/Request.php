@@ -738,10 +738,6 @@ class Request{
 
 
 
-
-
-
-
 	public function __construct($method = 'GET', $URI = false, $headers = []) {
 		// 写入 方法
 		$this->setMethod($method);

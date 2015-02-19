@@ -15,13 +15,16 @@ namespace Loli;
 use Loli\HMVC\View;
 class Router{
 
-	//
+	// 全部 资源
 	private static $_this = [];
 
 	// 全部命名空间
 	private static $_all = [];
+
+	private static $host;
 	public $request;
 	public $response;
+	public $_key;
 
 
 	// 默认参数
@@ -83,6 +86,9 @@ class Router{
 		}
 		self::$_this[] =& $this;
 		end(self::$_this);
+		$this->_key = key(self::$_this);
+
+
 		$this->request =& $request;
 		$this->response =& $response;
 
@@ -102,6 +108,17 @@ class Router{
 				'\p{$' => '\p{'. $uniqid,
 				'(?($' => '(?(' . $uniqid
 			];
+			prioritysort(self::$_all);
+			foreach (self::$_all as $value) {
+				if (empty($value['path'])) {
+					$value['path'] = '/' . strtolower(trim(strtr($value['name'], '\\', '/'), '/'));
+				}
+				//$value = ['path' => '/', 'host' => self::$host, 'scheme' => ['http', 'https']];
+			}
+
+
+
+
 		} catch (Exception $e) {
 			$response->addMessage(500);
 		}
@@ -110,7 +127,7 @@ class Router{
 
 
 
-		array_pop(self::$_this);
+		unset(self::$_this[$this->_key]);
 		end(self::$_this);
 
 		/*try {
