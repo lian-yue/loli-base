@@ -8,62 +8,34 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-16 13:21:40
-/*	Updated: UTC 2015-02-18 10:12:47
+/*	Updated: UTC 2015-02-20 13:31:45
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
 use Loli\ErrorException;
 class Message extends ErrorException{
-	public function all() {
-		return $this->_messages;
+	protected $code;
+	protected $message;
+	protected $data;
+	protected $args;
+	public function __construct($message = [], $data = [], $severity = E_USER_WARNING, $file = __FILE__, $line = __LINE__, \Exception $previous = null) {
+		$message = $message ? (array) $message : [500];
+
+		$this->data = (array) $data;
+		$this->args = $message;
+		reset($this->args);
+		unset($this->args[key($this->args)]);
+
+		$code = reset($message);
+		$message = $message[0];
+		parent::__construct($message, $code, $severity, $file, $line, $previous);
 	}
 
-	public function get($code) {
-		return empty($this->_messages[$code]) ? false : $this->_messages[$code];
+	public function getData() {
+		return $this->data;
 	}
 
-	public function add($error, $data = [], $severity = E_USER_WARNING, $file = __FILE__, $line = __LINE__) {
-		try {
-			throw new Message_($error, $data, $severity, $file, $line);
-		} catch (Message_ $e) {
-			if (empty($this->_messages[$e->getCode()])) {
-				$this->_messages[$e->getCode()] = $e;
-			}
-		}
-		return $this;
-	}
-
-	public function set($error, $data = [], $severity = E_USER_WARNING, $file = __FILE__, $line = __LINE__) {
-		try {
-			throw new Message_($error, $data, $severity, $file, $line);
-		} catch (Message_ $e) {
-			$this->_messages[$e->getCode()] = $e;
-		}
-		return $this;
-	}
-
-	public function has($codes = []) {
-		if (!$codes) {
-			return !empty($this->_messages);
-		}
-		foreach ((array) $codes as $code) {
-			if (!empty($this->_messages[$code])) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public function remove($code) {
-		if (!empty($this->_messages[$code])) {
-			unset($this->_messages[$code]);
-		}
-		return $this;
-	}
-
-
-	public function clear() {
-		$this->_messages = [];
-		return $this;
+	public function getArgs() {
+		return $this->args;
 	}
 }

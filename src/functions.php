@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-19 02:38:20
+/*	Updated: UTC 2015-02-20 13:11:49
 /*
 /* ************************************************************************** */
 
@@ -199,6 +199,8 @@ function merge_url(array $parse) {
 	$url = '';
 	if (isset($parse['scheme'])) {
 		$url .= $parse['scheme'] . '://';
+	} elseif (isset($parse['host'])) {
+		$url .= '//';
 	}
 	if (isset($parse['user'])) {
 		$url .= $parse['user'];

@@ -8,11 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-19 07:06:17
+/*	Updated: UTC 2015-02-20 14:57:35
 /*
 /* ************************************************************************** */
 namespace Loli;
-use Loli\HMVC\View;
+use Loli\HMVC\View, Loli\HMVC\Messages;
 class Router{
 
 	// 全部 资源
@@ -21,17 +21,17 @@ class Router{
 	// 全部命名空间
 	private static $_all = [];
 
-	private static $host;
-	public $request;
-	public $response;
-	public $_key;
-
+	public static $host = '.*';
 
 	// 默认参数
-	public static $defaults = [
-		'host' => '',
-		'scheme' => ['http', 'https'],
-	];
+	public static $scheme = ['http', 'https'];
+
+
+
+	public $request;
+	public $response;
+	private $_key;
+
 
 	// 当前请求
 	public static function request() {
@@ -45,15 +45,28 @@ class Router{
 
 	/**
 	 * 添加类或命名空间
-	 * @param string  $name      命名空间 或 class
+	 * @param string  $class     命名空间 class = class  class\ = name Space 命名空间允许递归
 	 * @param string  $path      自定义定义 path
 	 * @param boolean $host      自定义定义 host
 	 * @param [type]  $scheme    允许的协议
-	 * @param boolean $recursive 递归... 命名空间用
+	 * @param integer $priority  优先级
 	 */
-	public static function add($name, $path = false, $scheme = [], $recursive = true, $priority = 10) {
-		self::$_all[] = ['name' => $name, 'path' => $path, 'host' => $host, 'scheme' => $scheme, 'recursive' => $recursive, 'priority' => $priority];
+	public static function add($class, $path = false, $host = false, $scheme = [], $priority = 10) {
+		self::$_all[$class][$priority][] = ['path' => $path, 'host' => $host, 'scheme' => $scheme, 'priority' => $priority];
+		return true;
 	}
+
+	/**
+	 * url 地址
+	 * @param [type]  $class  [description]
+	 * @param [type]  $args   [description]
+	 * @param boolean $path   [description]
+	 * @param boolean $host   [description]
+	 * @param [type]  $scheme [description]
+	 */
+	//public static function URL($class, $args, $path = false, $host = false, $scheme = []) {
+		//self::$_all[$class][$priority][] = ['path' => $path, 'host' => $host, 'scheme' => $scheme, 'recursive' => $recursive, 'priority' => $priority];
+	//}
 
 	//public static function addClass($nameSpace, $host = false, $path = '/', $scheme = []) {
 	//	self::$_nameSpaces[$nameSpace] = ['host' => $host, 'path' => $path, 'scheme' => $scheme];
@@ -94,7 +107,7 @@ class Router{
 
 		try {
 			Lang::init();
-			Filter::run('Router', $this);
+			Filter::run('Router', [$this]);
 			$method = $request->getMethod();
 			$scheme = $request->getScheme();
 			$host = $request->getHost();
@@ -108,21 +121,96 @@ class Router{
 				'\p{$' => '\p{'. $uniqid,
 				'(?($' => '(?(' . $uniqid
 			];
-			prioritysort(self::$_all);
-			foreach (self::$_all as $value) {
-				if (empty($value['path'])) {
-					$value['path'] = '/' . strtolower(trim(strtr($value['name'], '\\', '/'), '/'));
+
+			uksort(self::$_all, function($str1, $str2) {
+				if (($len1 = strlen($str1)) > ($len2 = strlen($str2))) {
+					return 1;
 				}
-				//$value = ['path' => '/', 'host' => self::$host, 'scheme' => ['http', 'https']];
+				if (($len1 = strlen($str1)) < ($len2 = strlen($str2))) {
+					return -1;
+				}
+				return 0;
+			});
+
+			$messages = new Messages();
+			foreach (self::$_all as $class => &$vlas) {
+				ksort($vlas, SORT_NUMERIC);
+				foreach ($vlas as &$values) {
+					foreach ($values as &$value) {
+						if (!$value['path']) {
+							$value['path'] = '/' . strtolower(trim(strtr($class, '\\', '/'), '/'));
+						}
+						$class = strtr($class, '//', '\\');
+
+						if ($class != '\\' && $class{0} == '\\') {
+							$class = ltrim($class, '\\');
+						}
+						$isNameSpace = $class && substr($class, -1, 1) == '\\';
+						if ($isNameSpace && strpos($value['path'], '(?<$class') === false && strpos($value['path'], '(?\'$class') === false && strpos($value['path'], '(?"$class') === false) {
+							$value['path'] .= '(?<$class>(?:/[_a-z][0-9a-z_]*)+)/?';
+						}
+						$class = 'Controller\\' . ltrim($class, '\\');
+
+						if (!$value['host']) {
+							$value['host'] =  self::$host;
+						}
+						$value['scheme'] = $value['scheme'] ? (array) $value['scheme'] : self::$scheme;
+
+						// 允许的协议
+						if (!in_array($scheme, $value['scheme'])) {
+							continue;
+						}
+
+						$params = [];
+
+						// 允许的 host
+						if (!preg_match('/^'.strtr($value['host'], $strtr). '$/', $host, $matches)) {
+							continue;
+						}
+						$params += $matches;
+
+						// 允许的路径
+						if (!preg_match('/^'.strtr($value['path'], $strtr). '$/', $path, $matches)) {
+							continue;
+						}
+
+						// 命名空间不存在
+						if ($isNameSpace && empty($matches[$uniqid.'class']) || !class_exists(($class .= strtr(ucwords(strtr(trim($matches[$uniqid.'class'], '/'), '/', ' ')), ' ', '\\')))) {
+							continue;
+						}
+
+						$params = $matches + $params;
+						$break = true;
+						break;
+					}
+					empty($break) && $messages->add(404);
+				}
 			}
-
-
-
-
 		} catch (Exception $e) {
-			$response->addMessage(500);
+			$messages->add(500);
 		}
 
+
+		// 没错误 执行控制器
+		if (!$messages->all()) {
+			$length = strlen($uniqid);
+			foreach($params as $name => $param) {
+				if (is_int($name)) {
+					unset($params[$name]);
+					continue;
+				}
+				if (substr($name, 0, $length) == $uniqid) {
+					unset($params[$name]);
+					$params['$'. substr($name, $length)] = $param;
+				}
+			}
+			$request->setParams($params);
+			$class = 'Controller\\' . $class;
+			if ($value['class'] && substr($value['class'], -1, 1) == '\\') {
+
+			}
+			$view = new $value['class']($request, $response, $messages);
+		}
 
 
 

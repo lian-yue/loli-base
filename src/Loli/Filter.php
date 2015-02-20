@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-17 08:35:29
-/*	Updated: UTC 2015-02-17 08:54:59
+/*	Updated: UTC 2015-02-20 06:48:37
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -17,13 +17,13 @@ class Filter{
 	private static $_sorts = [];
 	private static $_counts = [];
 
-	public static function add($name, $call, $priority = 10) {
+	public static function add($name, callable $call, $priority = 10) {
 		self::$_filters[$name][$priority][self::_id($call)] = $call;
 		self::$_sorts[$name] = false;
 		return true;
 	}
 
-	public static function has($name, $call, $priority = 10) {
+	public static function has($name, callable $call, $priority = 10) {
 		if (empty(self::$_filters[$name][$priority])) {
 			return false;
 		}
@@ -34,7 +34,7 @@ class Filter{
 		return empty(self::$_counts[$name]) ? 0 : self::$_counts[$name];
 	}
 
-	public static function remove($name, $call, $priority = 10) {
+	public static function remove($name, callable $call, $priority = 10) {
 		if (empty(self::$_filters[$name][$priority][$id = self::_id($call)])) {
 			return false;
 		}
@@ -44,10 +44,10 @@ class Filter{
 	}
 
 	public static function run($name, array $params) {
-		if (empty(self::$counts[$name])) {
-			self::$counts[$name] = 0;
+		if (empty(self::$_counts[$name])) {
+			self::$_counts[$name] = 0;
 		}
-		++self::$counts[$name];
+		++self::$_counts[$name];
 
 		if (empty(self::$_filters[$name])) {
 			return;
@@ -66,10 +66,10 @@ class Filter{
 
 
 	public static function get($name, array $params) {
-		if (empty(self::$counts[$name])) {
-			self::$counts[$name] = 0;
+		if (empty(self::$_counts[$name])) {
+			self::$_counts[$name] = 0;
 		}
-		++self::$counts[$name];
+		++self::$_counts[$name];
 
 		$params += [0 => null];
 
@@ -91,7 +91,7 @@ class Filter{
 
 
 
-	private static  function _id($call) {
+	private static  function _id(callable $call) {
 		if (is_string($call)) {
 			return $call;
 		}

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 12:09:10
-/*	Updated: UTC 2015-02-19 08:22:48
+/*	Updated: UTC 2015-02-19 14:06:33
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -57,13 +57,22 @@ class Curl{
 	/**
 	*	curl 下载 cookie 文件保存位置
 	*
-	*	1 参数 key
+	*	1 参数 keys 如果是数组的话就是多重目录
 	*
 	*	返回值 文件途径
 	**/
-	public function cookie($key) {
-		return $this->cookie .'/' . md5($key);
+	public function cookie($keys) {
+		$keys = (array) $keys;
+		$name = array_pop($keys);
+		foreach ($keys as &$dir) {
+			$dir = trim(preg_filter('/[^0-9a-z_-]/', '.', $dir), '.');
+			$dir = $dir ? $dir : 'empty';
+		}
+		$keys = $keys ? '/' . implode('/', $keys) . '/' : '/';
+		return $this->cookie . $keys . md5($name);
 	}
+
+
 	/**
 	*	curl 上传
 	*
@@ -215,7 +224,6 @@ class Curl{
 				}
 				curl_setopt($this->_chs[$key], $optoin, $value);
 			}
-			print_r($options);
 			if (!$all) {
 				break;
 			}
@@ -315,7 +323,5 @@ class Curl{
 
 		$this->_options = $this->_chs = [];
 		return $results;
-
-
 	}
 }
