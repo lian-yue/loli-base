@@ -8,13 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 19:45:05
-/*	Updated: UTC 2015-02-09 16:13:54
+/*	Updated: UTC 2015-02-22 03:35:43
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
 use Loli\Model;
 trait_exists('Loli\Model', true) || exit;
-class View {
+class View{
 	use Model;
 	private $_data = [];
 
@@ -22,7 +22,7 @@ class View {
 
 	private $_dir = './';
 
-	public function __construct($file, $data = [], $redirect = false) {
+	public function __construct($file, $data = []) {
 		$this->_file = $file;
 		$this->_data = $data;
 	}
@@ -40,7 +40,6 @@ class View {
 		$this->data = $data + $this->_data;
 		return true;
 	}
-
 
 	public function load($_file, $_once = true) {
 		foreach ((array)$_file as $v) {

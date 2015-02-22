@@ -8,11 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-20 14:57:35
+/*	Updated: UTC 2015-02-22 04:31:50
 /*
 /* ************************************************************************** */
 namespace Loli;
-use Loli\HMVC\View, Loli\HMVC\Messages;
+use Loli\HMVC\View, Loli\HMVC\Error, Loli\HMVC\Messages;
 class Router{
 
 	// 全部 资源
@@ -104,119 +104,205 @@ class Router{
 
 		$this->request =& $request;
 		$this->response =& $response;
-
 		try {
-			Lang::init();
-			Filter::run('Router', [$this]);
-			$method = $request->getMethod();
-			$scheme = $request->getScheme();
-			$host = $request->getHost();
-			$path = $request->getPath();
-			$uniqid = 'ID' . uniqid() . mt_rand();
-			$strtr = [
-				'/' => '\\/',
-				'(?<$' => '(?<' . $uniqid,
-				'(?\'$' => '(?\'' . $uniqid,
-				'(?"$' => '(?"' . $uniqid,
-				'\p{$' => '\p{'. $uniqid,
-				'(?($' => '(?(' . $uniqid
-			];
+			try {
 
-			uksort(self::$_all, function($str1, $str2) {
-				if (($len1 = strlen($str1)) > ($len2 = strlen($str2))) {
-					return 1;
-				}
-				if (($len1 = strlen($str1)) < ($len2 = strlen($str2))) {
-					return -1;
-				}
-				return 0;
-			});
+				Lang::init();
+				Filter::run('Router', [$this]);
+				$method = $request->getMethod();
+				$scheme = $request->getScheme();
+				$host = $request->getHost();
+				$path = $request->getPath();
+				$uniqid = 'ID' . uniqid() . mt_rand();
+				$strtr = [
+					'/' => '\\/',
+					'(?<$' => '(?<' . $uniqid,
+					'(?\'$' => '(?\'' . $uniqid,
+					'(?"$' => '(?"' . $uniqid,
+					'\p{$' => '\p{'. $uniqid,
+					'(?($' => '(?(' . $uniqid
+				];
 
-			$messages = new Messages();
-			foreach (self::$_all as $class => &$vlas) {
-				ksort($vlas, SORT_NUMERIC);
-				foreach ($vlas as &$values) {
-					foreach ($values as &$value) {
-						if (!$value['path']) {
-							$value['path'] = '/' . strtolower(trim(strtr($class, '\\', '/'), '/'));
-						}
-						$class = strtr($class, '//', '\\');
-
-						if ($class != '\\' && $class{0} == '\\') {
-							$class = ltrim($class, '\\');
-						}
-						$isNameSpace = $class && substr($class, -1, 1) == '\\';
-						if ($isNameSpace && strpos($value['path'], '(?<$class') === false && strpos($value['path'], '(?\'$class') === false && strpos($value['path'], '(?"$class') === false) {
-							$value['path'] .= '(?<$class>(?:/[_a-z][0-9a-z_]*)+)/?';
-						}
-						$class = 'Controller\\' . ltrim($class, '\\');
-
-						if (!$value['host']) {
-							$value['host'] =  self::$host;
-						}
-						$value['scheme'] = $value['scheme'] ? (array) $value['scheme'] : self::$scheme;
-
-						// 允许的协议
-						if (!in_array($scheme, $value['scheme'])) {
-							continue;
-						}
-
-						$params = [];
-
-						// 允许的 host
-						if (!preg_match('/^'.strtr($value['host'], $strtr). '$/', $host, $matches)) {
-							continue;
-						}
-						$params += $matches;
-
-						// 允许的路径
-						if (!preg_match('/^'.strtr($value['path'], $strtr). '$/', $path, $matches)) {
-							continue;
-						}
-
-						// 命名空间不存在
-						if ($isNameSpace && empty($matches[$uniqid.'class']) || !class_exists(($class .= strtr(ucwords(strtr(trim($matches[$uniqid.'class'], '/'), '/', ' ')), ' ', '\\')))) {
-							continue;
-						}
-
-						$params = $matches + $params;
-						$break = true;
-						break;
+				uksort(self::$_all, function($str1, $str2) {
+					if (($len1 = strlen($str1)) > ($len2 = strlen($str2))) {
+						return 1;
 					}
-					empty($break) && $messages->add(404);
-				}
-			}
-		} catch (Exception $e) {
-			$messages->add(500);
-		}
+					if (($len1 = strlen($str1)) < ($len2 = strlen($str2))) {
+						return -1;
+					}
+					return 0;
+				});
 
+				foreach (self::$_all as $class => &$vlas) {
+					ksort($vlas, SORT_NUMERIC);
+					foreach ($vlas as &$values) {
+						foreach ($values as &$value) {
+
+							// 整理 class
+							$class = strtr($class, '//', '\\');
+							if ($class != '\\' && $class{0} == '\\') {
+								$class = ltrim($class, '\\');
+							}
+
+							// class 是否是命名空间
+							$isNameSpace = $class && substr($class, -1, 1) == '\\';
+
+
+							// 整理 path
+							if (!$value['path']) {
+								$value['path'] = '/' . strtolower(trim(strtr($class, '\\', '/'), '/'));
+							}
+
+							// 带有命名空间的path
+							if ($isNameSpace && strpos($value['path'], '(?<$class') === false && strpos($value['path'], '(?\'$class') === false && strpos($value['path'], '(?"$class') === false) {
+								$value['path'] .= '(?<$class>(?:/[_a-z][0-9a-z_]*)+)/?';
+							}
+
+							// 整理 host
+							if (!$value['host']) {
+								$value['host'] =  self::$host;
+							}
+
+							// 整理协议
+							$value['scheme'] = $value['scheme'] ? (array) $value['scheme'] : self::$scheme;
+
+
+							// class 加上前缀
+							$class = 'Controller\\' . ltrim($class, '\\');
+
+
+							// 允许的协议
+							if (!in_array($scheme, $value['scheme'])) {
+								continue;
+							}
+
+							$params = [];
+
+							// 允许的 host
+							if (!preg_match('/^'.strtr($value['host'], $strtr). '$/', $host, $matches)) {
+								continue;
+							}
+							$params += $matches;
+
+							// 允许的路径
+							if (!preg_match('/^'.strtr($value['path'], $strtr). '$/', $path, $matches)) {
+								continue;
+							}
+
+							// 带有命名空间的
+							if ($isNameSpace && empty($matches[$uniqid.'class']) || !class_exists(($class .= strtr(ucwords(strtr(trim($matches[$uniqid.'class'], '/'), '/', ' ')), ' ', '\\')))) {
+								continue;
+							}
+
+							$params = $matches + $params;
+							$break = true;
+							break 3;
+						}
+					}
+				}
+
+
+				// 404 页面不存在
+				if (empty($break)) {
+					throw new Error(404);
+				}
+
+				// 整理 取得的参数 并且写入
+				$length = strlen($uniqid);
+				foreach($params as $name => $param) {
+					if (is_int($name) || $name === ($uniqid . 'class')) {
+						unset($params[$name]);
+						continue;
+					}
+					if (substr($name, 0, $length) == $uniqid) {
+						unset($params[$name]);
+						$params['$'. substr($name, $length)] = $param;
+					}
+				}
+				$request->setParams($params);
+
+
+
+				// 执行控制器　返回图事
+				$view = new $class($request, $response);
+
+
+				// 控制器返回的错误
+				if ($view instanceof Error) {
+					throw $view;
+				}
+
+				// 控制器返回的数组 stdclass 对象 自动 创建图事
+				if (is_array($view) || (is_object($view) && get_class($view) == 'stdClass')) {
+					$view = new view(strtolower(strtr($class, '\\', '/')), $view);
+				}
+			} catch (Exception $e) {
+				// 500 参数什么不正确
+				throw new Error(500);
+			}
+		} catch (Error $errors) {
+			/*// 捕获的错误
+			$data = [];
+			$data['title'] = $errors->getTitle();
+			$messages = [];
+			foreach($errors->results() as $error) {
+				// 状态码
+				if (is_int($code = $error->getCode()) && $code >= 400 && $code < 600 && $response->getStatus() == 200) {
+					$response->setStatus($code);
+				}
+				$data['messages'][] = [$code] + $error->getArgs();
+				$data += $error->getData();
+			}
+			$view = new Message($messages, $data, true, 3);*/
+		}
 
 		// 没错误 执行控制器
-		if (!$messages->all()) {
-			$length = strlen($uniqid);
-			foreach($params as $name => $param) {
-				if (is_int($name)) {
-					unset($params[$name]);
-					continue;
+		/*if (empty($errors)) {
+			try {
+				try {
+				try {
+					$length = strlen($uniqid);
+					foreach($params as $name => $param) {
+						if (is_int($name)) {
+							unset($params[$name]);
+							continue;
+						}
+						if (substr($name, 0, $length) == $uniqid) {
+							unset($params[$name]);
+							$params['$'. substr($name, $length)] = $param;
+						}
+					}
+					$request->setParams($params);
+					$view = new $class($request, $response);
+				} catch (Message $e) {
+					// Message
+				} catch (Exception $e) {
+					// 500
+					new Message(500);
 				}
-				if (substr($name, 0, $length) == $uniqid) {
-					unset($params[$name]);
-					$params['$'. substr($name, $length)] = $param;
-				}
-			}
-			$request->setParams($params);
-			$class = 'Controller\\' . $class;
-			if ($value['class'] && substr($value['class'], -1, 1) == '\\') {
-
-			}
-			$view = new $value['class']($request, $response, $messages);
 		}
 
 
 
+		// 有错误的
+		/*if (Message::all()) {
+			$arrays = ['message' => Message::title()];
+			foreach(Message::all() as $message) {
+				// 如果 误代码是 400 -599 范围内并且状态码 是200 就写入状态码
+				if (is_int($code = $message->getCode()) && $code >= 400 && $code< 600 && $response->getStatus() == 200) {
+					$response->setStatus($code);
+				}
+				$arrays['errors'][$code] = ['code' => $code, 'message' => $message->getMessage(), 'args' => $message->getArgs()];
+				$arrays += $message->getData();
+			}
+			$view = new View('messages', $arrays);
+		}*/
 
-		unset(self::$_this[$this->_key]);
-		end(self::$_this);
+
+
+
+		//unset(self::$_this[$this->_key]);
+		//end(self::$_this);
 
 		/*try {
 			$method = $request->getMethod();
