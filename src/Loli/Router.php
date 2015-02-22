@@ -97,13 +97,13 @@ class Router{
 		if (!$response instanceof Response) {
 			$response = new Response($request);
 		}
-		self::$_this[] =& $this;
+		self::$_this[] = &$this;
 		end(self::$_this);
 		$this->_key = key(self::$_this);
 
 
-		$this->request =& $request;
-		$this->response =& $response;
+		$this->request = &$request;
+		$this->response = &$response;
 		try {
 			try {
 
@@ -175,7 +175,6 @@ class Router{
 							if (!in_array($scheme, $value['scheme'])) {
 								continue;
 							}
-
 							$params = [];
 
 							// 允许的 host
@@ -241,19 +240,20 @@ class Router{
 				throw new Error(500);
 			}
 		} catch (Error $errors) {
-			/*// 捕获的错误
+
+			// 捕获的错误
 			$data = [];
 			$data['title'] = $errors->getTitle();
 			$messages = [];
-			foreach($errors->results() as $error) {
+			foreach($errors as $error) {
 				// 状态码
 				if (is_int($code = $error->getCode()) && $code >= 400 && $code < 600 && $response->getStatus() == 200) {
 					$response->setStatus($code);
 				}
-				$data['messages'][] = [$code] + $error->getArgs();
+				$messages[] = [$code] + $error->getArgs();
 				$data += $error->getData();
 			}
-			$view = new Message($messages, $data, true, 3);*/
+			$view = new Messages($messages, $data, true, 3);
 		}
 
 		// 没错误 执行控制器

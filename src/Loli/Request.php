@@ -436,7 +436,7 @@ class Request{
 
 	public function setCookies(array $cookies) {
 		//=,; \t\r\n\013\014
-		$_COOKIE = $this->_cookies = array_unnull(to_array($cookies));
+		$_COOKIE = $this->_cookies = parse_string($cookies);
 		$_SERVER['HTTP_COOKIE'] = http_build_query($_COOKIE, null, '; ');
 		return $this;
 	}
@@ -445,7 +445,7 @@ class Request{
 		if ($value === null || !empty($this->_cookies[$name])) {
 			$this->setCookies([$name => $value]+ $this->_cookies);
 		} else {
-			$_COOKIE = $this->_cookies[$name] = is_array($value) || is_object($value) ? array_unnull(to_array($value)) : $value;
+			$_COOKIE = $this->_cookies[$name] = is_array($value) || is_object($value) ? parse_string($value) : $value;
 			$value = http_build_query([$key => $value], null, '; ');
 			if (empty($this->_headers['Cookie'])) {
 				$this->_headers['Cookie'] = $value;
@@ -466,7 +466,7 @@ class Request{
 	}
 
 	public function setPosts(array $posts) {
-		$_POST = $this->_posts = array_unnull(to_array($posts));
+		$_POST = $this->_posts = parse_string($posts);
 		$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
 		return $this;
 	}
@@ -476,7 +476,7 @@ class Request{
 			unset($this->_posts[$name], $_POST[$name]);
 			$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
 		} else {
-			$this->_posts[$name] = is_array($value) || is_object($value) ? to_array($value) : $value;
+			$this->_posts[$name] = is_array($value) || is_object($value) ? parse_string($value) : $value;
 			$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
 		}
 		return $this;
@@ -577,7 +577,7 @@ class Request{
 	}
 
 	public function setParams(array $params) {
-		$this->_params = array_unnull(to_array($params));
+		$this->_params = parse_string($params);
 		$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
 		return $this;
 	}
@@ -587,7 +587,7 @@ class Request{
 			unset($this->_params[$name], $_POST[$name]);
 			$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
 		} else {
-			$this->_params[$name] = is_array($value) || is_object($value) ? to_array($value) : $value;
+			$this->_params[$name] = is_array($value) || is_object($value) ? parse_string($value) : $value;
 			$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
 		}
 		return $this;

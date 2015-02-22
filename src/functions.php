@@ -58,13 +58,45 @@ function load_file() {
 *
 *	返回值 GET数组
 **/
-function parse_string($s) {
-	if (is_array($s)) {
-		return to_array($s);
+function parse_string($string) {
+	if (is_array($string) || is_object($string)) {
+		$call = function($arrays) use(&$call) {
+			$arrays = (array) $arrays;
+			foreach ($arrays as $key => &$value) {
+				if (is_array($value) || is_object($value)) {
+					if (!$value = $call($value)) {
+						unset($arrays[$key]);
+					}
+				} elseif (is_bool($value)) {
+					$value = (int) $value;
+				} elseif (!is_string($value) && !is_int($value) && !is_float($value)) {
+					unset($arrays[$key]);
+				}
+			}
+		};
+		$r = $call($string);
+	} else {
+		parse_str($string, $r);
 	}
-	parse_str($s, $r);
 	return $r;
 }
+
+
+
+/**
+*	数组转换成字符串
+*
+*	1 参数 数组
+*
+*	返回值 GET字符串
+**/
+function merge_string($a) {
+	if (!is_array($a) && !is_object($a)) {
+		return (string) $a;
+	}
+	return http_build_query(to_array($a), null, '&');
+}
+
 
 /**
 *	转成数组
@@ -170,20 +202,6 @@ function simplexml_uncdata($xml) {
 	}
 
 	return $xml;
-}
-
-/**
-*	数组转换成字符串
-*
-*	1 参数 数组
-*
-*	返回值 GET字符串
-**/
-function merge_string($a) {
-	if (!is_array($a) && !is_object($a)) {
-		return (string) $a;
-	}
-	return http_build_query(to_array($a), null, '&');
 }
 
 
@@ -334,17 +352,17 @@ function prioritysort(array &$arrays, $key = 'priority', $asc = true) {
 		++$i;
 	}
 	$function = $asc ? 'uasort' : 'usort';
-	$function($sorts, function($param0, $param1) {
-		if ($param0[3] > $param1[3]) {
+	$function($sorts, function($param1, $param2) {
+		if ($param1[3] > $param2[3]) {
 			return 1;
 		}
-		if ($param0[3] < $param1[3]) {
+		if ($param1[3] < $param2[3]) {
 			return -1;
 		}
-		if ($param0[2] > $param1[2]) {
+		if ($param1[2] > $param2[2]) {
 			return 1;
 		}
-		if ($param0[2] < $param1[2]) {
+		if ($param1[2] < $param2[2]) {
 			return -1;
 		}
 		return 0;

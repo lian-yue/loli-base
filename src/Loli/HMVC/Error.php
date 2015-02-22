@@ -12,13 +12,14 @@
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
-use Loli\Exception, Loli\Lang;
-class Error extends Exception{
+use Iterator, Loli\Exception, Loli\Lang;
+class Error extends Exception implements Iterator{
 
 	protected $code;
 	protected $message;
 	protected $data;
 	protected $args;
+	protected $results = [];
 	public function __construct($message = [], array $data = [], Error $previous = null) {
 		$message = $message ? (array) $message : [500];
 
@@ -38,6 +39,12 @@ class Error extends Exception{
 
 
 		parent::__construct($message, $code, $previous);
+
+
+		$message = $this;
+		do {
+			$this->results[$message->getCode()] = $message;
+		} while ($message = $message->getPrevious());
 	}
 
 	public function getData() {
@@ -66,20 +73,39 @@ class Error extends Exception{
 		return false;
 	}
 
-	public function results() {
-		$message = $this;
-		do {
-			$results[$message->getCode()] = $message;
-		} while ($message = $message->getPrevious());
-		return $results;
+
+	public function __invoke() {
+		return $this->__toString();
 	}
 
 	public function __toString() {
 		$string = '<div id="errors">';
-		foreach ($this->results() as $message) {
+		foreach ($this as $message) {
 			$string .= '<div class="error" code="'. htmlspecialchars($message->getCode(), ENT_QUOTES) .'">'. $message->getMessage() .'</div>';
 		}
 		$string .= '</div>';
 		return $string;
+	}
+
+
+	public function rewind() {
+		reset($this->results);
+	}
+
+	public function current() {
+		return current($this->results);
+	}
+
+	public function key() {
+		return key($this->results);
+	}
+
+	public function next() {
+		return next($this->var);
+	}
+
+	public function valid() {
+		$key = key($this->var);
+		return ($key !== null && $key !== false);
 	}
 }

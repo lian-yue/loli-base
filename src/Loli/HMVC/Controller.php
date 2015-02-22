@@ -12,13 +12,13 @@
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
-use Loli\Model;
+use Loli\Model, Loli\Request, Loli\Response;
 trait_exists('Loli\Model', true) || exit;
 class Controller{
 	use Model;
 	protected $request, $response;
 
-	public $allows = [
+	/*public $allows = [
 		'index' => [
 			[
 				'GET' => '/(list)?',
@@ -69,17 +69,16 @@ class Controller{
 			]
 		],
 
-	];
+	];*/
 
 	// 默认
 	public function __construct(Request &$request, Response &$response) {
-		$this->request &= $request;
-		$this->response &= $response;
-		$this->messages &= $messages;
+		$this->request = &$request;
+		$this->response = &$response;
 	}
 
 	// 不支持的方法
 	public function __call($name, $args) {
-		$this->messages->add(404);
+		throw new Error(404);
 	}
 }

@@ -72,7 +72,7 @@ class Response{
 	}
 
 	public function setCookie($name, $value, $ttl = 0,  $httponly = null, $secure = null, $path = null, $domain = null) {
-		$this->_cookies[$name] = ['value' => is_array($value) || is_object($value) ? to_array($value) : $value, 'ttl' => $ttl, 'httponly' => $httponly, 'secure' => $secure, 'path' => $path, 'domain' => $domain];
+		$this->_cookies[$name] = ['value' => is_array($value) || is_object($value) ? parse_string($value) : $value, 'ttl' => $ttl, 'httponly' => $httponly, 'secure' => $secure, 'path' => $path, 'domain' => $domain];
 		return $this;
 	}
 
@@ -91,7 +91,7 @@ class Response{
 		$domain = $domain === null ? $this->cookieDomain : $domain;
 		if (is_array($value)) {
 			foreach ($value as $key => $_value) {
-				$this->_sendCookie($name . '['. $key .']', $_value, $ttl,  $httponly, $secure, $path, $domain);
+				$this->_sendCookie($name . '['. rawurlencode($key) .']', $_value, $ttl,  $httponly, $secure, $path, $domain);
 			}
 		} else {
 			if ($value === null) {

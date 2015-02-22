@@ -1024,21 +1024,8 @@ class Query{
 			$defaults = $this->defaults;
 			foreach ($defaults as $k => $v) {
 				if (isset($args[$k])) {
-					$type = gettype($v);
-					if ($type == 'boolean') {
-						$a[$k] = (bool) $args[$k];
-					} elseif ($type == 'float' || $type == 'double') {
-						$a[$k] = (double) $args[$k];
-					} elseif ($type == 'integer') {
-						$a[$k] = (int) $args[$k];
-					} elseif ($type == 'array') {
-						$a[$k] = $args[$k] ? (array) $args[$k] : [];
-					} elseif ($type == 'object') {
-						$a[$k] = (object) $args[$k];
-					} elseif ($type == 'string') {
-						$a[$k] = (string) $args[$k];
-					} else {
-						$a[$k] = $args[$k];
+					if ($v !== null) {
+						settype($args[$k], gettype($v));
 					}
 				}
 				if ($v === null) {

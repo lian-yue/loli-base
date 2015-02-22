@@ -65,8 +65,8 @@ class View{
 		return true;
 	}
 
-	public function __toString() {
+	public function __invoke() {
 		$this->load($this->_file);
-		return  '';
+		return '';
 	}
 }

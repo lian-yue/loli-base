@@ -208,4 +208,8 @@ class URL{
 	public function __toString() {
 		return $this->getURL();
 	}
+
+	public function __invoke() {
+		return $this->getURL();
+	}
 }

@@ -21,7 +21,6 @@ class Code{
 	public static $expire = false;
 
 
-
 	/**
 	* 加密 key (不可解密的 只能用来判断) 请勿加密重要数据
 	*
@@ -48,13 +47,13 @@ class Code{
 	*
 	*	返回值 经过 移位运算后的数据 array
 	**/
-	private static function _code($str, $key) {
+	private static function _code($string, $key) {
 		// 生成随机字符串
 		$key = self::key('code' . $key, 32);
 		$r = '';
-		$len = strlen($str);
+		$len = strlen($string);
 		for ($i = 0; $i < $len; ++$i) {
-			$r .= substr($str, $i, 1) ^ substr($key, $i % 31, 1);
+			$r .= substr($string, $i, 1) ^ substr($key, $i % 31, 1);
 		}
 		return $r;
 	}
@@ -69,19 +68,27 @@ class Code{
 	*
 	*	返回值  0-9 a-z A-Z - _
 	**/
-	public static function en($str, $key = '', $ttl = 0) {
+	public static function en($value, $password = '', $ttl = 0) {
+
 		// 随机
-		$rand = self::rand(6, '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM_-');
+		$rand = mb_rand(6, '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM_-');
+
+		$type = 9;
+		foreach (['is_null', 'is_bool', 'is_int', 'is_float', 'is_string'] as $key => $function) {
+			if ($function($value)) {
+				$type = $key;
+			}
+		}
 
 		// base64_decode 随机字符串 和数据
-		$code = strtr(base64_encode(self::_code(gettype($str) .'|'. ($ttl? $ttl + time() : 0) .'|'. (is_array($str)||is_object($str) ? serialize($str) :$str), $rand . $key)), ['=' => '', '+' => '-', '/' => '_']);
+		$code = strtr(base64_encode(self::_code($type .chr(0). ($ttl? $ttl + time() : 0) .chr(0). ($type == 9 ? serialize($value) :$value), $rand . $password)), ['=' => '', '+' => '-', '/' => '_']);
+
 
 		// 数据完整性
 		$test = '';
-		foreach (str_split(self::key($rand . $code . $key, 8)) as $v) {
-			$test .= rand(0, 4) ? strtoupper($v) : $v;
+		foreach (str_split(self::key($rand . $code . $password, 8)) as $v) {
+			$test .= mt_rand(0, 4) ? strtoupper($v) : $v;
 		}
-
 		return $rand . $code . $test;
 	}
 
@@ -94,38 +101,53 @@ class Code{
 	*
 	*	返回值  你存入的数据
 	**/
-	public static function de($str, $key = '') {
+	public static function de($string, $password = '') {
 		self::$expire = false;
-		$len = strlen($str);
-		if ($len < 14) {
+		if (!is_string($string) || strlen($string) < 14) {
 			return false;
 		}
 		// 从字符串中提取 各种解密需要的数据
-		$rand = substr($str, 0, 6);
-		$code = substr($str, 6, -8);
+		$rand = substr($string, 0, 6);
+		$code = substr($string, 6, -8);
+
 		// 验证数据完整性
-		if (strtolower(substr($str, -8)) !== self::key($rand . $code . $key, 8)) {
+		if (strtolower(substr($string, -8)) !== self::key($rand . $code . $password, 8)) {
 			return false;
 		}
+
 		// 解密
-		if (count($exp = explode('|', self::_code(base64_decode(strtr($code, ['-' => '+', '_' => '/'])), $rand . $key), 3)) != 3) {
+		if (count($arrays = explode(chr(0), self::_code(base64_decode(strtr($code, ['-' => '+', '_' => '/'])), $rand . $password), 3)) != 3) {
 			return false;
 		}
+		list($type, $expire, $value) = $arrays;
+
+		// type
+		if (!is_numeric($type)) {
+			return false;
+		}
+
 		// 检查过期
-		if (!is_numeric($exp[1]) || ($exp[1] && $exp[1] < time())) {
+		if (!is_numeric($expire) || ($expire && $expire < time())) {
 			self::$expire = true;
 			return false;
 		}
-		if ($exp[0] == 'integer') {
-			return (int) $exp[2];
+
+		if ($type == 0) {
+			return null;
 		}
-		if ($exp[0] == 'float' || $exp[0] == 'double') {
-			return (float) $exp[2];
+		if ($type == 1) {
+			return (bool) $value;
 		}
-		if ($exp[0] == 'array' || $exp[0] == 'object') {
-			return ($un = @unserialize($exp[2])) ? $un : false;
+		if ($type == 2) {
+			return (int) $value;
 		}
-		return $exp[2];
+		if ($type == 3) {
+			return (float) $value;
+		}
+		if ($type == 4) {
+			return (string) $value;
+		}
+		return ($un = @unserialize($value)) ? $un : false;
 	}
 }
 

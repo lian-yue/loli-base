@@ -88,23 +88,22 @@ class Debug {
 			$func = $k ?  (empty($v['class']) ? $v['function'] : $v['class'] . $v['type'] . $v['function']) : '';
 			$args = [];
 			foreach (!empty($v['args']) && (empty($v['_SERVER']) || $v['_SERVER'] !== $_SERVER) ? $v['args'] : [] as $vv) {
-				$type = gettype($vv);
-				if ($type == 'string') {
+				if (is_string($vv)) {
 					$vv = $this->dir && in_array($func, ['', 'require', 'require_once', 'include', 'include_once']) ? ltrim(strtr(preg_replace('/^'. preg_quote($this->dir, '/') .'/', '', $vv), '\\', '/'), '/') : $vv;
 					$args[] = '\''. addslashes($vv) .'\'';
-				} elseif ($type == 'boolean'){
+				} elseif (is_bool($vv)) {
 					$args[] = $vv ? 'true' : 'false';
-				} elseif ($type == 'array' || $type == 'object') {
+				} elseif (is_array($vv) || is_object($vv)) {
 					$args[] = @var_export($vv, true);
-				} elseif ($type == 'resource') {
+				} elseif (is_resource($vv)) {
 					$args[] = 'Resource .' . get_resource_type($vv);
-				} elseif ($type == 'NULL') {
-					$args[] = $type;
+				} elseif ($type === null) {
+					$args[] = 'NULL';
 				} else {
 					$args[] = $vv;
 				}
 			}
-			$a[] = '#' . $i . ' ' . $v['file'] . '(' . $v['line'] . '):  ' . ($func ? $func .'('. implode(', ', $args ) .')' :  '');
+			$a[] = '#' . $i . ' ' . $v['file'] . '(' . $v['line'] . '):  ' . ($func ? $func .'('. implode(', ', $args) .')' :  '');
 			++$i;
 		}
 		$a = implode("\n", $a) ."\n";
@@ -124,17 +123,16 @@ class Debug {
 				$func = $k ? (empty($v['class']) ? $v['function'] : $v['class'] . $v['type'] . $v['function']) : '';
 				$args = [];
 				foreach (!empty($v['args']) && (empty($v['_SERVER']) || $v['_SERVER'] !== $_SERVER) ? $v['args'] : [] as $vv) {
-					$type = gettype($vv);
 					if ($this->args) {
-						if ($type == 'string') {
+						if (is_string($vv)) {
 							$args[] = $this->dir && in_array($func, ['', 'require', 'require_once', 'include', 'include_once']) ? ltrim(strtr(preg_replace('/^'. preg_quote($this->dir, '/') .'/', '', $vv), '\\', '/'), '/') : $vv;
-						} elseif ($type == 'resource') {
+						} elseif (is_resource($vv)) {
 							$args[] = 'Resource .' . get_resource_type($vv);
 						} else {
 							$args[] = $vv;
 						}
 					} else {
-						$args[] = ucfirst($type);
+						$args[] = ucfirst(gettype($vv));
 					}
 				}
 
@@ -194,31 +192,30 @@ class Debug {
 			$func = $k ?  (empty($v['class']) ? $v['function'] : $v['class'] . $v['type'] . $v['function']) : '';
 			$args = [];
 			foreach (!empty($v['args']) && (empty($v['_SERVER']) || $v['_SERVER'] !== $_SERVER) ? $v['args'] : [] as $vv) {
-				$type = gettype($vv);
 				if ($this->args) {
-					if ($type == 'string') {
+					if (is_string($vv)) {
 						$vv = $this->dir && in_array($func, ['', 'require', 'require_once', 'include', 'include_once']) ? ltrim(strtr(preg_replace('/^'. preg_quote($this->dir, '/') .'/', '', $vv), '\\', '/'), '/') : $vv;
 						$args[] = '\''. addslashes($vv) .'\'';
-					} elseif ($type == 'boolean'){
+					} elseif (is_bool($vv)) {
 						$args[] = $vv ? 'true' : 'false';
-					} elseif ($type == 'array' || $type == 'object') {
+					} elseif (is_array($vv) || is_object($vv)) {
 						$args[] = @var_export($vv, true);
-					} elseif ($type == 'resource') {
+					} elseif (is_resource($vv)) {
 						$args[] = 'Resource .' . get_resource_type($vv);
-					} elseif ($type == 'NULL') {
-						$args[] = $type;
+					} elseif ($vv === null) {
+						$args[] = 'NULL';
 					} else {
 						$args[] = $vv;
 					}
 				} else {
-					$args[] = ucfirst($type);
+					$args[] = ucfirst(gettype($vv));
 				}
 			}
 			$a[] = '<tr ciass="order_'.$i.'">';
 			$a[] = '<td class="order">' . $i . '</td>';
 			$a[] = '<td class="file">' . ($this->dir ? ltrim(strtr(preg_replace('/^'. preg_quote($this->dir, '/') .'/', '', $v['file']), '\\', '/'), '/') : $v['file']) . '</td>';
 			$a[] = '<td class="line">' . $v['line'] . '</td>';
-			$a[] = '<td class="func">' . ($func ? $func .'('. htmlspecialchars(implode(', ', $args ), ENT_QUOTES) .');' : '') . '</td>';
+			$a[] = '<td class="func">' . ($func ? $func .'('. htmlspecialchars(implode(', ', $args), ENT_QUOTES) .');' : '') . '</td>';
 			$a[] = '</tr>';
 			++$i;
 		}

@@ -193,7 +193,7 @@ class File{
 
 
 	// 发送文件
-	public function __toString() {
+	public function __invoke() {
 		$this->send();
 		return '';
 	}
