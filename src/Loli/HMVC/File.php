@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 16:58:27
-/*	Updated: UTC 2015-02-17 09:16:41
+/*	Updated: UTC 2015-02-22 12:36:42
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
@@ -17,7 +17,7 @@ class_exists('Loli\Request') || exit;
 
 
 class File{
-	private $_stream, $_fileSize, $_offset, $_length, $_request, $_response;
+	private $_stream, $_fileSize, $_offset, $_length;
 
 	// 直接发送文件地址 用 header  用了不限速  X-Accel-Redirect, X-LIGHTTPD-send-file, X-Sendfile
 	public $header = false;
@@ -35,11 +35,9 @@ class File{
 	public $flag = true;
 
 	// 发送文件或资源 文件  大小
-	public function __construct($stream, $fileSize, Request &$request, Response &$response, $status = true, $flag = true, $speed = false, $header = false) {
+	public function __construct(Request &$request, Response &$response, $stream, $fileSize, $status = true, $flag = true, $speed = false, $header = false) {
 		$this->_stream = $stream;
 		$this->_fileSize = $fileSize;
-		$this->_request = &$request;
-		$this->_response = &$response;
 		$this->status = $status;
 		$this->flag = $flag;
 		$this->speed = $speed;

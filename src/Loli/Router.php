@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-22 04:31:50
+/*	Updated: UTC 2015-02-22 12:55:13
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -21,7 +21,11 @@ class Router{
 	// 全部命名空间
 	private static $_all = [];
 
+	// 默认主机
 	public static $host = '.*';
+
+	// 允许主机
+	public static $allowsHosts = ['qq.com'];
 
 	// 默认参数
 	public static $scheme = ['http', 'https'];
@@ -243,7 +247,7 @@ class Router{
 
 			// 捕获的错误
 			$data = [];
-			$data['title'] = $errors->getTitle();
+			$data['title'] = 'Error Messages';
 			$messages = [];
 			foreach($errors as $error) {
 				// 状态码

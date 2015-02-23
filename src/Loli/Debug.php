@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-15 14:00:37
-/*	Updated: UTC 2015-02-10 06:26:54
+/*	Updated: UTC 2015-02-22 13:02:39
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -97,7 +97,7 @@ class Debug {
 					$args[] = @var_export($vv, true);
 				} elseif (is_resource($vv)) {
 					$args[] = 'Resource .' . get_resource_type($vv);
-				} elseif ($type === null) {
+				} elseif ($vv === null) {
 					$args[] = 'NULL';
 				} else {
 					$args[] = $vv;

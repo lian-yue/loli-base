@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-16 13:21:40
-/*	Updated: UTC 2015-02-22 04:17:51
+/*	Updated: UTC 2015-02-22 13:02:58
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
@@ -55,9 +55,6 @@ class Error extends Exception implements Iterator{
 		return $this->args;
 	}
 
-	public function getTitle() {
-		return [Lang::get(['Error Messages', ['message', 'default']])];
-	}
 
 	public function hasCode($codes = []) {
 		if (!$codes) {
@@ -101,11 +98,11 @@ class Error extends Exception implements Iterator{
 	}
 
 	public function next() {
-		return next($this->var);
+		return next($this->results);
 	}
 
 	public function valid() {
-		$key = key($this->var);
+		$key = key($this->results);
 		return ($key !== null && $key !== false);
 	}
 }

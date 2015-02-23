@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 05:34:04
-/*	Updated: UTC 2015-02-18 10:07:22
+/*	Updated: UTC 2015-02-22 12:37:32
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -396,49 +396,5 @@ class Response{
 		$this->_status = 200;
 		$this->_content = null;
 		return $this;
-	}
-
-	public function getRedirect($redirects = [], $defaults = []) {
-		$path = $this->request->getPath();
-		$host = $this->request->getHost();
-		$redirects = (array) $redirects;
-		$defaults = $defaults ? (array) $defaults : [];
-		if ($host) {
-			$defaults = array_merge($defaults, ['http://' . $host]);
-		}
-		if ($redirect = $this->request->getParam('redirect')) {
-			$redirects[] = $redirect;
-		}
-		if (in_array('referer',  $redirects) && !($referer = $this->request->getHeader('Referer'))) {
-			$redirects[] = $referer;
-		}
-		$ret = reset($defaults);
-		$break = false;
-		foreach ($redirects as $redirect) {
-			if (!$redirect || !is_string($redirect) || in_array($redirect, ['referer'])) {
-				continue;
-			}
-			if ($host && !preg_match('/^(https?\:)?\/\/\w+\.\w+/i', $redirect)) {
-				if ($redirect{0} != '/') {
-					if (!$path) {
-					} elseif (substr($path, -1, 1) == '/') {
-						$redirect = $path . $redirect;
-					} else {
-						$redirect = dirname($path) .'/'. $redirect;
-					}
-				}
-				$redirect = '//'. $host . '/' . ltrim($redirect, '/');
-			}
-			foreach ($defaults as $default) {
-				if ($break = domain_match($redirect, $default)) {
-					break;
-				}
-			}
-			if (!$default || $break) {
-				$ret = $redirect;
-				break;
-			}
-		}
-		return $ret;
 	}
 }
