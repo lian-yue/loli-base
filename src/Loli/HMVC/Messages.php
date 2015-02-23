@@ -12,13 +12,30 @@
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
-use Loli\Lang, Loli\Router, Loli\Request, Loli\Response;
+use Loli\URL;
 class Messages{
-	private $_view;
+	public function __construct($messages = [], array $data = [], $redirect = false, $refresh = 0, $title = 'Messages') {
+		$messages = $messages ? (array) $messages : [200];
+		$arrays = [];
+		foreach ($messages as $message) {
+			$message = (array) $message;
 
-	private $messages = [];
-	public function __construct(Request &$request, Response &$response, array $messages, $title = 'Messages', array $data = [], $redirect = false, $refresh = 0) {
-		/*$data['title'] = Lang::get($title ? $title : 'Messages',['message', 'default']);
+			// args
+			$args = $message;
+			reset($args);
+			unset($args[key($args)]);
+
+
+			// code
+			$code = reset($message);
+
+			// message
+			$message = self::lang($message);
+
+			$arrays[$code] = ['message' => $message, 'code' => $code, 'args' => $args];
+		}
+
+		$data['title'] = Lang::get($title ? $title : 'Messages',['message', 'default']);
 		if (!isset($data['redirect'])) {
 			if ($redirect === false || $redirect === null) {
 				$data['redirect'] = false;
@@ -31,35 +48,13 @@ class Messages{
 		if (!isset($data['refresh'])) {
 			$data['refresh'] = $refresh;
 		}
-		$this->_view = new View('messages', $data);*/
+		$this->_view = new View('messages', $data);
 	}
 
-	public function add($message, array $data = []) {
-		$message = $message ? (array) $message : [0];
-		if (empty($this->messages[reset($message)])) {
-			$this->set($message, $data);
-		}
-		return $this;
+
+	public static function lang($message) {
+		return Lang::get($message, ['message', 'default']);
 	}
-
-	public function set($message, array $data = []) {
-
-		// message
-		$message = $message ? (array) $message : [0];
-
-		// args
-		$args = $message;
-		reset($args);
-		unset($args[key($args)]);
-
-		// code
-		$code = reset($message);
-
-
-		$this->messages[$code] = ['message' => Lang::get($message, ['message', 'default']), 'code' => $code, 'args' => $args, 'data' => $data];
-		return $this;
-	}
-
 
 	/*public function getRedirect($redirects = [], $defaults = []) {
 		$path = $this->request->getPath();
