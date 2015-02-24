@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 19:45:05
-/*	Updated: UTC 2015-02-22 12:24:40
+/*	Updated: UTC 2015-02-24 04:41:33
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
@@ -16,14 +16,17 @@ use Loli\Model;
 trait_exists('Loli\Model', true) || exit;
 class View{
 	use Model;
-	private $_data = [];
+	protected $_data = [];
 
-	private $_file;
+	protected $_files;
+	protected $_file;
+	protected $_once;
 
-	private $_dir = './';
+	protected $_dir = './';
 
-	public function __construct($file, $data = []) {
-		$this->_file = $file;
+	public function __construct($files, $data = []) {
+		$this->_dir = empty($_SERVER['LOLI']['VIEW']['dir']) ? './' : $_SERVER['LOLI']['VIEW']['dir'];
+		$this->_files = $files;
 		$this->_data = $data;
 	}
 
@@ -41,32 +44,35 @@ class View{
 		return true;
 	}
 
-	public function load($_file, $_once = true) {
-		foreach ((array)$_file as $v) {
-			if ($_is = is_file($_f = $this->_dir .'/' . $v . '.php')) {
+	public function load($files, $once = true) {
+		foreach ((array)$files as $file) {
+			if ($is = is_file($this->_file = $this->_dir .'/' . strtolower($file) . '.php')) {
 				break;
 			}
 		}
-		if (empty($_is)) {
+		if (empty($is)) {
 			return false;
 		}
-		foreach ($this->_data as $k => $v) {
-			if (!$k || $v === null || !is_string($k) || $k{0} == '_' || $k == 'this' || $k == 'GLOBALS') {
-				unset($this->_data[$k]);
+		$this->_once = $once;
+		unset($files, $file, $is, $once);
+		foreach ($this->_data as $key => $value) {
+			if (!$key || $value === null || !is_string($key) || $key{0} == '_' || $key == 'this' || $key == 'GLOBALS') {
+				unset($this->_data[$key]);
 			}
 		}
-		unset($k, $v);
+		unset($key, $value);
+
+
 		extract($this->_data);
-		if ($_once) {
-			require_once $_f;
+		if ($this->_once) {
+			require_once $this->_file;
 		} else {
-			require $_f;
+			require $this->_file;
 		}
 		return true;
 	}
 
 	public function __invoke() {
-		$this->load($this->_file);
-		return '';
+		$this->load($this->_files);
 	}
 }

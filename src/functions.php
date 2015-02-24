@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-20 13:11:49
+/*	Updated: UTC 2015-02-24 03:34:51
 /*
 /* ************************************************************************** */
 
@@ -73,6 +73,7 @@ function parse_string($string) {
 					unset($arrays[$key]);
 				}
 			}
+			return $arrays;
 		};
 		$r = $call($string);
 	} else {
@@ -388,3 +389,41 @@ function mb_rand($length, $string = false) {
 }
 
 
+
+function get_redirect($redirects = [], $defaults = []) {
+	$redirects = (array) $redirects;
+	$defaults = $defaults ? (array) $defaults : [];
+
+	if ($redirect = r('redirect')) {
+		$redirects[] = $redirect;
+	}
+
+	if (in_array('cookie',  $redirects) && ($redirect = c('redirect'))) {
+		$redirects[] = $redirect;
+	}
+
+	if (in_array('referer',  $redirects) && !($redirect = h('Referer'))) {
+		$redirects[] = $redirect;
+	}
+
+	$redirects = array_diff($redirects, ['cookie', 'referer']);
+
+	foreach ($redirects as $redirect) {
+		if (!$redirect || !is_string($redirect)) {
+			continue;
+		}
+		if (!preg_match('/^(https?\:)?\/\/\w+\.\w+/i', $redirect)) {
+			if ($redirect{0} != '/') {
+				$redirect = substr($path = explode('?', empty($_SERVER['REQUEST_URI']) ? '/' : $_SERVER['REQUEST_URI'])[0], -1, 1) == '/' ? $path . $redirect : dirname($path) .'/'. $redirect;
+			}
+			$redirect = '//'. h('Host') . '/' . ltrim($redirect, '/');
+		}
+
+		foreach ($defaults as $default) {
+			if (domain_match($redirect, $default)) {
+				return $redirect;
+			}
+		}
+	}
+	return reset($defaults);
+}

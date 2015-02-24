@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 16:58:27
-/*	Updated: UTC 2015-02-22 12:36:42
+/*	Updated: UTC 2015-02-24 04:23:31
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
@@ -17,7 +17,13 @@ class_exists('Loli\Request') || exit;
 
 
 class File{
-	private $_stream, $_fileSize, $_offset, $_length;
+	private $_stream
+
+	private $_fileSize
+
+	private $_offset
+
+	private $_length;
 
 	// 直接发送文件地址 用 header  用了不限速  X-Accel-Redirect, X-LIGHTTPD-send-file, X-Sendfile
 	public $header = false;
@@ -26,7 +32,7 @@ class File{
 	public $buffer = 2097152;
 
 	// 限制速度
-	public $speed = false;
+	public $speed = 0;
 
 	// 是否检测链接已断开
 	public $status = true;
@@ -35,13 +41,15 @@ class File{
 	public $flag = true;
 
 	// 发送文件或资源 文件  大小
-	public function __construct(Request &$request, Response &$response, $stream, $fileSize, $status = true, $flag = true, $speed = false, $header = false) {
+	public function __construct(Request &$request, Response &$response, $stream, $fileSize) {
+		$this->header = !empty($_SERVER['LOLI']['FILE']['header']);
+		$this->speed = empty($_SERVER['LOLI']['FILE']['speed']) ? 0 : $_SERVER['LOLI']['FILE']['speed'];
+		$this->flag = !isset($_SERVER['LOLI']['FILE']['flag']) || $_SERVER['LOLI']['FILE']['flag'];
+		$this->status = !isset($_SERVER['LOLI']['FILE']['status']) || $_SERVER['LOLI']['FILE']['status'];
+
+
 		$this->_stream = $stream;
 		$this->_fileSize = $fileSize;
-		$this->status = $status;
-		$this->flag = $flag;
-		$this->speed = $speed;
-		$this->header = $header;
 
 
 
@@ -114,7 +122,7 @@ class File{
 
 
 	// 发送文件
-	public function send() {
+	public function __invoke() {
 		// 已经用 header 发送了
 		if ($this->header && is_string($this->_stream)) {
 			return;
@@ -187,12 +195,5 @@ class File{
 
 		// 关闭
 		@fclose($stream);
-	}
-
-
-	// 发送文件
-	public function __invoke() {
-		$this->send();
-		return '';
 	}
 }

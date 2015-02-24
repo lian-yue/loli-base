@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 05:34:04
-/*	Updated: UTC 2015-02-22 12:37:32
+/*	Updated: UTC 2015-02-24 06:13:22
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -148,11 +148,11 @@ class Response{
 			if (substr($name, 0, 3) == 'no-') {
 				// no-cache no-store
 				$values[] = $value ? $name . '=' . $value : $name;
-				$name == 'no-cache' && !$value && $this->setHeader('Expires', -1)->$this->setHeader('Pragma', -1);
+				$name == 'no-cache' && !$value && $this->setHeader('Expires', gmdate('D, d M Y H:i:s \G\M\T', 0));
 			} elseif ($name == 'max-age') {
 				// max-age
 				$values[] = $name . '=' . $value;
-				$name == 'max-age' && $this->setHeader('Expires', $value ? gmdate('D, d M Y H:i:s', $value).' GMT' : null);
+				$name == 'max-age' && $this->setHeader('Expires', $value ? gmdate('D, d M Y H:i:s \G\M\T', time() + $value) : null);
 			} elseif (in_array($name, ['public', 'private']) && in_array($values, ['public', 'private'])) {
 				// public  和 private 只能选一个
 			} elseif ($value) {
@@ -224,6 +224,7 @@ class Response{
 		$this->sendToken();
 		$this->sendCaches();
 		foreach ($this->getHeaders() as $name => $values) {
+			$replace = true;
 			foreach ($values as $value) {
 				$value = trim($value,  " \t\n\r\0\x0B;");
 				if ($name == 'Content-Type') {
@@ -246,7 +247,8 @@ class Response{
 						$value = implode('; ', array_filter($value));
 					}
 				}
-				header($name . ': '. $value);
+				header($name . ': '. $value, $replace);
+				$replace = false;
 			}
 		}
 		$this->sendCookies();
@@ -280,13 +282,11 @@ class Response{
 		if (in_array($this->_status, [204, 205, 304]) || $this->request->getMethod()  == 'OPTIONS' ||  ($this->request->getMethod() == 'HEAD' && $this->getHeader('Content-Length') !== null)) {
 			return $this;
 		}
-
 		// 小于200 的发送 空行
 		if ($this->_status < 200) {
 			return $this;
 		}
-
-		if (is_array($this->_content) || (is_object($this->_content) && !is_callable([$this->_content, '__toString']))) {
+		if (is_array($this->_content) || (is_object($this->_content) && !method_exists($this->_content, '__toString'))) {
 			echo call_user_func($this->_content);
 		} else {
 			echo $this->_content;
