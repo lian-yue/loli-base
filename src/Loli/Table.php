@@ -95,7 +95,11 @@ class Table{
 						$parse['query'] = merge_string($parse['query']);
 						$v['url'] = merge_url($parse);
 					} else {
-						$parse = parse_url($v['url']);
+						$isEmptyScheme = substr($v['url'], 0, 2) == '//';
+						$parse = parse_url($isEmptyScheme ? 'http:' . $v['url'] : $v['url']);
+						if ($isEmptyScheme) {
+							unset($parse['scheme']);
+						}
 					}
 					$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 					$order = '';

@@ -68,7 +68,13 @@ class URL{
 
 	public function setURL($URL) {
 		$this->_scheme = $this->_user = $this->_password = $this->_host = $this->_port = $this->_path = $this->_query = $this->_fragment = false;
+		if (($isEmptyScheme = $URL && substr($URL, 0, 2) == '//')) {
+			$URL = 'http:' . $URL;
+		}
 		if ($array = parse_url($URL)) {
+			if ($isEmptyScheme) {
+				unset($array['scheme']);
+			}
 			foreach ($array as $key => $value) {
 				$key = $key == 'pass' ? '_password' : '_'. $key;
 				$this->$key = $value;

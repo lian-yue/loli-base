@@ -39,10 +39,13 @@ class FTP extends Base{
 
 	public $mode = FTP_BINARY;
 
+	public $buffer = 2097152;
+
+
 
 	public function __construct($args) {
 		foreach ($args as $k => $v) {
-			if ($v !== null && in_array($k, ['dir', 'chmod', 'chmodDir', 'host', 'port', 'user', 'pass', 'ssl', 'mode', 'pasv', 'timeout'])) {
+			if ($v !== null && in_array($k, ['dir', 'chmod', 'chmodDir', 'host', 'port', 'user', 'pass', 'ssl', 'mode', 'pasv', 'timeout', 'buffer'])) {
 				$this->$k = $v;
 			}
 		}
@@ -140,7 +143,7 @@ class FTP extends Base{
 		}
 		$contents = '';
 		while (!feof($resource)) {
-			$contents .= fread($file, 1024 * 1024);
+			$contents .= fread($file, $this->buffer);
 		}
 		fclose($resource);
 		return $contents;

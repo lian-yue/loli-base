@@ -42,11 +42,13 @@ class File{
 
 	// 发送文件或资源 文件  大小
 	public function __construct(Request &$request, Response &$response, $stream, $fileSize) {
-		$this->header = !empty($_SERVER['LOLI']['FILE']['header']);
-		$this->speed = empty($_SERVER['LOLI']['FILE']['speed']) ? 0 : $_SERVER['LOLI']['FILE']['speed'];
-		$this->flag = !isset($_SERVER['LOLI']['FILE']['flag']) || $_SERVER['LOLI']['FILE']['flag'];
-		$this->status = !isset($_SERVER['LOLI']['FILE']['status']) || $_SERVER['LOLI']['FILE']['status'];
-
+		if (!empty($_SERVER['LOLI']['FILE'])) {
+			foreach ($$_SERVER['LOLI']['FILE'] as $key => $value) {
+				if ($value !== null && in_array($key, ['header', 'buffer', 'speed', 'flag', 'status'])) {
+					$this->$key = $value;
+				}
+			}
+		}
 
 		$this->_stream = $stream;
 		$this->_fileSize = $fileSize;

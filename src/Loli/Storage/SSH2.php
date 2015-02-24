@@ -41,9 +41,12 @@ class SSH2 extends Base{
 
 	public $privateKey = false;
 
+	public $buffer = 2097152;
+
+
 	public function __construct($args) {
 		foreach ($args as $k => $v) {
-			if (in_array($k, ['dir', 'chmod', 'host', 'port', 'user', 'pass', 'timeout', 'methods', 'publicKey', 'privateKey'])) {
+			if (in_array($k, ['dir', 'chmod', 'host', 'port', 'user', 'pass', 'timeout', 'methods', 'publicKey', 'privateKey', 'buffer'])) {
 				$this->$k = $v;
 			}
 		}
@@ -104,7 +107,7 @@ class SSH2 extends Base{
 		$ftell = ftell($resource);
 		fseek($resource, 0);
 		while (!feof($resource)) {
-		   fwrite($fopen, fread($resource, 1024* 1024*10));
+		   fwrite($fopen, fread($resource, $this->buffer));
 		}
 		fseek($resource, $ftell);
 		fclose($fopen);

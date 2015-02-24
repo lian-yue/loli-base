@@ -246,9 +246,13 @@ class Router{
 
 		// 错误控制器
 		if (!empty($errors)) {
+			// 自动重定向的
+			if ($errors->getRedirect() && is_string($errors->getRedirect()) && $errors->getRefresh() == 0 && in_array($response->getStatus(), [200, 300, 301,302,303])) {
+				$response->getStatus() == 200 && $response->setStatus(302);
+				$response->addHeader('Location', $errors->getRedirect(), false);
+			}
 			$data = ['title' => $errors->getTitle(), 'redirect' => $errors->getRedirect(), 'refresh' => $errors->getRefresh()];
 			foreach($errors as $error) {
-
 				// 是 400-599 的状态码 设置 http 状态码
 				if (is_int($code = $error->getCode()) && $code >= 400 && $code < 600 && $response->getStatus() == 200) {
 					$response->setStatus($code);
@@ -264,10 +268,15 @@ class Router{
 
 		// 消息控制器
 		if (!empty($messages)) {
+			// 自动重定向的
+			if ($messages->getRedirect() && is_string($messages->getRedirect()) && $messages->getRefresh() == 0 && in_array($response->getStatus(), [200, 300, 301,302,303])) {
+				$response->getStatus() == 200 && $response->setStatus(302);
+				$response->addHeader('Location', $messages->getRedirect(), false);
+			}
 			$data = ['title' => $messages->getTitle(), 'redirect' => $messages->getRedirect(), 'refresh' => $messages->getRefresh()];
 			foreach($messages as $message) {
 				// 是 200-399 的状态码 设置 http 状态码
-				if (is_int($code = $error->getCode()) && $code >= 200 && $code < 400 && $response->getStatus() == 200) {
+				if (is_int($code = $messages->getCode()) && $code >= 200 && $code < 400 && $response->getStatus() == 200) {
 					$response->setStatus($code);
 				}
 				$response->addHeader('X-Message', $code);
@@ -279,7 +288,7 @@ class Router{
 		}
 
 
-
+		// 发送内容
 		$response->setContent($view);
 
 
@@ -501,6 +510,13 @@ class Router{
 		/*} catch (Exception $e) {
 			$response->addMessage(500);
 		}*/
+	}
+
+
+
+	public function __destruct() {
+		unset(self::$_this[$this->_key]);
+		end(self::$_this);
 	}
 }
 	/*

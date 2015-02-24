@@ -27,4 +27,5 @@ namespace Loli\HMVC;
 class Error extends Message{
 	protected $code = 500;
 	protected $title = 'Error Messages';
+	protected $query = 'errors';
 }

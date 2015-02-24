@@ -20,10 +20,12 @@ class Local extends Base{
 
 	public $chmodDir = 0755;
 
+	public $buffer = 2097152;
+
 
 	public function __construct($args) {
 		foreach ($args as $k => $v) {
-			if (in_array($k, ['dir', 'chmod', 'chmodDir'])) {
+			if (in_array($k, ['dir', 'chmod', 'chmodDir', 'buffer'])) {
 				$this->$k = $v;
 			}
 		}
@@ -67,7 +69,7 @@ class Local extends Base{
 		$ftell = ftell($resource);
 		fseek($resource, 0);
 		while (!feof($resource)) {
-		   fwrite($fopen, fread($resource, 1024 * 1024));
+		   fwrite($fopen, fread($resource, $this->buffer));
 		}
 		fseek($resource, $ftell);
 		fclose($fopen);

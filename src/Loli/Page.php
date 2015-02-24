@@ -224,10 +224,12 @@ class Page{
 	public function url($more = false) {
 		$value = $this->value();
 		if (!$this->url) {
-			$parse = parse_url(current_url());
+			$parse = empty($_SERVER['REQUEST_URI']) ? [] : parse_url($_SERVER['REQUEST_URI']);
 			$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 			$parse['query'][$this->isOffset() ? '$offset': '$page'] = $value;
 			$parse['query'] = merge_string($parse['query']);
+			unset($parse['user'], $parse['pass'], $parse['host'], $parse['scheme']);
+
 			$this->url = merge_url($parse);
 		}
 		if (strpos($this->url, $value) === false) {
@@ -270,11 +272,12 @@ class Page{
 		if (!$this->more ||$this->count() < $this->limit()) {
 			return false;
 		}
-		$parse = parse_url(current_url());
+		$parse = empty($_SERVER['REQUEST_URI']) ? [] : parse_url($_SERVER['REQUEST_URI']);
 		$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 		unset($parse['query']['$offset'], $parse['query']['$page']);
 		$parse['query'] = $this->more + $parse['query'];
 		$parse['query'] = merge_string($parse['query']);
+		unset($parse['user'], $parse['pass'], $parse['host'], $parse['scheme']);
 		return merge_url($parse);
 	}
 }

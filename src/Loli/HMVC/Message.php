@@ -22,14 +22,17 @@ class Message extends Exception implements Iterator{
 	protected $args;
 	protected $title = 'Messages';
 
-	protected $hosts = [];
+	protected $useQuery = 'messages';
+	protected $notQuery = ['messages', 'errors'];
+
+	protected $hosts = ['qq.com'];
 
 	protected $results = [];
 	public function __construct($message = [], $data = [], $redirect = true, $refresh = 3, Message $previous = null) {
 		$this->hosts = empty($_SERVER['LOLI']['MESSAGE']['hosts']) ? [] : (array) $_SERVER['LOLI']['MESSAGE']['hosts'];
 
 
-		$message = $message ? (array) $message : [$this->code];
+		$message = $message  && $message !== true && $message !== 1 ? (array) $message : [$this->code];
 
 		// previous　变量自动缩进
 		foreach(['data' => [], 'redirect' => false, 'refresh' => 3] as $key => $value) {
@@ -45,10 +48,6 @@ class Message extends Exception implements Iterator{
 
 
 
-
-
-
-
 		// args
 		$this->args = $message;
 		reset($this->args);
@@ -61,26 +60,6 @@ class Message extends Exception implements Iterator{
 		// message
 		$message = self::lang($message);
 
-		// 重定向
-		if (isset($data['redirect']) && (is_string($data['redirect']) || is_bool($data['redirect']))) {
-			$redirect = $data['redirect'];
-		} else {
-			if (isset($data['redirect'])) {
-				$redirect = $data['redirect'];
-			}
-			if ($redirect === false || $redirect === true || $redirect === null) {
-				$redirect = (bool) $redirect;
-			} else {
-				$redirect = get_redirect($redirect, $this->hosts);
-			}
-		}
-		$this->redirect = $redirect;
-
-		// refresh 刷新
-		$this->refresh = (int) (isset($data['refresh']) ? $data['refresh'] : $refresh);
-
-		// data
-		$this->data = $data;
 
 		// 注册父级
 		parent::__construct($message, $code, $previous);
@@ -91,6 +70,46 @@ class Message extends Exception implements Iterator{
 			$this->results[$message->getCode()] = $message;
 		} while ($message = $message->getPrevious());
 		$this->results = array_reverse($this->results, true);
+
+
+		// 重定向
+		if (isset($data['redirect']) && (is_string($data['redirect']) || is_bool($data['redirect']))) {
+			$redirect = $data['redirect'];
+		} else {
+			if (isset($data['redirect'])) {
+				$redirect = $data['redirect'];
+			}
+			if ($redirect === false || $redirect === true || $redirect === null) {
+				$redirect = (bool) $redirect;
+			} else {
+				$redirect = get_redirect($redirect, array_map(function($host){ return '//' . $host;}, $this->hosts));
+				$isEmptyScheme = substr($redirect, 0, 2) == '//';
+				$array = parse_url($isEmptyScheme ? 'http:' . $redirect : $redirect);
+				if ($isEmptyScheme) {
+					unset($array['scheme']);
+				}
+				$array['query'] = empty($array['query']) ? [] : parse_string($array['query']);
+				foreach ($this->notQuery as $query) {
+					unset($array['query'][$query]);
+				}
+				$array['query'][$this->useQuery] = [];
+				foreach ($this->results as $value) {
+					$array['query'][$this->useQuery][] = $value->getCode();
+				}
+				$array['query']['r'] = mt_rand();
+				$array['query'] = merge_string($array['query']);
+
+				$redirect = merge_url($array);
+			}
+		}
+		$this->redirect = $redirect;
+
+		// refresh 刷新
+		$this->refresh = (int) (isset($data['refresh']) ? $data['refresh'] : $refresh);
+
+		// data
+		$this->data = $data;
+
 	}
 
 
@@ -142,7 +161,6 @@ class Message extends Exception implements Iterator{
 	}
 
 
-
 	public function rewind() {
 		reset($this->results);
 	}
@@ -163,92 +181,4 @@ class Message extends Exception implements Iterator{
 		$key = key($this->results);
 		return ($key !== null && $key !== false);
 	}
-
-
-
-
-
-
-	/*public function __construct($message = [], array $data = [], $redirect = false, $refresh = 0) {
-		$message = $message ? (array) $message : [200];
-
-
-		// args
-		$args = $message;
-		reset($args);
-		unset($args[key($args)]);
-
-		// code
-		$code = reset($message);
-
-		// message
-		$message = self::lang($message);
-
-
-
-		$data = ['message' => $message, 'code' => $code, 'args' => $args] + $data;
-
-		$data['title'] = self::lang(empty($data['title']) ? 'Messages' : $data['title']);
-
-		if (!isset($data['redirect'])) {
-			if ($redirect === false || $redirect === null) {
-				$data['redirect'] = false;
-			} elseif ($redirect === true) {
-				$data['redirect'] = true;
-			} else {
-				$data['redirect'] = $this->getRedirect($redirect);
-			}
-		}
-		if (!isset($data['refresh'])) {
-			$data['refresh'] = $refresh;
-		}
-		$this->_view = new View('messages', $data);
-	}
-
-
-	public static function lang($message) {
-		return Lang::get($message, ['message', 'default']);
-	}
-
-	/*public function getRedirect($redirects = [], $defaults = []) {
-		$path = $this->request->getPath();
-		$host = $this->request->getHost();
-		$redirects = (array) $redirects;
-		$defaults = $defaults ? (array) $defaults : [];
-		$defaults = array_merge($defaults, ['http://' . $host]);
-		if ($redirect = $this->request->getParam('redirect')) {
-			$redirects[] = $redirect;
-		}
-		if (in_array('referer',  $redirects) && !($referer = $this->request->getHeader('Referer'))) {
-			$redirects[] = $referer;
-		}
-		$ret = reset($defaults);
-		$break = false;
-		foreach ($redirects as $redirect) {
-			if (!$redirect || !is_string($redirect) || in_array($redirect, ['referer'])) {
-				continue;
-			}
-			if ($host && !preg_match('/^(https?\:)?\/\/\w+\.\w+/i', $redirect)) {
-				if ($redirect{0} != '/') {
-					if (!$path) {
-					} elseif (substr($path, -1, 1) == '/') {
-						$redirect = $path . $redirect;
-					} else {
-						$redirect = dirname($path) .'/'. $redirect;
-					}
-				}
-				$redirect = '//'. $host . '/' . ltrim($redirect, '/');
-			}
-			foreach ($defaults as $default) {
-				if ($break = domain_match($redirect, $default)) {
-					break;
-				}
-			}
-			if (!$default || $break) {
-				$ret = $redirect;
-				break;
-			}
-		}
-		return $ret;
-	}*/
 }

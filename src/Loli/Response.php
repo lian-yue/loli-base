@@ -36,6 +36,7 @@ class Response{
 
 	public function __construct(Request &$request) {
 		$this->request = &$request;
+		$this->ajaxJS = $request->getToken() === $request->getParam('_token');
 	}
 
 	public function getStatus() {
