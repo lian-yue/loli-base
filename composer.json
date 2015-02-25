@@ -25,7 +25,7 @@
             "src/include.php"
         ],
         "psr-4": {
-            "Loli\\": "src/Loli/"
+            "Loli\\": "src/loli/"
         }
     },
     "minimum-stability" : "stable",
