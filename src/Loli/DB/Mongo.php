@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-07 13:03:01
+/*	Updated: UTC 2015-02-25 14:54:22
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -51,7 +51,6 @@ class Mongo extends Base{
 		} catch (MongoException $e) {
 			$this->_error = $e->getMessage();
 			$this->_errno = $e->getCode();
-			$this->debug && $this->exitError('MongoClient()');
 			return false;
 		}
 		return $link;
@@ -65,14 +64,15 @@ class Mongo extends Base{
 		}
 		$tables = [];
 		try {
-			$collections = $this->data['getCollectionNames()']  = $link->getCollectionNames();
+			$collections = $link->getCollectionNames();
+			$this->addLog('getCollectionNames()', $collections);
 			foreach ($collections as $collection) {
 				$tables[] = $collection;
 			}
 		 } catch (MongoException $e) {
 			$this->_error = $e->getMessage();
 			$this->_errno = $e->getCode();
-			$this->debug && $this->exitError($query_str);
+			$this->addLog($queryString, $this->error(), 1);
 			return false;
 		}
 		return $tables;
@@ -96,17 +96,19 @@ class Mongo extends Base{
 		}
 
 		try {
-			$r = $this->data[$query_str = $table.'.remove()'] = $link->{$table}->remove();
+			$queryString = $table.'.remove()';
+			$r = $link->{$table}->remove();
+			$this->addLog($queryString, $r);
 		} catch (MongoException $e) {
 			$this->_error = $e->getMessage();
 			$this->_errno = $e->getCode();
-			$this->debug && $this->exitError($query_str);
+			$this->addLog($queryString, $this->error(), 1);
 			return false;
 		}
 		if (empty($r['ok'])) {
 			$this->_error = empty($r['err']) ? (empty($r['errmsg']) ? 'Truncate' : $r['errmsg']) : $r['err'];
 			$this->_errno = empty($r['code']) ? -1 : $r['code'];
-			$this->debug && $this->exitError($query_str);
+			$this->addLog($queryString, $this->error(), 1);
 			return false;
 		}
 		return empty($v['n']) ? 0 : $v['n'];
@@ -122,11 +124,13 @@ class Mongo extends Base{
 		}
 
 		try {
-			$r = $this->data[$query_str = $table.'.drop()'] = $link->{$table}->drop();
+			$queryString = $table.'.drop()';
+			$r = $link->{$table}->drop();
+			$this->addLog($queryString, $r);
 		} catch (MongoException $e) {
 			$this->_error = $e->getMessage();
 			$this->_errno = $e->getCode();
-			$this->debug && $this->exitError($query_str);
+			$this->addLog($queryString, $this->error(), 1);
 			return false;
 		}
 		return empty($r['ok']) ? 0 : 1;
@@ -189,17 +193,19 @@ class Mongo extends Base{
 
 		++self::$querySum;
 		try {
-			$r = $this->data[$query_str = $args['insert'].'.batchInsert('. json_encode($args['documents']) . ', ' .  json_encode($writeConcern).')'] = $link->{$args['insert']}->batchInsert($args['documents'], $writeConcern);
+			$queryString = $args['insert'].'.batchInsert('. json_encode($args['documents']) . ', ' .  json_encode($writeConcern).')';
+			$r = $link->{$args['insert']}->batchInsert($args['documents'], $writeConcern);
+			$this->addLog($queryString, $r);
 		} catch (MongoException $e) {
 			$this->_error = $e->getMessage();
 			$this->_errno = $e->getCode();
-			$this->debug && $this->exitError($query_str);
+			$this->addLog($queryString, $this->error(), 1);
 			return false;
 		}
 		if (!empty($r['err']) || !empty($r['errmsg'])) {
 			$this->_error = empty($r['err']) ? $r['errmsg'] : $r['err'];
 			$this->_errno = empty($r['code']) ? -1 : $r['code'];
-			$this->debug && $this->exitError($query_str);
+			$this->addLog($queryString, $this->error(), 1);
 			return false;
 		}
 		if (empty($r['ok'])) {
@@ -254,17 +260,19 @@ class Mongo extends Base{
 		foreach ($args['documents'] as $v) {
 			++self::$querySum;
 			try {
-				$save = $this->data[$query_str = $args['replace'].'.save('. json_encode($v) . ', ' .  $writeConcernString.')'] = $link->{$args['replace']}->save($v, $writeConcern);
+				$queryString = $args['replace'].'.save('. json_encode($v) . ', ' .  $writeConcernString.')';
+				$save = $link->{$args['replace']}->save($v, $writeConcern);
+				$this->addLog($queryString, $save);
 			} catch (MongoException $e) {
 				$this->_error = $e->getMessage();
 				$this->_errno = $e->getCode();
-				$this->debug && $this->exitError($query_str);
+				$this->addLog($queryString, $this->error(), 1);
 				continue;
 			}
 			if (!empty($save['err']) || !empty($save['errmsg'])) {
 				$this->_error = empty($save['err']) ? $save['errmsg'] : $save['err'];
 				$this->_errno = empty($save['code']) ? -1 : $save['code'];
-				$this->debug && $this->exitError($query_str);
+				$this->addLog($queryString, $this->error(), 1);
 				if (!isset($args['ordered']) || $args['ordered']) {
 					return false;
 				}
@@ -339,11 +347,13 @@ class Mongo extends Base{
 				$options['multiple'] = $v['multi'];
 			}
 			try {
-				$update = $this->data[$query_str = $args['update'].'.update('. json_encode($v['q']) . ', ' .  json_encode($v['u']) . ', ' . json_encode($options) .')'] = $link->{$args['update']}->update($v['q'], $v['u'], $options);
+				$queryString = $args['update'].'.update('. json_encode($v['q']) . ', ' .  json_encode($v['u']) . ', ' . json_encode($options) .')';
+				$update = $link->{$args['update']}->update($v['q'], $v['u'], $options);
+				$this->addLog($queryString, $update);
 			} catch (MongoException $e) {
 				$this->_error = $e->getMessage();
 				$this->_errno = $e->getCode();
-				$this->debug && $this->exitError($query_str);
+				$this->addLog($queryString, $this->error(), 1);
 				if (!isset($args['ordered']) || $args['ordered']) {
 					return false;
 				}
@@ -427,11 +437,13 @@ class Mongo extends Base{
 				$options['justOne'] = $v['limit'] == 1;
 			}
 			try {
-				$remove = $this->data[$query_str = $args['delete'].'.remove('. json_encode($v['q']) . ', ' . json_encode($options) .')'] = $link->{$args['delete']}->remove($v['q'], $options);
+				$queryString = $args['delete'].'.remove('. json_encode($v['q']) . ', ' . json_encode($options) .')';
+				$remove = $link->{$args['delete']}->remove($v['q'], $options);
+				$this->addLog($queryString, $remove);
 			} catch (MongoException $e) {
 				$this->_error = $e->getMessage();
 				$this->_errno = $e->getCode();
-				$this->debug && $this->exitError($query_str);
+				$this->addLog($queryString, $this->error(), 1);
 				if (!isset($args['ordered']) || $args['ordered']) {
 					return false;
 				}
@@ -533,8 +545,9 @@ class Mongo extends Base{
 					}
 				}
 				++self::$querySum;
-				$query_str = $args['aggregate'] .'.aggregateCursor('. json_encode($pipeline) .', '. json_encode($options) .')';
-				$this->data[$query_str] = $cursor = $link->{$args['aggregate']}->aggregatecursor($pipeline, $options);
+				$queryString = $args['aggregate'] .'.aggregateCursor('. json_encode($pipeline) .', '. json_encode($options) .')';
+				$cursor = $link->{$args['aggregate']}->aggregatecursor($pipeline, $options);
+				$this->addLog($queryString, $cursor);
 				$r = [];
 				foreach ($cursor as $v) {
 					++self::$queryRow;
@@ -543,7 +556,7 @@ class Mongo extends Base{
 			} catch (MongoException $e) {
 				$this->_error = $e->getMessage();
 				$this->_errno = $e->getCode();
-				$this->debug && $this->exitError($query_str);
+				$this->addLog($queryString, $this->error(), 1);
 			}
 			return $r;
 		}
@@ -569,12 +582,13 @@ class Mongo extends Base{
 					$args['query'] = [];
 				}
 				++self::$querySum;
-				$query_str = $args['distinct'] .'.distinct('. $args['key'] .', '. json_encode($args['query']) .')';
-				$this->data[$query_str] = $distinct = $link->{$args['distinct']}->distinct($args['key'], $args['query']);
+				$queryString = $args['distinct'] .'.distinct('. $args['key'] .', '. json_encode($args['query']) .')';
+				$distinct = $link->{$args['distinct']}->distinct($args['key'], $args['query']);
+				$this->addLog($queryString, $distinct);
 			} catch (MongoException $e) {
 				$this->_error = $e->getMessage();
 				$this->_errno = $e->getCode();
-				$this->debug && $this->exitError($query_str);
+				$this->addLog($queryString, $this->error(), 1);
 			}
 			return $distinct ? $distinct : [];
 		}
@@ -621,18 +635,19 @@ class Mongo extends Base{
 					$options['condition'] = $args['cond'];
 				}
 				++self::$querySum;
-				$query_str = $args['ns'] .'.group('. json_encode($args['key']) .', '. json_encode($args['initial']) .', '. json_encode($args['$reduce']) .', '. json_encode($options) .')';
-				$this->data[$query_str] = $group = $link->{$args['ns']}->group($args['key'], $args['initial'], $args['$reduce'], $options);
+				$queryString = $args['ns'] .'.group('. json_encode($args['key']) .', '. json_encode($args['initial']) .', '. json_encode($args['$reduce']) .', '. json_encode($options) .')';
+				$group = $link->{$args['ns']}->group($args['key'], $args['initial'], $args['$reduce'], $options);
+				$this->addLog($queryString, $group);
 			} catch (MongoException $e) {
 				$this->_error = $e->getMessage();
 				$this->_errno = $e->getCode();
-				$this->debug && $this->exitError($query_str);
+				$this->addLog($queryString, $this->error(), 1);
 				return [];
 			}
 			if (!empty($r['err']) || !empty($r['errmsg'])) {
 				$this->_error = empty($r['err']) ? $r['errmsg'] : $r['err'];
 				$this->_errno = empty($r['code']) ? -1 : $r['code'];
-				$this->debug && $this->exitError($query_str);
+				$this->addLog($queryString, $this->error(), 1);
 				return [];
 			}
 			if (empty($group['retval'])) {
@@ -665,38 +680,36 @@ class Mongo extends Base{
 			}
 			$args['fields'] = empty($args['fields']) ? [] : $args['fields'];
 
-			$query_str = $args['collection'] . '.find('. json_encode($args['query']) . ', '. json_encode($args['fields']).')';
+			$queryString = $args['collection'] . '.find('. json_encode($args['query']) . ', '. json_encode($args['fields']).')';
 			$cursor = $link->{$args['collection']}->find($args['query'], $args['fields']);
 			if (!empty($args['options'])) {
 				foreach ($args['options'] as $k => $v) {
 					$cursor = $cursor->addOption($k, $v);
-					$query_str .= '.addOption('. $k .', '. (is_array($v) || is_object($v) ? json_encode($v)  : $v) .')';
+					$queryString .= '.addOption('. $k .', '. (is_array($v) || is_object($v) ? json_encode($v)  : $v) .')';
 				}
 			}
 			if (!empty($args['sort'])) {
 				$cursor = $cursor->sort($args['sort']);
-				$query_str .= '.sort('. json_encode($args['sort']) .')';
+				$queryString .= '.sort('. json_encode($args['sort']) .')';
 			}
 			if (!empty($args['skip'])) {
 				$cursor = $cursor->skip($args['skip']);
-				$query_str .= '.skip('. $args['skip'] .')';
+				$queryString .= '.skip('. $args['skip'] .')';
 			}
 			if (!empty($args['limit'])) {
 				$cursor = $cursor->limit($args['limit']);
-				$query_str .= '.limit('. $args['limit'] .')';
+				$queryString .= '.limit('. $args['limit'] .')';
 			}
-			if ($this->debug) {
-				$this->data[$query_str.'.explain()'] = $cursor->explain();
-			}
+			$this->explain && $this->addLog($queryString .'.explain()', $cursor->explain());
 			foreach ($cursor as $v) {
 				++self::$queryRow;
 				$r[] = (object) $this->_toString($v);
 			}
-			$this->data[$query_str] = $r;
+			$this->addLog($queryString, $r);
 		} catch (MongoException $e) {
 			$this->_error = $e->getMessage();
 			$this->_errno = $e->getCode();
-			$this->debug && $this->exitError($query_str);
+			$this->addLog($queryString, $this->error(), 1);
 			$r = [];
 		}
 
@@ -717,23 +730,21 @@ class Mongo extends Base{
 		try {
 			$args['fields'] = empty($args['fields']) ? [] : $args['fields'];
 			$cursor = $link->{$args['collection']}->find($args['query'], $args['fields']);
-			$query_str = $args['collection'].'.find('. json_encode($args['query']) . ', '. json_encode($args['fields']).')';
+			$queryString = $args['collection'].'.find('. json_encode($args['query']) . ', '. json_encode($args['fields']).')';
 			if (!empty($args['options'])) {
 				foreach ($args['options'] as $k => $v) {
 					$cursor = $cursor->addOption($k, $v);
-					$query_str .= '.addOption('. $k .', '. (is_array($v) || is_object($v) ? json_encode($v)  : $v) .')';
+					$queryString .= '.addOption('. $k .', '. (is_array($v) || is_object($v) ? json_encode($v)  : $v) .')';
 				}
 			}
-			if ($this->debug) {
-				$this->data[$query_str.'.explain()'] = $cursor->explain();
-			}
-
-			$query_str .= '.count(true)';
-			$this->data[$query_str] = $count = $cursor->count(true);
+			$this->explain && $this->addLog($queryString .'.explain()', $cursor->explain());
+			$queryString .= '.count(true)';
+			$count = $cursor->count(true);
+			$this->addLog($queryString, $count);
 		} catch (MongoException $e) {
 			$this->_error = $e->getMessage();
 			$this->_errno = $e->getCode();
-			$this->debug && $this->exitError($query_str);
+			$this->addLog($queryString, $this->error(), 1);
 			return false;
 		}
 		return $count;
@@ -809,7 +820,7 @@ class Mongo extends Base{
 						} catch (MongoException $e) {
 							$this->_error = $e->getMessage();
 							$this->_errno = $e->getCode();
-							$this->debug && $this->exitError('MongoId()');
+							$this->addLog('MongoId()', $this->error(), 1);
 							return false;
 						}
 					}
@@ -824,7 +835,7 @@ class Mongo extends Base{
 			} catch (MongoException $e) {
 				$this->_error = $e->getMessage();
 				$this->_errno = $e->getCode();
-				$this->debug && $this->exitError('MongoId()');
+				$this->addLog('MongoId()', $this->error(), 1);
 				return false;
 			}
 		}
@@ -838,17 +849,19 @@ class Mongo extends Base{
 		}
 		++self::$querySum;
 		try {
-			$r = $this->data[$query_str = 'this.command('.json_encode($command).', '. json_encode($options).' )'] = $link->command($command, $options);
+			$queryString = 'this.command('.json_encode($command).', '. json_encode($options).' )';
+			$r = $link->command($command, $options);
+			$this->addLog($queryString, $r);
 		} catch (MongoException $e) {
 			$this->_error = $e->getMessage();
 			$this->_errno = $e->getCode();
-			$this->debug && $this->exitError($query_str);
+			$this->addLog($queryString, $this->error(), 1);
 			return false;
 		}
 		if (!empty($r['err']) || !empty($r['errmsg']) ) {
 			$this->_error = empty($r['err']) ? $r['errmsg'] : $r['err'];
 			$this->_errno = empty($r['code']) ? -1 : $r['code'];
-			$this->debug && $this->exitError($query_str);
+			$this->addLog($queryString, $this->error(), 1);
 			return false;
 		}
 		return $r;

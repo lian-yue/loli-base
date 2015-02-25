@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-17 08:46:33
-/*	Updated: UTC 2015-02-05 07:40:57
+/*	Updated: UTC 2015-02-25 13:57:15
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
@@ -207,7 +207,7 @@ class Memcache extends Base{
 	}
 
 	public function failure($host, $port) {
-		trigger_error('Memcache '. $host .':' . $port, E_USER_WARNING);
+		$this->addMessage('Memcache '. $host .':' . $port);
 	}
 
 

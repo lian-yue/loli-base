@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-15 14:00:37
-/*	Updated: UTC 2015-02-22 13:02:39
+/*	Updated: UTC 2015-02-25 10:45:03
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -46,7 +46,7 @@ class Debug {
 		// 错误日志
 		if ($this->log !== null) {
 			@ini_set('log_errors', (bool) $this->log);
-			$this->log && @ini_set('error_log', sprintf(is_string($this->log) ? $this->log : dirname(__DIR__). '/Debug/%s.log', gmdate('Y-m-d H-i')));
+			$this->log && @ini_set('error_log', sprintf(is_string($this->log) ? $this->log : dirname(__DIR__). '/debug/%s.log', gmdate('Y-m-d H-i')));
 		}
 	}
 

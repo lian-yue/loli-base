@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-08 08:27:43
-/*	Updated: UTC 2015-02-17 08:56:06
+/*	Updated: UTC 2015-02-25 13:40:05
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -16,108 +16,40 @@ namespace Loli;
 
 trait Model{
 
-	private static $__DATA = [];
+	private static $_classExixts = [];
 
-	private $_DATA = [];
+	protected static $classCounts = 0;
 
-	public static $__COUNT = 0;
-
-	public $__ID = [];
-
-	final public static function __reg($key, $call = false) {
-        if (isset(self::$__DATA[$key])) {
-            return false;
-        }
-        self::$__DATA[$key] = $call;
-        return true;
-    }
-
-	final public static function __has($key) {
-        return isset(self::$__DATA[$key]);
-    }
-
-	final public static function __remove($key) {
-		if (!isset(self::$__DATA[$key])) {
-			return false;
-		}
-		global $_MODEL;
-		unset(self::$__DATA[$key], $_MODEL[$key]);
-		return true;
-	}
+	private $_modelID = '\\';
 
 
 
-
-
-	final public function _reg($key, $call = false) {
-        if (isset($this->_DATA[$key])) {
-            return false;
-        }
-        $this->_DATA[$key] = $call;
-        return true;
-    }
-
-	final public function _has($key) {
-        return isset($this->_DATA[$key]);
-    }
-
-
-	final public function _remove($key) {
-		if (!isset($this->_DATA[$key])) {
-			return false;
-		}
-		unset($this->_DATA[$key], $this->$key);
-		return true;
+	public function __call($key, $args) {
+		return call_user_func_array($this->$key, $args);
 	}
 
 
 	public function __get($key) {
-		++self::$__COUNT;
-
-		// sub 的
-		if (isset($this->_DATA[$key])) {
-			$this->__ID || trigger_error('Unknown module ID', E_USER_ERROR);
-			$ID = $this->__ID;
-			$ID[] = $key;
-			if ($this->_DATA[$key]) {
-				$this->$key = call_user_func($this->_DATA[$key], $key, $ID);
-			} else {
-				$class = 'Model\\' . implode('\\', $ID);
+		++self::$classCounts;
+		if (!isset(self::$_classExixts[$class = 'Model' . $_modelID . $key])) {
+			if (self::$_classExixts[$class] = class_exists($class)) {
 				$this->$key = new $class;
 			}
-			if ($is = isset($this->$key->__ID)) {
-				$this->$key->__ID = $ID;
+			Filter::run('Model.' . $_modelID . $key, [&$this->$key, &$this]);
+			if (isset($this->_modelID)) {
+				$this->_modelID = $_modelID . $key . '\\';
 			}
-			Filter::run('Model.' . implode('\\', $ID), [&$this->$key, &$this]);
-			if ($is && !$this->$key->__ID) {
-				$this->$key->__ID = $ID;
-			}
-			return $this->$key;
 		}
+
 
 		global $_MODEL;
 		if (!isset($_MODEL[$key])) {
-			if (!isset(self::$__DATA[$key])) {
-				trigger_error('Not found Model: '.$key, E_USER_ERROR);
-			}
-			if (self::$__DATA[$key]) {
-				$_MODEL[$key] = call_user_func(self::$__DATA[$key], $key, [$key]);
-			} else {
-				$class = 'Model\\' . $key;
-				$_MODEL[$key] = new $class;
-			}
-			if ($is = isset($_MODEL[$key]->__ID)) {
-				$_MODEL[$key]->__ID = [$key];
-			}
-			Filter::run('Model.' . $key, [&$_MODEL[$key]]);
-			if ($is && !$_MODEL[$key]->__ID) {
-				 $_MODEL[$key]->__ID = $key;
+			class_exists($class = 'Model\\' . $key) || trigger_error('Model does not exist', E_USER_ERROR);
+			Filter::run('Model.' . $_modelID . $key, [&$this->$key, &$this]);
+			if (isset($this->_modelID)) {
+				$this->_modelID = $_modelID . $key . '\\';
 			}
 		}
 		return $_MODEL[$key];
-	}
-
-	public function __call($key, $args) {
-		return call_user_func_array($this->$key, $args);
 	}
 }

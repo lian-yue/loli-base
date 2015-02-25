@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-02-24 06:00:54
+/*	Updated: UTC 2015-02-25 13:38:48
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -57,16 +57,35 @@ if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 }
 
 
-// 注册 DB 全局
-Model::__reg('DB', function() {
-	empty($_SERVER['LOLI']['DB']) && trigger_error( 'Variables $_SERVER[\'LOLI\'][\'DB\'] does not exist', E_USER_ERROR);
-	$class = __NAMESPACE__ . '\DB\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? (class_exists('MySQLi') ? 'MySQLi' : 'MySQL') : $_SERVER['LOLI']['DB']['type']);
-	return new $class($_SERVER['LOLI']['DB']);
-});
 
 
-// 注册 Query 全局
-Model::__reg('Query', function() {
-	$class = __NAMESPACE__. '\Query\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? 'MySQL' : $_SERVER['LOLI']['DB']['type']);
-	return new $class;
-});
+
+
+//	./Model/Query.php
+namespace Model;
+class Query {
+	private $_link;
+	public function __call($method, $args) {
+		if (!isset($this->_link)) {
+			$class = __NAMESPACE__. '\Query\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? 'MySQL' : $_SERVER['LOLI']['DB']['type']);
+			return new $class;
+		}
+		return call_user_func_array([$this->_link, $method], $args);
+	}
+}
+
+
+
+//	./Model/DB.php
+namespace Model;
+class DB{
+	private $_link;
+	public function __call($method, $args) {
+		if (!isset($this->_link)) {
+			empty($_SERVER['LOLI']['DB']) && trigger_error( 'Variables $_SERVER[\'LOLI\'][\'DB\'] does not exist', E_USER_ERROR);
+			$class = __NAMESPACE__ . '\DB\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? (class_exists('MySQLi') ? 'MySQLi' : 'MySQL') : $_SERVER['LOLI']['DB']['type']);
+			$this->_link = new $class($_SERVER['LOLI']['DB']);
+		}
+		return call_user_func_array([$this->_link, $method], $args);
+	}
+}

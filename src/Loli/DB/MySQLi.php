@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-07 13:03:43
+/*	Updated: UTC 2015-02-25 14:44:42
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -52,47 +52,44 @@ class MySQLi extends Base{
 			return false;
 		}
 
-		$slave = $slave && !preg_match('/\s*(SELECT)/', $query);
+		$slave = $slave && !preg_match('/\s*(EXPLAIN)?\s*(SELECT)\s+/i', $query);
 		if (!$link = $this->link($slave)) {
 			return false;
 		}
 
 		$q = $link->query($query);
 		++self::$querySum;
-
 		if ($q === false) {
-			// 如果是 false 就不继续执行
-			$r = false;
-			$this->debug && $this->exitError($query);
-		} elseif (preg_match('/^\s*(CREATE|ALTER|TRUNCATE|DROP|SET|START|BEGIN|SERIAL|COMMIT|ROLLBACK|END)[ ;]/i', $query)) {
+			$this->addLog($query, $this->error(), 1);
+			return false;
+		}
 
+		if (preg_match('/^\s*(CREATE|ALTER|TRUNCATE|DROP|SET|START|BEGIN|SERIAL|COMMIT|ROLLBACK|END)(\s+|\;)/i', $query)) {
 			// 创建 改变 修改 删除 [表] 设置
-			$r = $q;
-
-		} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE) /i', $query)) {
-
+			$results = $q;
+		} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE)\s+/i', $query)) {
 			// 插入 删除 更新 替换 资料 [字段]
-			$r = $link->affected_rows;
+			$results = $link->affected_rows;
 			if (preg_match('/^\s*(INSERT|REPLACE) /i', $query)) {
-
 				// 插入 替换 [字段]
 				$this->insertID = $link->insertID;
 				++self::$querySum;
-
 			}
 		} else {
-			$r = [];
- 			while ($row = $q->fetch_object()) {
-				$r[] = $row;
+			$results = [];
+				while ($row = $q->fetch_object()) {
+				$results[] = $row;
 				++self::$queryRow;
 			}
-			$r && $q->free_result();
+			$results && $q->free_result();
 
-			if ($this->debug && preg_match('/^\s*(SELECT) /i', $query)) {
+			// 执行  explain
+			if ($this->explain && preg_match('/^\s*(SELECT)\s+/i', $query)) {
 				$this->query('EXPLAIN ' . $query, $slave);
 			}
 		}
-		return $this->data[$query] = $r;
+		$this->addLog($query, $results);
+		return $results;
 	}
 
 	public function tables() {
@@ -154,21 +151,21 @@ class MySQLi extends Base{
 	}
 
 	public function row($query, $slave = true) {
-		return ($r = $this->query($query, $slave)) ? reset($r) : false;
+		return ($results = $this->query($query, $slave)) ? reset($results) : false;
 	}
 
 	public function count($query, $slave = true) {
-		if (!$arr = $this->query($query, $slave)) {
+		if (!$arrays = $this->query($query, $slave)) {
 			return 0;
 		}
 		$count = 0;
-		foreach ($arr as $v) {
-			$count += array_sum((array) $v);
+		foreach ($arrays as $array) {
+			$count += array_sum((array) $array);
 		}
 		return $count;
 	}
 	public function results($query, $call = false, $slave = true) {
-		return ($r = $this->query($query, $slave)) ? $r : [];
+		return ($results = $this->query($query, $slave)) ? $results : [];
 	}
 
 
@@ -177,31 +174,28 @@ class MySQLi extends Base{
 			return false;
 		}
 		$this->autocommit = false;
-	 	return $link->autocommit(false);
-    }
+		return $link->autocommit(false);
+	}
 
-    public function commit() {
-    	if (!$link = $this->link(false)) {
-    		return false;
-    	}
-    	$this->autocommit = true;
-    	$r = $link->commit();
-    	$link->autocommit(true);
-    	if (!$r && $this->errno() && $this->debug) {
-    		$this->exitError('COMMIT');
-    	}
-        return $r;
-    }
-    public function rollback() {
-    	if (!$link = $this->link(false)) {
-    		return false;
-    	}
-    	$this->autocommit = true;
-		$r = $link->rollback();
+	public function commit() {
+		if (!$link = $this->link(false)) {
+			return false;
+		}
+		$this->autocommit = true;
+		$commit = $link->commit();
 		$link->autocommit(true);
-    	if (!$r && $this->errno() && $this->debug) {
-    		$this->exitError('ROLLBACK');
-    	}
-		return $r;
-    }
+		!$commit && $this->errno() && $this->addLog('COMMIT',. $this->error(), 1);
+		return $commit;
+	}
+
+	public function rollback() {
+		if (!$link = $this->link(false)) {
+			return false;
+		}
+		$this->autocommit = true;
+		$rollback = $link->rollback();
+		$link->autocommit(true);
+		!$rollback && $this->errno() && $this->addLog('ROLLBACK', $this->error(), 1);
+		return $rollback;
+	}
 }

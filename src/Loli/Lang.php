@@ -7,8 +7,8 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-19 02:24:27
+/*	Created: UTC 2015-02-25 13:38:13
+/*	Updated: UTC 2015-02-25 13:38:24
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -239,5 +239,4 @@ class Lang{
 		return true;
 	}
 }
-
 Lang::init();

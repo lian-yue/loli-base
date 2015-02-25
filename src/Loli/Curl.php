@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 12:09:10
-/*	Updated: UTC 2015-02-25 07:03:50
+/*	Updated: UTC 2015-02-25 12:46:47
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -21,7 +21,7 @@ class Curl{
 	public $defaults = [];
 
 	// info 信息
-	public $_info = [];
+	private $_info = [];
 
 	// curl
 	private $_options = [];

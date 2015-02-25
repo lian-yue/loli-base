@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-07 10:24:43
+/*	Updated: UTC 2015-02-25 14:42:50
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -48,7 +48,7 @@ class MySQL extends Base{
 		if (!is_string($query) || !($query = trim($query))) {
 			return false;
 		}
-		$slave = $slave && !preg_match('/\s*(SELECT)/', $query);
+		$slave = $slave && !preg_match('/\s*(EXPLAIN)?\s*(SELECT)\s+/i', $query);
 		if (!$link = $this->link($slave)) {
 			return false;
 		}
@@ -57,40 +57,40 @@ class MySQL extends Base{
 		++self::$querySum;
 
 		if ($q === false) {
-			// 如果是 false 就不继续执行
-			$r = false;
-			$this->debug && $this->exitError($query);
-		} elseif (preg_match('/^\s*(CREATE|ALTER|TRUNCATE|DROP|SET|START|BEGIN|SERIAL|COMMIT|ROLLBACK|END)[ ;]/i', $query)) {
+			$this->addLog($query, $this->error(), 1);
+			return false;
+		}
 
+
+		// 创建 改变 修改 删除 [表] 设置
+		if (preg_match('/^\s*(CREATE|ALTER|TRUNCATE|DROP|SET|START|BEGIN|SERIAL|COMMIT|ROLLBACK|END)(\s+|;)/i', $query)) {
 			// 创建 改变 修改 删除 [表] 设置
-			$r = $q;
-
-		} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE) /i', $query)) {
-
+			$results = $q;
+		} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE)\s+/i', $query)) {
 			// 插入 删除 更新 替换 资料 [字段]
-			$r = mysql_affected_rows($link);
+			$results = mysql_affected_rows($link);
 			if (preg_match('/^\s*(INSERT|REPLACE) /i', $query)) {
-
 				// 插入 替换 [字段]
 				$this->insertID = mysql_insertID($link);
 				++self::$querySum;
-
 			}
 		} else {
-			$r = [];
- 			while ($row = mysql_fetch_object($q)) {
-				$r[] = $row;
+			$results = [];
+				while ($row = mysql_fetch_object($q)) {
+				$results[] = $row;
 				++self::$queryRow;
 			}
-			$r && mysql_free_result($q);
+			$results && mysql_free_result($q);
 
-			if ($this->debug && preg_match('/^\s*SELECT /i', $query)) {
+			// 执行  explain
+			if ($this->explain && preg_match('/^\s*SELECT\s+/i', $query)) {
 				$this->query('EXPLAIN ' . $query, $slave);
 			}
 		}
-		return $this->data[$query] = $r;
-	}
+		$this->addLog($query, $results);
 
+		return $results;
+	}
 
 
 	public function tables() {

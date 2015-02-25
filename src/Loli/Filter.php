@@ -7,8 +7,8 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2015-02-17 08:35:29
-/*	Updated: UTC 2015-02-20 06:48:37
+/*	Created: UTC 2015-02-25 13:38:31
+/*	Updated: UTC 2015-02-25 13:38:40
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -102,5 +102,5 @@ class Filter{
 			return spl_object_hash($call[0]) . $call[1];
 		}
 		return $call[0].$call[1];
-	 }
+	}
 }

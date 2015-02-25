@@ -8,11 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-07 10:24:13
+/*	Updated: UTC 2015-02-25 14:45:44
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
-
+use Loli\Log;
 abstract class Base{
 
 	// 主数据库
@@ -28,22 +28,17 @@ abstract class Base{
 	// 是否运行过链接
 	protected $link = false;
 
+	// 位置
+	protected $explain = false;
+
+	// 是否自动提交
+	protected $autoCommit = true;
+
 	// 是否是运行的 slave
 	public $slave = true;
 
-
 	// 创建数据的返回 ID
 	public $insertID = 0;
-
-	// 是否自动提交
-	public $autoCommit = true;
-
-	// 查询日志
-	public $data = [];
-
-	// debug
-	public $debug = false;
-
 
 	// 数据查询次数
 	public static $querySum = 0;
@@ -58,7 +53,8 @@ abstract class Base{
 			}
 			unset($args['slave']);
 		}
-		$this->debug = !empty($args['debug']);
+		$this->explain = !empty($args['explain']);
+
 		if (!empty($args['master'])) {
 			foreach ($args['master'] as $v) {
 				$this->addMaster($v);
@@ -100,7 +96,7 @@ abstract class Base{
 				}
 				++$i;
 			}
-			!$this->_master && $this->debug && $this->exitError('Link');
+			!$this->_master && $this->addLog('Link', $e->error(), 2);
 		}
 		return $this->_master;
 	}
@@ -113,8 +109,14 @@ abstract class Base{
 		$this->_masters[] = $args;
 		return true;
 	}
-	public function exitError($query) {
-		($erron = $this->errno()) && !trigger_error($this->error(), E_USER_ERROR);
+
+	public function addLog($query, $value = '', $level = 0) {
+		if (class_exists('Loli\Log')) {
+			$data = $data ? "\n". (is_array($value) || is_object($value) ? var_export($data, true) : (string) $value)  : '';
+			$levels = [0 => Log::LEVEL_QUERY, 1 => Log::LEVEL_ERROR, 2 => Log::LEVEL_ALERT];
+			return Log::write($query . $data, $levels[$level]);
+		}
+		return false;
 	}
 
 	abstract public function connect($args);
@@ -139,7 +141,6 @@ abstract class Base{
 	abstract public function results($query, $slave = true);
 	abstract public function row($query, $slave = true);
 	abstract public function count($query, $slave = true);
-
 
 
 	abstract public function start();

@@ -8,11 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-17 08:31:12
-/*	Updated: UTC 2015-02-05 07:41:07
+/*	Updated: UTC 2015-02-25 13:56:59
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
-
+use Loli\Log;
 abstract class Base{
 
 	// 记录使用次数
@@ -126,6 +126,14 @@ abstract class Base{
 	 */
 	abstract public function addServers($list, array $a);
 
+
+	/**
+	 * 错误记录
+	 * @param [type] $message [description]
+	 */
+	protected function addMessage($message) {
+		return class_exists('Loli\Log') && Log::alert($message);
+	}
 }
 
 
