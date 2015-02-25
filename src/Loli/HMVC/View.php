@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 19:45:05
-/*	Updated: UTC 2015-02-24 04:41:33
+/*	Updated: UTC 2015-02-25 04:41:24
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
@@ -21,27 +21,29 @@ class View{
 	protected $_files;
 	protected $_file;
 	protected $_once;
+	protected $_ID;
+	protected $_class;
 
 	protected $_dir = './';
 
 	public function __construct($files, $data = []) {
+		$files = (array) $files;
 		$this->_dir = empty($_SERVER['LOLI']['VIEW']['dir']) ? './' : $_SERVER['LOLI']['VIEW']['dir'];
 		$this->_files = $files;
 		$this->_data = $data;
+		$this->_ID = strtr(reset($files), '/', '-');
+		$this->_class = strtr(reset($files), '/', ' ');
+	}
+
+	public function getID() {
+		return $this->_ID;
+	}
+	public function getClass() {
+		return $this->_class;
 	}
 
 	public function getData() {
 		return $this->_data;
-	}
-
-	public function addData($data) {
-		$this->data += $data;
-		return true;
-	}
-
-	public function setData($data) {
-		$this->data = $data + $this->_data;
-		return true;
 	}
 
 	public function load($files, $once = true) {

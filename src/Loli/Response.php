@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 05:34:04
-/*	Updated: UTC 2015-02-24 06:13:22
+/*	Updated: UTC 2015-02-24 12:39:05
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -101,7 +101,7 @@ class Response{
 			} else {
 				$ttl = $ttl ? time() + $ttl : $ttl;
 			}
-			setcookie($this->request->cookiePrefix . $name, $value, $ttl, $path, $domain, $secure, $httponly);
+			setcookie($name, $value, $ttl, $path, $domain, $secure, $httponly);
 		}
 	}
 

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-06 14:16:56
-/*	Updated: UTC 2015-02-23 15:41:36
+/*	Updated: UTC 2015-02-24 12:38:14
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -612,7 +612,7 @@ class Request{
 				$this->setToken($this->createToken(), true);
 			}
 		}
-		return $key ? $this->_token : substr($this->_token, 0, 16);
+		return $isKey ? $this->_token : substr($this->_token, 0, 16);
 	}
 
 	public function isNewToken() {

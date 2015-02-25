@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-24 06:04:38
+/*	Updated: UTC 2015-02-24 14:41:40
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -147,15 +147,25 @@ class Router{
 						// class 是否是命名空间
 						$isNameSpace = $class && substr($class, -1, 1) == '\\';
 
+						// 路径里面是否有Class
+						$isPathClass = $isNameSpace && strpos($value['path'], '(?<$class') === false && strpos($value['path'], '(?\'$class') === false && strpos($value['path'], '(?"$class') === false;
+
+						// 路径里面是否有Path
+						$isPathPath = strpos($value['path'], '(?<$path') === false && strpos($value['path'], '(?\'$path') === false && strpos($value['path'], '(?"$path') === false;
 
 						// 整理 path
 						if (!$value['path']) {
 							$value['path'] = '/' . strtolower(trim(strtr($class, '\\', '/'), '/'));
 						}
 
-						// 带有命名空间的path
-						if ($isNameSpace && strpos($value['path'], '(?<$class') === false && strpos($value['path'], '(?\'$class') === false && strpos($value['path'], '(?"$class') === false) {
+						// 带有命名空间的 path
+						if ($isPathClass) {
 							$value['path'] .= '(?<$class>(?:/[_a-z][0-9a-z_]*)+)/?';
+						}
+
+						// 没有 $path 子目录的
+						if ($isPathPath) {
+							$value['path'] .= '(?<$path>(?:/.*)?)';
 						}
 
 						// 整理 host
@@ -170,29 +180,40 @@ class Router{
 						// class 加上前缀
 						$class = 'Controller\\' . ltrim($class, '\\');
 
-
 						// 允许的协议
 						if (!in_array($scheme, $value['scheme'])) {
 							continue;
 						}
 						$params = [];
-
 						// 允许的 host
 						if (!preg_match('/^'.strtr($value['host'], $strtr). '$/', $host, $matches)) {
 							continue;
 						}
 						$params += $matches;
-
 						// 允许的路径
 						if (!preg_match('/^'.strtr($value['path'], $strtr). '$/', $path, $matches)) {
 							continue;
 						}
+						$subPath = empty($matches[$uniqid.'path']) ? '/' : '/' . $matches[$uniqid.'path'];
 
 						// 带有命名空间的
-						if ($isNameSpace && empty($matches[$uniqid.'class']) || !class_exists(($class .= strtr(ucwords(strtr(trim($matches[$uniqid.'class'], '/'), '/', ' ')), ' ', '\\')))) {
-							continue;
+						if ($isNameSpace) {
+							if (empty($matches[$uniqid.'class'])) {
+								continue;
+							}
+							$classSuffixs = explode('/', ltrim($matches[$uniqid.'class'], '/'));
+							do {
+								$classSuffix = implode('\\', array_map('ucwords', $classSuffixs));
+								if (class_exists($class . $classSuffix)) {
+									$class .= $classSuffix;
+									break;
+								}
+								$subPath .= ($subPath == '/'? '' : '/'). array_pop($classSuffixs);
+							} while ($classSuffixs);
+							if (!$classSuffixs) {
+								continue;
+							}
 						}
-
 						$params = $matches + $params;
 						$break = true;
 						break 3;
@@ -206,10 +227,21 @@ class Router{
 				throw new Error(404);
 			}
 
+
+			// 执行控制器　返回视图
+			$controller = new $class($request, $response);
+
+			// 取得子控制器
+			if (!$array = $controller($subPath, $strtr)) {
+				throw new Error(404);
+			}
+			$params += empty($array['params']) ? [] : $array['params'];
+
+
 			// 整理 取得的参数 并且写入
 			$length = strlen($uniqid);
 			foreach($params as $name => $param) {
-				if (is_int($name) || $name === ($uniqid . 'class')) {
+				if (is_int($name) || $name === ($uniqid . 'class') || $name === ($uniqid . 'path')) {
 					unset($params[$name]);
 					continue;
 				}
@@ -220,10 +252,8 @@ class Router{
 			}
 			$request->setParams($params);
 
-
-			// 执行控制器　返回视图
-			$view = new $class($request, $response);
-
+			// 执行方法
+			$view = $controller->$arrays['method']();
 
 			// 返回的是异常
 			if ($view instanceof \Exception) {
