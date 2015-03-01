@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-18 07:04:24
-/*	Updated: UTC 2015-02-16 13:55:31
+/*	Updated: UTC 2015-02-26 04:45:00
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -19,18 +19,7 @@ class Page{
 
 	public $limit = 0;
 
-	public $maxLimit = 50;
-
-	public $defaultLimit = 10;
-
-
 	public $offset = false;
-
-	public $maxOffset = 0;
-
-	public $isOffset = -1;
-
-
 
 	// url 连接
 	public $url = false;
@@ -38,23 +27,33 @@ class Page{
 	// 更多使用的
 	public $more = [];
 
+
+	protected $maxLimit = 50;
+
+	protected $defaultLimit = 10;
+
+	protected $maxOffset = 0;
+
+	protected $isOffset = -1;
+
+
 	// 上一页
-	public $prev = 'Prev';
+	protected $prev = 'Prev';
 
 	// 下一页
-	public $next = 'Next';
+	protected $next = 'Next';
 
 	// 点符号
-	public $dot = '&hellip;';
+	protected $dot = '&hellip;';
 
-	public $info = true;
+	protected $info = true;
 
-	public $end = 1;
+	protected $end = 1;
 
-	public $mid = 3;
+	protected $mid = 3;
 
 	// 保留的参数
-	public $query = ['$limit', '$orderby', '$order'];
+	protected $query = ['$limit', '$orderby', '$order'];
 
 
 

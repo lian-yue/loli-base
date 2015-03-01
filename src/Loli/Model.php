@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-08 08:27:43
-/*	Updated: UTC 2015-02-25 13:40:05
+/*	Updated: UTC 2015-02-27 05:07:17
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -22,12 +22,9 @@ trait Model{
 
 	private $_modelID = '\\';
 
-
-
 	public function __call($key, $args) {
 		return call_user_func_array($this->$key, $args);
 	}
-
 
 	public function __get($key) {
 		++self::$classCounts;

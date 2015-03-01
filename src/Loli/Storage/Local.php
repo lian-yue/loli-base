@@ -8,20 +8,17 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-03 09:19:59
+/*	Updated: UTC 2015-02-26 10:02:24
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
 class_exists('Loli\Storage\Base') || exit;
 class Local extends Base{
-	public $dir = './';
+	protected $dir = './';
 
-	public $chmod = 0644;
+	protected $chmod = 0644;
 
-	public $chmodDir = 0755;
-
-	public $buffer = 2097152;
-
+	protected $chmodDir = 0755;
 
 	public function __construct($args) {
 		foreach ($args as $k => $v) {

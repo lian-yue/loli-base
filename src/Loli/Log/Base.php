@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-25 08:56:16
-/*	Updated: UTC 2015-02-25 14:55:39
+/*	Updated: UTC 2015-02-27 13:03:38
 /*
 /* ************************************************************************** */
 namespace Loli\Log;
@@ -52,58 +52,42 @@ abstract class Base{
 
 
 	// 不用记录的 log
-	protected $record = 98516;
+	protected $record = true;
+
+	// 进度
+	protected $progress = [];
 
 	// 实例化并传入参数
-	abstract function __construct(array $args);
+	public function __construct(array $args) {
+		foreach ($args as $key => $value) {
+			if ($value !== null && $key != 'levels' && isset($this->$key)) {
+				$this->$key = $value;
+			}
+		}
+	}
 
 	public function __invoke() {
 		return call_user_func_array([$this, 'write'], func_get_args());
+	}
+
+	public function __call($method, $args) {
+		return isset($args[0]) && ($level = array_search($method, $this->levels, true)) !== false && $this->write($args[0], $level);
 	}
 
 	// 写入日志
 	abstract public function write($message, $level = self::LEVEL_ACCESS);
 
 
-	public function access($message) {
-		return $this->write($message, self::LEVEL_ACCESS);
-	}
 
-	public function notice($message) {
-		return $this->write($message, self::LEVEL_NOTICE);
-	}
-
-	public function warning($message) {
-		return $this->write($message, self::LEVEL_WARNING);
-	}
-
-	public function error($message) {
-		return $this->write($message, self::LEVEL_ERROR);
-	}
-
-	public function alert($message) {
-		return $this->write($message, self::LEVEL_ALERT);
-	}
-
-	public function query($message) {
-		return $this->write($message, self::LEVEL_QUERY);
-	}
-
-	public function debug($message) {
-		return $this->write($message, self::LEVEL_DEBUG);
-	}
-
+	//判断是否允许写
 	protected function isRecord($level) {
-		if ($this->filter == -1) {
-			return true;
+		if ($this->record < 1) {
+			return false;
 		}
-		if ($this->filter === false) {
-			return true;
+		if ($this->record != 1 && !($this->record & $level)) {
+			return false;
 		}
-		if ($this->filter != 1 && !($this->filter & $filter)) {
-			return true;
-		}
-		return false;
+		return true;
 	}
 
 	// 级别
@@ -114,18 +98,24 @@ abstract class Base{
 		trigger_error('Level "'.$level.'" is not defined', E_USER_ERROR);
 	}
 
-	// 格式化时间
-	protected function formatDate() {
-		return gmtdate($this->dateFormat);
+	// 进度
+	protected function getProgress($message, $level) {
+		if (is_array($message)) {
+			$message = var_export($message, true);
+		} elseif (is_object($message) && !method_exists($message, '__toString')) {
+			$message = json_encode($message);
+		} else {
+			$message = (string) $message;
+		}
+		$levelName = $this->getLevelName($level);
+		foreach ($this->progress as $value) {
+			$message = call_user_func($value, $message, $level, $levelName);
+		}
+		return $message;
 	}
 
-    // 格式化日志
-	protected function formatMessage($message) {
-		if (is_array($message)) {
-			return var_export($message, true);
-		} elseif (is_object($message) && !method_exists($message, '__toString')) {
-			return json_encode($message);
-		}
-		return (string) $message;
+	// 格式化时间
+	protected function formatDate() {
+		return gmdate($this->dateFormat);
 	}
 }

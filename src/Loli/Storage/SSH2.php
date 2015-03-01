@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-10-25 12:08:21
-/*	Updated: UTC 2015-02-07 17:04:56
+/*	Updated: UTC 2015-02-26 05:49:23
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
@@ -19,30 +19,27 @@ class SSH2 extends Base{
 
 	private $_sftpLink;
 
-	public $dir = '/';
+	protected $dir = '/';
 
-	public $chmod = 0644;
+	protected $chmod = 0644;
 
-	public $chmodDir = 0755;
+	protected $chmodDir = 0755;
 
-	public $host;
+	protected $host;
 
-	public $port = 22;
+	protected $port = 22;
 
-	public $user = false;
+	protected $user = false;
 
-	public $pass = false;
+	protected $pass = false;
 
-	public $timeout = 30;
+	protected $timeout = 30;
 
-	public $methods = [];
+	protected $methods = [];
 
-	public $publicKey = false;
+	protected $publicKey = false;
 
-	public $privateKey = false;
-
-	public $buffer = 2097152;
-
+	protected $privateKey = false;
 
 	public function __construct($args) {
 		foreach ($args as $k => $v) {

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-07 05:50:20
-/*	Updated: UTC 2015-02-05 08:03:01
+/*	Updated: UTC 2015-02-26 05:45:16
 /*
 /* ************************************************************************** */
 namespace Loli\Captcha;
@@ -82,7 +82,7 @@ abstract class Base {
 
 	// 随机小数
 	protected function rand($min = 0, $max = 1) {
-	    return $min + mt_rand() / mt_getrandmax() * ($max - $min);
+		return $min + mt_rand() / mt_getrandmax() * ($max - $min);
 	}
 
 

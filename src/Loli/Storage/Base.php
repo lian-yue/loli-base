@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-12 06:55:36
+/*	Updated: UTC 2015-02-26 10:01:47
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
@@ -25,6 +25,7 @@ define('UPLOAD_ERR_MIME_TYPE', 102);
 
 abstract class Base{
 
+	protected $buffer = 2097152;
 
 	abstract public function __construct($args);
 
@@ -220,7 +221,6 @@ abstract class Base{
 				continue;
 			}
 			$a[] = $v;
-
 		}
 		return $a;
 	}

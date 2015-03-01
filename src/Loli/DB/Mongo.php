@@ -8,380 +8,436 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-25 14:54:22
+/*	Updated: UTC 2015-02-28 14:33:34
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
-use MongoClient, MongoException, MongoId, MongoCode;
+use MongoClient, MongoException, MongoResultException, MongoCursorException, MongoCursorTimeoutException, MongoConnectionException, MongoGridFSException, MongoDuplicateKeyException, MongoProtocolException, MongoExecutionTimeoutException, MongoWriteConcernException, MongoId, MongoCode;
 class_exists('Loli\DB\Base') || exit;
 class Mongo extends Base{
 
-	private $_error = 0;
-	private $_errno = false;
-
-
-
 	// 排序用的
-	private $sort = [];
+	private $_sort = [];
 
-
-	public function error() {
-		if (!$this->link) {
-			return false;
-		}
-		return $this->_error;
-	}
-
-
-	public function errno() {
-		if (!$this->link) {
-			return false;
-		}
-		return $this->_errno;
-	}
-
-
-	public function connect($args) {
+	/**
+	 * 链接数据库
+	 * @param  [type] $args [description]
+	 * @return [type]       [description]
+	 */
+	public function connect(array $args) {
 		try {
-			$MongoClient = new MongoClient(!empty($args['link']) ? $args['link'] : ('mongodb://'. (empty($args['host']) ? MongoClient::DEFAULT_HOST : $args['host']) .':' . (empty($args['port']) ? MongoClient::DEFAULT_PORT : $args['port'])));
-			$link = $MongoClient->selectDB($args['name']);
+
+			$server = empty($args['link']) ? 'mongodb://' . (empty($args['host']) ? MongoClient::DEFAULT_HOST : $args['host']) .':' . (empty($args['port']) ? MongoClient::DEFAULT_PORT : $args['port']) : $args['link'];
+
+			// 链接到服务器
+			$client = new MongoClient($server);
+
+			// 表名为空
+			empty($args['name']) && $this->addLog('MongoClient('. $server .').selectDB()', 'Database name can not be empty', 2);
+
+			// 链接到表
+			$link = $client->selectDB($args['name']);
+
+			// 有密码的
 			if (!empty($args['pass'])) {
-				$link->authenticate($args['user'], $args['pass']);
+				$auth = @$link->authenticate($args['user'], $args['pass']);
+
+				// 链接失败
+				empty($auth['ok']) && $this->addLog('this.MongoClient('. $server .').selectDB('. $args['name'] .')->authenticate()', $auth['errmsg'], 2);
 			}
 		} catch (MongoException $e) {
-			$this->_error = $e->getMessage();
-			$this->_errno = $e->getCode();
-			return false;
+
+			// 链接错误
+			$this->addLog('this.MongoClient('. $server .').selectDB('. $args['name'] .')', $e->getMessage(), 2, $e->getCode());
 		}
+
 		return $link;
+	}
+
+
+	public function ping() {
+		return true;
 	}
 
 
 
 	public function tables() {
-		if (!$link = $this->link(false)) {
-			return false;
-		}
+		// http://docs.mongodb.org/manual/reference/method/db.getCollectionNames/
+		// http://php.net/manual/en/mongodb.getcollectionnames.php
+		$link = $this->link(false);
 		$tables = [];
+		$queryString = 'this.getCollectionNames()';
 		try {
+			// 遍历所有集合
 			$collections = $link->getCollectionNames();
-			$this->addLog('getCollectionNames()', $collections);
+			$this->addLog($queryString, $collections);
 			foreach ($collections as $collection) {
 				$tables[] = $collection;
 			}
 		 } catch (MongoException $e) {
-			$this->_error = $e->getMessage();
-			$this->_errno = $e->getCode();
-			$this->addLog($queryString, $this->error(), 1);
-			return false;
+		 	// 错误
+			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 		}
 		return $tables;
 	}
 
 
 	public function exists($table) {
-		if (($tables = $this->tables()) === false) {
-			return false;
-		}
-		return in_array($table, $tables) ? 1 : 0;
+		return in_array($table, $this->tables(), true) ? $table : false;
 	}
 
 
 	public function truncate($table) {
-		if (!$table || !is_string($table) || $table{0} == '$') {
-			return false;
-		}
-		if (!$link = $this->link(false)) {
-			return false;
-		}
+		// http://docs.mongodb.org/manual/reference/method/db.collection.remove/
+		// http://php.net/manual/en/mongocollection.remove.php
+		$link = $this->link(false);
 
+		$queryString = $table.'.remove()';
 		try {
-			$queryString = $table.'.remove()';
-			$r = $link->{$table}->remove();
-			$this->addLog($queryString, $r);
+			$results = $link->{$table}->remove();
+			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			$this->_error = $e->getMessage();
-			$this->_errno = $e->getCode();
-			$this->addLog($queryString, $this->error(), 1);
-			return false;
+			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 		}
-		if (empty($r['ok'])) {
-			$this->_error = empty($r['err']) ? (empty($r['errmsg']) ? 'Truncate' : $r['errmsg']) : $r['err'];
-			$this->_errno = empty($r['code']) ? -1 : $r['code'];
-			$this->addLog($queryString, $this->error(), 1);
-			return false;
-		}
-		return empty($v['n']) ? 0 : $v['n'];
+		empty($results['ok']) && $this->addLog($queryString, $results, 1);
+		return empty($results['n']) ? 0 : $results['n'];
 	}
 
 
 	public function drop($table) {
-		if (!$table || !is_string($table) || $table{0} == '$') {
+		// http://docs.mongodb.org/manual/reference/command/drop/
+		// http://docs.mongodb.org/manual/reference/method/db.collection.drop/
+		// http://php.net/manual/en/mongocollection.drop.php
+		// 没有表 返回 false
+		if (!$this->exists($table)) {
 			return false;
 		}
-		if (!$link = $this->link(false)) {
-			return false;
-		}
+		$link = $this->link(false);
+		$queryString = $table.'.drop()';
 
+		// 删除
 		try {
-			$queryString = $table.'.drop()';
-			$r = $link->{$table}->drop();
-			$this->addLog($queryString, $r);
+			$results = $link->{$table}->drop();
+			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			$this->_error = $e->getMessage();
-			$this->_errno = $e->getCode();
-			$this->addLog($queryString, $this->error(), 1);
-			return false;
+			// 错误
+			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 		}
-		return empty($r['ok']) ? 0 : 1;
+		// 删除成功是否
+		return !empty($results['ok']);
 	}
 
 
 	public function create($args) {
-		if (empty($args['create'])) {
-			if (empty($args['collection'])) {
-				return false;
-			}
+		// http://docs.mongodb.org/manual/reference/command/create/
+		// http://docs.mongodb.org/manual/reference/method/db.createCollection/
+		// http://php.net/manual/en/mongodb.createcollection.php
+
+		// 创建查询字符串 日志
+		$queryString = 'this.create(' . json_encode($args) .')';
+
+		// 没 create 并且有集合 使用集合
+		if (empty($args['create']) && !empty($args['collection'])) {
 			$args['create'] = $args['collection'];
 		}
-		if (!($r = $this->_command($a = array_intersect_key($args, ['create' => '', 'capped' => '', 'autoIndexId' => '', 'size' => '', 'max' => '', 'flags' => '', 'usePowerOf2Sizes' => '']))) || empty($r['ok'])) {
+
+		// 集合名为空
+		empty($args['create']) && $this->addLog($queryString, 'Collection named empty', 1);
+		if ($this->exists($args['create'])) {
 			return false;
 		}
+
+		// 执行 command
+		$results = $this->_command(array_intersect_key($args, ['create' => '', 'capped' => '', 'autoIndexId' => '', 'size' => '', 'max' => '', 'flags' => '', 'usePowerOf2Sizes' => '']));
+
+		// 创建错误
+		empty($results['ok']) && $this->addLog($queryString, $results, 1);
+
+		// 删除 索引
 		$this->_command(['dropIndexes' => $args['create'], 'index' => '*']);
+
+		// 创建索引
 		empty($args['indexes']) || $this->_command(['createIndexes' => $args['create'], 'indexes' => $args['indexes']]);
+
 		return true;
 	}
 
 
+
+
 	public function insert($args) {
-		if (empty($args['insert'])) {
-			if (empty($args['collection'])) {
-				return false;
-			}
+		$this->insertID = false;
+
+		// http://docs.mongodb.org/manual/reference/command/insert/
+		// http://docs.mongodb.org/manual/reference/method/db.collection.insert/
+		// http://php.net/manual/en/mongocollection.batchinsert.php
+		if (isset($args['ordered']) && !isset($args['writeConcern']['continueOnError'])) {
+			$args['writeConcern']['continueOnError'] = !$args['ordered'];
+		}
+
+		if (empty($args['insert']) && !empty($args['collection'])) {
 			$args['insert'] = $args['collection'];
 		}
-		if (empty($args['documents'])) {
-			return false;
-		}
-		$documents = [];
-		foreach ($args['documents'] as $k => $v) {
-			if (is_string($v) || is_bool($v) || is_int($v) || !is_numeric($k)) {
-				return false;
-			}
-			$v = (array) $v;
-			ksort($v);
-			if ($v = array_unnull($v)) {
-				if (!$v = $this->_idObject($v)) {
-					return false;
-				}
-				$documents[] = (array) $v;
-			}
-		}
-		if (!$documents) {
-			return false;
-		}
-		if (!$link = $this->link(false)) {
-			return false;
-		}
-		$args['documents'] = $documents;
+		$args += ['insert' => '', 'documents' => [], 'writeConcern' => []];
+		extract($args, EXTR_SKIP);
 
-		// writeConcern 的选项
-		$writeConcern = empty($args['writeConcern']) ? [] : $args['writeConcern'];
-		if (isset($args['ordered']) && !isset($writeConcern['continueOnError'])) {
-			$writeConcern['continueOnError'] = !$args['ordered'];
+		$queryString = $insert.'.batchInsert('. json_encode($documents) . ', ' .  json_encode($writeConcern).')';
+
+		// 集合为空
+		$insert || $this->addLog($queryString, 'Collection named empty', 1);
+
+		// 文档为空
+		$documents || $this->addLog($queryString, 'Insert the documents is empty', 1);
+
+		// 整理数据
+		foreach ($documents as $key => &$document) {
+			is_numeric($key) || $this->addLog($queryString, 'Keys into the document format', 1);
+			is_array($document) || is_object($document) || $this->addLog($queryString, 'Insert the document content', 1);
+			$document = (array) $document;
+			ksort($document);
+			($document = array_unnull($document)) || $this->addLog($queryString, 'Insert the document is empty', 1);
+			$document = (array) $this->_idObject($document);
 		}
+		unset($document);
+
+
+		$link = $this->link(false);
+
 
 		++self::$querySum;
 		try {
-			$queryString = $args['insert'].'.batchInsert('. json_encode($args['documents']) . ', ' .  json_encode($writeConcern).')';
-			$r = $link->{$args['insert']}->batchInsert($args['documents'], $writeConcern);
-			$this->addLog($queryString, $r);
+			$queryString = $insert.'.batchInsert('. json_encode($documents) . ', ' .  json_encode($writeConcern).')';
+			$results = $link->{$insert}->batchInsert($documents, $writeConcern);
+			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			$this->_error = $e->getMessage();
-			$this->_errno = $e->getCode();
-			$this->addLog($queryString, $this->error(), 1);
-			return false;
+			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 		}
-		if (!empty($r['err']) || !empty($r['errmsg'])) {
-			$this->_error = empty($r['err']) ? $r['errmsg'] : $r['err'];
-			$this->_errno = empty($r['code']) ? -1 : $r['code'];
-			$this->addLog($queryString, $this->error(), 1);
-			return false;
+
+		// 插入失败的
+		empty($results['ok']) && $this->addLog($queryString, $results, 1);
+
+		// 读最后个插入的id
+		try {
+			if ($document = $this->_toString(end($documents))) {
+				$this->insertID = is_array($document) ? $document['_id'] : $document->_id;
+			}
+		} catch (Exception $e) {
 		}
-		if (empty($r['ok'])) {
-			return false;
-		}
-	 	if ($row = $this->_toString(end($args['documents']))) {
-	 		$this->insertID = is_array($row) ? $row['_id'] : $row->_id;
-	 	}
-		return count($args['documents']);
+		// 返回成功插入的数量
+		return count($documents);
 	}
 
 
 
 	public function replace($args) {
-		if (empty($args['replace'])) {
-			if (empty($args['collection'])) {
-				return false;
-			}
-			$args['replace'] = $args['collection'];
-		}
-		if (empty($args['documents'])) {
-			return false;
-		}
-		$documents = [];
-		foreach ($args['documents'] as $k => $v) {
-			if (is_string($v) || is_bool($v) || is_int($v) || !is_numeric($k)) {
-				return false;
-			}
-			$v = (array) $v;
-			ksort($v);
-			if ($v = array_unnull($v)) {
-				if (!$v = $this->_idObject($v)) {
-					return false;
-				}
-				$documents[] = (array) $v;
-			}
-		}
-		if (!$documents) {
-			return false;
-		}
-		if (!$link = $this->link(false)) {
-			return false;
-		}
-		$args['documents'] = $documents;
+		$this->insertID = false;
 
-		// writeConcern 的选项
-		$writeConcern = empty($args['writeConcern']) ? [] : $args['writeConcern'];
+		// http://docs.mongodb.org/manual/reference/method/db.collection.save/
+		// http://php.net/manual/en/mongocollection.save.php
+		if (isset($args['ordered']) && !isset($args['writeConcern']['continueOnError'])) {
+			$args['writeConcern']['continueOnError'] = !$args['ordered'];
+		}
+		if (!isset($args['writeConcern']['continueOnError'])) {
+			$args['writeConcern']['continueOnError'] = false;
+		}
+
+		if (empty($args['save'])) {
+			if (!empty($args['replace'])) {
+				$args['save'] = $args['replace'];
+			} elseif (empty($args['collection'])) {
+				$args['save'] = $args['collection'];
+			}
+		}
+
+		$args += ['save' => '', 'documents' => [], 'writeConcern' => []];
+		extract($args, EXTR_SKIP);
+
+
 		$writeConcernString = json_encode($writeConcern);
+		$queryString = $save.'.batchReplace('. json_encode($documents) . ', ' .  $writeConcernString.')';
 
-		$r = 0;
-		$row = false;
-		foreach ($args['documents'] as $v) {
+		// 集合为空
+		$save || $this->addLog($queryString, 'Collection named empty', 1);
+
+		// 文档为空
+		$documents || $this->addLog($queryString, 'Replace the documents is empty', 1);
+
+		// 整理数据
+		foreach ($documents as $key => &$document) {
+			is_numeric($key) || $this->addLog($queryString, 'Keys into the document format', 1);
+			is_array($document) || is_object($document) || $this->addLog($queryString, 'Replace the document content', 1);
+			$document = (array) $document;
+			ksort($document);
+			($document = array_unnull($document)) || $this->addLog($queryString, 'Replace the document is empty', 1);
+			$document = (array) $this->_idObject($document);
+		}
+		unset($document);
+
+		$link = $this->link(false);
+
+		$results = [];
+		foreach ($documents as $document) {
 			++self::$querySum;
 			try {
-				$queryString = $args['replace'].'.save('. json_encode($v) . ', ' .  $writeConcernString.')';
-				$save = $link->{$args['replace']}->save($v, $writeConcern);
-				$this->addLog($queryString, $save);
+				$queryString = $save.'.save('. json_encode($document) . ', ' .  $writeConcernString.')';
+				$result = $link->{$save}->save($document, $writeConcern);
+				$this->addLog($queryString, $result);
 			} catch (MongoException $e) {
-				$this->_error = $e->getMessage();
-				$this->_errno = $e->getCode();
-				$this->addLog($queryString, $this->error(), 1);
-				continue;
-			}
-			if (!empty($save['err']) || !empty($save['errmsg'])) {
-				$this->_error = empty($save['err']) ? $save['errmsg'] : $save['err'];
-				$this->_errno = empty($save['code']) ? -1 : $save['code'];
-				$this->addLog($queryString, $this->error(), 1);
-				if (!isset($args['ordered']) || $args['ordered']) {
-					return false;
+				if ($writeConcern['continueOnError']) {
+					try {
+						$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+					} catch (Exception $e) {
+					}
+				} else {
+					$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 				}
 				continue;
 			}
+
+			// 插入错误
 			if (empty($save['ok'])) {
-				if (!isset($args['ordered']) || $args['ordered']) {
-					return false;
+				if ($writeConcern['continueOnError']) {
+					try {
+						$this->addLog($queryString, $result, 1);
+					} catch (Exception $e) {
+					}
+				} else {
+					$this->addLog($queryString, $result, 1);
 				}
 				continue;
 			}
-			$row = $v;
-			++$r;
+			$results[] = $document;
 		}
 
-		if ($row = $this->_toString($row)) {
-	 		$this->insertID = is_array($row) ? $row['_id'] : $row->_id;
-	 	}
-		return $r;
+		// 读最后个插入的id
+		try {
+			if ($document = $this->_toString(end($documents))) {
+				$this->insertID = is_array($document) ? $document['_id'] : $document->_id;
+			}
+		} catch (Exception $e) {
+		}
+		return count($results);
+
+
 	}
 
 
 	public function update($args) {
-		if (empty($args['update'])) {
-			if (empty($args['collection'])) {
-				return false;
-			}
+		// http://docs.mongodb.org/manual/reference/command/update/
+		// http://docs.mongodb.org/manual/reference/method/db.collection.update/
+		// http://php.net/manual/en/mongocollection.update.php
+		if (isset($args['ordered']) && !isset($args['writeConcern']['continueOnError'])) {
+			$args['writeConcern']['continueOnError'] = !$args['ordered'];
+		}
+		if (!isset($args['writeConcern']['continueOnError'])) {
+			$args['writeConcern']['continueOnError'] = false;
+		}
+
+		if (empty($args['update']) && !empty($args['collection'])) {
 			$args['update'] = $args['collection'];
 		}
-		if (empty($args['updates'])) {
-			return false;
-		}
-		$updates = [];
-		foreach ($args['updates'] as $k => $v) {
-			if (is_string($v) || is_bool($v) || is_int($v) || !is_numeric($k)) {
-				return false;
+		$args += ['update' => '', 'updates' => [], 'writeConcern' => []];
+		extract($args, EXTR_SKIP);
+
+		$queryString = 'this.update('. $update. ', ' .  json_encode($updates).', '. ($writeConcern['continueOnError'] ? false : true) .', '. json_encode($writeConcern) .')';
+
+		// 集合为空
+		$update || $this->addLog($queryString, 'Collection named empty', 1);
+
+		// 文档为空
+		$updates || $this->addLog($queryString, 'Updates the documents is empty', 1);
+
+		foreach ($updates as $key => &$value) {
+			is_numeric($key) || $this->addLog($queryString, 'Keys into the document format', 1);
+			is_array($value) || is_object($value) || $this->addLog($queryString, 'Update the parameters', 1);
+			$value = (array) $value;
+			if (!isset($value['q']) && isset($value['query'])) {
+				$value['q'] = $value['query'];
 			}
-			$v = (array) $v;
-			if (!isset($v['q']) || ($v['q'] && !($v['q'] = $this->_idObject($v['q'], true)))) {
-				return false;
-			}
-			if (empty($v['u']) || !($v['u'] = array_unnull($v['u']))) {
-				return false;
-			}
-			foreach ($v['u'] as $kk => $vv) {
-				if ($kk && $kk{0} == '$' && $vv) {
-					if (!$vv = $this->_idObject($vv)) {
-						return false;
-					}
-				} elseif ('_id' == $kk) {
-					if  (!$vv = $this->_id($vv)) {
-						return false;
-					}
-				}
-				$v['u'][$kk] = $vv;
-			}
-			$updates[] = $v;
-		}
-		if (!$updates) {
-			return false;
-		}
-		$args['updates'] = $updates;
-		if (!$link = $this->link(false)) {
-			return false;
-		}
-		$writeConcern = empty($args['writeConcern']) ? [] : $args['writeConcern'];
-		$r = [];
-		foreach ($args['updates'] as $v) {
-			++self::$querySum;
-			$options = array_intersect_key($v, ['upsert' => '']) + $writeConcern;
-			if (isset($v['multi'])) {
-				$options['multiple'] = $v['multi'];
-			}
-			try {
-				$queryString = $args['update'].'.update('. json_encode($v['q']) . ', ' .  json_encode($v['u']) . ', ' . json_encode($options) .')';
-				$update = $link->{$args['update']}->update($v['q'], $v['u'], $options);
-				$this->addLog($queryString, $update);
-			} catch (MongoException $e) {
-				$this->_error = $e->getMessage();
-				$this->_errno = $e->getCode();
-				$this->addLog($queryString, $this->error(), 1);
-				if (!isset($args['ordered']) || $args['ordered']) {
-					return false;
-				}
+			if (!isset($value['u']) && isset($value['update'])) {
+				$value['u'] = $value['update'];
 			}
 
-			if (empty($update['ok'])) {
-				if (!isset($args['ordered']) || $args['ordered']) {
-					return false;
+			isset($value['q']) || $this->addLog($queryString, 'Update query is empty', 1);
+			is_array($value['q']) || is_object($value['q']) || $this->addLog($queryString, 'Update query format', 1);
+			$value['q'] = $this->_idObject($value['q'], true);
+
+
+			empty($value['u']) && $this->addLog($queryString, 'Update document is empty', 1);
+			is_array($value['u']) || is_object($value['u']) || $this->addLog($queryString, 'Update document format', 1);
+			($value['u'] = array_unnull((array)$value['u'])) || $this->addLog($queryString, 'Update document is empty', 1);
+			foreach ($value['u'] as $k => &$v) {
+				if ($k && $k{0} == '$' && $v) {
+					$v = $this->_idObject($v);
+				} elseif ('_id' == $k) {
+					$v = $this->_id($v);
+				}
+			}
+			unset($v);
+		}
+		unset($value);
+
+
+		$link = $this->link(false);
+
+
+		$results = [];
+		foreach ($updates as $value) {
+			++self::$querySum;
+			$options = array_intersect_key($value, ['upsert' => '']) + $writeConcern;
+
+			// 多个
+			if (isset($value['multi'])) {
+				$options['multiple'] = $value['multi'];
+			}
+
+			try {
+				$queryString = $update.'.update('. json_encode($value['q']) . ', ' .  json_encode($value['u']) . ', ' . json_encode($options) .')';
+				$result = $link->{$update}->update($value['q'], $value['u'], $options);
+				$this->addLog($queryString, $result);
+			} catch (MongoException $e) {
+				if ($writeConcern['continueOnError']) {
+					try {
+						$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+					} catch (Exception $e) {
+					}
+				} else {
+					$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 				}
 				continue;
 			}
-			$r[] = $update;
+
+			if (empty($result['ok'])) {
+				if ($writeConcern['continueOnError']) {
+					try {
+						$this->addLog($queryString, $result, 1);
+					} catch (Exception $e) {
+					}
+				} else {
+					$this->addLog($queryString, $result, 1);
+				}
+				continue;
+			}
+			$results[] = $result;
 		}
+
 		$n = 0;
-		foreach($r as $k => $v) {
-			if (!empty($v['n'])) {
-				$n += $v['n'];
+		foreach($results as $result) {
+			if (!empty($result['n'])) {
+				$n += $result['n'];
 			}
 		}
 		if ($n) {
 			return $n;
 		}
-		foreach($r as $k => $v) {
-			if (!empty($v['nModified'])) {
-				$n += $v['nModified'];
+		foreach($results as $result) {
+			if (!empty($result['nModified'])) {
+				$n += $result['nModified'];
 			}
 		}
 		return $n;
+
+
 
 		/*
 		// cmd 的目前没那命令
@@ -401,71 +457,94 @@ class Mongo extends Base{
 	}
 
 	public function delete($args) {
-	 	if (empty($args['delete'])) {
-			if (empty($args['collection'])) {
-				return false;
-			}
-			$args['delete'] = $args['collection'];
+		// http://docs.mongodb.org/manual/reference/command/delete/
+		// http://docs.mongodb.org/manual/reference/method/db.collection.remove/
+		// http://php.net/manual/en/mongocollection.remove.php
+		if (isset($args['ordered']) && !isset($args['writeConcern']['continueOnError'])) {
+			$args['writeConcern']['continueOnError'] = !$args['ordered'];
 		}
-		if (empty($args['deletes'])) {
-			return false;
+		if (!isset($args['writeConcern']['continueOnError'])) {
+			$args['writeConcern']['continueOnError'] = false;
 		}
 
-		$deletes = [];
-		foreach ($args['deletes'] as $k => $v) {
-			if (is_string($v) || is_bool($v) || is_int($v) || !is_numeric($k)) {
-				return false;
+		if (empty($args['delete']) && !empty($args['collection'])) {
+			$args['delete'] = $args['collection'];
+		}
+		$args += ['delete' => '', 'deletes' => [], 'writeConcern' => []];
+		extract($args, EXTR_SKIP);
+
+		$queryString = 'this.delete('. $delete. ', ' .  json_encode($deletes).', '. ($writeConcern['continueOnError'] ? false : true) .', '. json_encode($writeConcern) .')';
+
+		// 集合为空
+		$delete || $this->addLog($queryString, 'Collection named empty', 1);
+
+		// 文档为空
+		$deletes || $this->addLog($queryString, 'Deletes the querys is empty', 1);
+
+
+
+		foreach ($deletes as $key => &$value) {
+			is_numeric($key) || $this->addLog($queryString, 'Keys into the document format', 1);
+			is_array($value) || is_object($value) || $this->addLog($queryString, 'Delete the parameters', 1);
+			$value = (array) $value;
+			if (!isset($value['q']) && isset($value['query'])) {
+				$value['q'] = $value['query'];
 			}
-			$v = (array) $v;
-			if (!isset($v['q']) || ($v['q'] && !($v['q'] = $this->_idObject($v['q'], true)))) {
-				return false;
-			}
-			$deletes[] = $v;
+			isset($value['q']) || $this->addLog($queryString, 'Delete query is empty', 1);
+			is_array($value['q']) || is_object($value['q']) || $this->addLog($queryString, 'Delete query format', 1);
+			$value['q'] = $this->_idObject($value['q'], true);
 		}
-		if (!$deletes) {
-			return false;
-		}
-		$args['deletes'] = $deletes;
-		if (!$link = $this->link(false)) {
-			return false;
-		}
-		$writeConcern = empty($args['writeConcern']) ? [] : $args['writeConcern'];
-		$r = [];
-		foreach ($args['deletes'] as $v) {
+		unset($value);
+
+
+
+		$link = $this->link(false);
+		$results = [];
+		foreach ($deletes as $value) {
 			$options = $writeConcern;
-			if (isset($v['limit'])) {
-				$options['justOne'] = $v['limit'] == 1;
+			if (!empty($value['limit'])) {
+				$options['justOne'] = $value['limit'] == 1;
 			}
+
 			try {
-				$queryString = $args['delete'].'.remove('. json_encode($v['q']) . ', ' . json_encode($options) .')';
-				$remove = $link->{$args['delete']}->remove($v['q'], $options);
-				$this->addLog($queryString, $remove);
+				$queryString = $delete.'.remove('. json_encode($value['q']) . ', ' . json_encode($options) .')';
+				$result = $link->{$delete}->remove($value['q'], $options);
+				$this->addLog($queryString, $result);
 			} catch (MongoException $e) {
-				$this->_error = $e->getMessage();
-				$this->_errno = $e->getCode();
-				$this->addLog($queryString, $this->error(), 1);
-				if (!isset($args['ordered']) || $args['ordered']) {
-					return false;
-				}
-			}
-			if (empty($remove['ok'])) {
-				if (!isset($args['ordered']) || $args['ordered']) {
-					return false;
+				if ($writeConcern['continueOnError']) {
+					try {
+						$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+					} catch (Exception $e) {
+					}
+				} else {
+					$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 				}
 				continue;
 			}
-			$r[] = $remove;
+
+			if (empty($result['ok'])) {
+				if ($writeConcern['continueOnError']) {
+					try {
+						$this->addLog($queryString, $result, 1);
+					} catch (Exception $e) {
+					}
+				} else {
+					$this->addLog($queryString, $result, 1);
+				}
+				continue;
+			}
+			$results[] = $result;
 		}
+
 
 
 		$n = 0;
-		foreach($r as $k => $v) {
-			if (!empty($v['n'])) {
-				$n += $v['n'];
+		foreach($results as $result) {
+			if (!empty($result['n'])) {
+				$n += $result['n'];
 			}
 		}
 		return $n;
-
 
 		/*
 		// cmd 的目前没命令
@@ -486,303 +565,299 @@ class Mongo extends Base{
 
 	public function results($args, $slave = true) {
 		$command = empty($args['command']) ? '' : $args['command'];
-		if (!$link = $this->link($slave)) {
-			return [];
-		}
-
-
+		$queryString = 'this.results('. json_encode($args).')';
+		$link = $this->link($slave);
 
 		// aggregate
 		if ($command == 'aggregate') {
-			try {
-				if (empty($args['aggregate'])) {
-					if (empty($args['collection'])) {
-						return [];
-					}
-					$args['aggregate'] = $args['collection'];
-				}
-				$pipeline = empty($args['pipeline']) ? [] : $args['pipeline'];
-				$options = array_intersect_key($args, ['allowDiskUse' => '', 'explain' => '', 'cursor' => '', 'maxTimeMS' => '']);
-				$keys = [];
-				foreach ($pipeline as $k => $v) {
-					if(!is_int($k)) {
-						unset($pipeline[$k]);
-						if ($k && $k{0} == '$') {
-							$pipeline[][$k] = $v;
-							$keys[] = $k;
-						}
-						continue;
-					}
-					foreach ($v as $k => $v) {
-						$keys[] = $k;
-					}
-				}
-
-				if (!in_array('$limit', $keys) && !empty($args['limit'])) {
-					$pipeline[]['$limit'] = $args['limit'];
-				}
-
-				if (!in_array('$sort', $keys) && !empty($args['sort'])) {
-					$pipeline[]['$sort'] = $args['sort'];
-				}
-
-				if (!in_array('$skip', $keys) && !empty($args['skip'])) {
-					$pipeline[]['$skip'] = $args['skip'];
-				}
-				if (!in_array('$project', $keys)&& !empty($args['fields'])) {
-					$pipeline[]['$project'] = $args['fields'];
-				}
-				if (!in_array('$match', $keys) && !empty($args['query'])) {
-					$pipeline[]['$match'] = $args['query'];
-				}
-				foreach($pipeline as $k => $v) {
-					foreach ($v as $kk => $vv) {
-						if ($kk == '$match' && $vv) {
-							if (!$pipeline[$k][$kk] = $this->_idObject($vv, true)) {
-								return [];
-							}
-						}
-					}
-				}
-				++self::$querySum;
-				$queryString = $args['aggregate'] .'.aggregateCursor('. json_encode($pipeline) .', '. json_encode($options) .')';
-				$cursor = $link->{$args['aggregate']}->aggregatecursor($pipeline, $options);
-				$this->addLog($queryString, $cursor);
-				$r = [];
-				foreach ($cursor as $v) {
-					++self::$queryRow;
-					$r[] = (object) $this->_toString($v);
-				}
-			} catch (MongoException $e) {
-				$this->_error = $e->getMessage();
-				$this->_errno = $e->getCode();
-				$this->addLog($queryString, $this->error(), 1);
+			// http://docs.mongodb.org/manual/reference/command/aggregate/
+			// http://docs.mongodb.org/manual/reference/method/db.collection.aggregate/
+			// http://php.net/manual/en/mongocollection.aggregate.php
+			// http://php.net/manual/en/mongocollection.aggregatecursor.php
+			if (empty($args['distinct']) && !empty($args['collection'])) {
+				$args['distinct'] = $args['collection'];
 			}
-			return $r;
+			$distinct = empty($args['distinct']) ? '': $args['distinct'];
+			$options = array_intersect_key($args, ['allowDiskUse' => '', 'explain' => '', 'cursor' => '', 'maxTimeMS' => '']);
+
+
+			$collection || $this->addLog($queryString, 'Collection named empty', 1);
+
+			// 记录以存在的键名
+			$keys = [];
+			foreach ($pipeline as $key => $value) {
+				if(is_int($key)) {
+					foreach ($value as $key => $value) {
+						$keys[] = $key;
+					}
+				} else {
+					unset($pipeline[$key]);
+					if ($key && $key{0} == '$') {
+						$pipeline[][$key] = $value;
+						$keys[] = $key;
+					}
+				}
+			}
+
+
+			// 替换键名
+			foreach (['$limit' => 'limit', '$sort' => 'sort', '$skip' => 'skip', '$project' => 'fields', '$match' => 'query'] as $key => $value) {
+				if (!in_array($key, $keys) && !empty($args[$value])) {
+					$pipeline[][$key] = $args[$value];
+				}
+			}
+
+			// 匹配的设置成对象
+			unset($value);
+			foreach($pipeline as &$foreach) {
+				foreach ($foreach as $key => &$value) {
+					if ($key == '$match' && $value) {
+						$value = $this->_idObject($value, true);
+					}
+				}
+			}
+			unset($value);
+
+
+
+
+			try {
+				++self::$querySum;
+				$queryString = $distinct .'.aggregateCursor('. json_encode($pipeline) .', '. json_encode($options) .')';
+				$cursor = $link->{$distinct}->aggregatecursor($pipeline, $options);
+				$results = [];
+				foreach ($cursor as $result) {
+					++self::$queryRow;
+					$results[] = (object) $this->_toString($result);
+				}
+				$this->addLog($queryString, $results);
+			} catch (MongoException $e) {
+				$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+			}
+			return $results;
 		}
 
 
 		// distinct
 		if ($command == 'distinct') {
-			try {
-				if (empty($args['distinct'])) {
-					if (empty($args['collection'])) {
-						return [];
-					}
-					$args['distinct'] = $args['collection'];
-				}
-				if (isset($args['query'])) {
-					if (!is_array($args['query']) && !is_object($args['query'])) {
-						return [];
-					}
-					if ($args['query'] && !($args['query'] = $this->_idObject($args['query'], true))) {
-						return [];
-					}
-				} else {
-					$args['query'] = [];
-				}
-				++self::$querySum;
-				$queryString = $args['distinct'] .'.distinct('. $args['key'] .', '. json_encode($args['query']) .')';
-				$distinct = $link->{$args['distinct']}->distinct($args['key'], $args['query']);
-				$this->addLog($queryString, $distinct);
-			} catch (MongoException $e) {
-				$this->_error = $e->getMessage();
-				$this->_errno = $e->getCode();
-				$this->addLog($queryString, $this->error(), 1);
+			// http://docs.mongodb.org/manual/reference/command/distinct/
+			// http://docs.mongodb.org/manual/reference/method/db.collection.distinct/
+			// http://php.net/manual/en/mongocollection.distinct.php
+			if (empty($args['distinct']) && !empty($args['collection'])) {
+				$args['distinct'] = $args['collection'];
 			}
-			return $distinct ? $distinct : [];
+			if (empty($args['key']) && !empty($args['field'])) {
+				$args['key'] = $args['field'];
+			}
+			$args += ['distinct' => '', 'key' => '', 'query' => []];
+			extract($args, EXTR_SKIP);
+			$distinct || $this->addLog($queryString, 'Collection named empty', 1);
+
+			is_array($query) || is_object($query) || $this->addLog($queryString, 'Query format', 1);
+			$query = $this->_idObject($query, true);;
+
+
+			try {
+				++self::$querySum;
+				$queryString = $distinct .'.distinct('. $key .', '. json_encode($query) .')';
+				$results = $link->{$distinct}->distinct($key, $query);
+				$this->addLog($queryString, $results);
+			} catch (MongoException $e) {
+				$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+			}
+			return $results ? $results : [];
 		}
 
 
 		// group
 		if ($command == 'group') {
+			// http://docs.mongodb.org/manual/reference/command/group/
+			// http://docs.mongodb.org/manual/reference/method/db.collection.group/
+			// http://php.net/manual/en/mongocollection.group.php
+			if (empty($args['ns']) && !empty($args['collection'])) {
+				$args['ns'] = $args['collection'];
+			}
+
+			if (!isset($args['cond']) && !empty($args['query'])) {
+				$args['cond'] = $args['query'];
+			}
+
+
+			if (!isset($args['key']) && isset($args['keys'])) {
+				$args['key'] = $args['keys'];
+			}
+
+			if (!isset($args['key']) && (isset($args['$keyf']) || isset($args['keyf']))) {
+				$args['key'] = isset($args['$keyf']) ? $args['$keyf'] : $args['keyf'];
+				if (!$args['key'] instanceof MongoCode) {
+					$args['key'] = new MongoCode($args['key']);
+				}
+			}
+			if (empty($args['reduce']) && !empty($args['$reduce'])) {
+				$args['reduce'] = $args['$reduce'];
+			}
+
+			$args += ['ns' => '', 'cond' => [], 'key' => [], 'reduce' => 'function(){}', 'finalize' => '', 'initial' => []];
+			extract($args, EXTR_SKIP);
+
+
+			$ns || $this->addLog($queryString, 'Collection named empty', 1);
+
+			is_array($cond) || is_object($cond) || $this->addLog($queryString, 'Condition format', 1);
+			$cond = $this->_idObject($cond, true);
+
+			empty($key) && $this->addLog($queryString, 'Key the is empty', 1);
+
+			if ($reduce instanceof MongoCode) {
+				$reduce = new MongoCode($reduce);
+			}
+			if ($finalize && $finalize instanceof MongoCode) {
+				$finalize = new MongoCode($finalize);
+			}
+
+
 			try {
-				if (empty($args['ns'])) {
-					if (empty($args['collection'])) {
-						return [];
-					}
-					$args['ns'] = $args['collection'];
-				}
-				if (!isset($args['cond']) && isset($args['query'])) {
-					$args['cond'] = $args['query'];
-				}
-				if (isset($args['cond'])) {
-					if (!is_array($args['cond']) && !is_object($args['cond'])) {
-						return [];
-					}
-					if ($args['cond'] && !($args['cond'] = $this->_idObject($args['cond'], true))) {
-						return [];
-					}
-				}
-				if (!isset($args['key']) && isset($args['$keyf'])) {
-					$args['key'] = $args['$keyf'];
-					if (!$args['key'] instanceof MongoCode) {
-						$args['key'] = new MongoCode($args['key']);
-					}
-				}
-				if (empty($args['$reduce']) || !$args['$reduce'] instanceof MongoCode) {
-					$args['$reduce'] = new MongoCode(empty($args['$reduce']) ? 'function(){}' : $args['$reduce']);
-				}
-				if (!empty($args['finalize']) && !$args['finalize'] instanceof MongoCode) {
-					$args['finalize'] = new MongoCode($args['finalize']);
-				}
-				$args += ['initial' => []];
 				$options = [];
-				if (!empty($args['finalize'])) {
-					$options['finalize'] = $args['finalize'];
+				if ($finalize) {
+					$options['finalize'] = $finalize;
 				}
-				if (!empty($args['cond'])) {
-					$options['condition'] = $args['cond'];
+				if ($cond) {
+					$options['condition'] = $cond;
 				}
 				++self::$querySum;
-				$queryString = $args['ns'] .'.group('. json_encode($args['key']) .', '. json_encode($args['initial']) .', '. json_encode($args['$reduce']) .', '. json_encode($options) .')';
-				$group = $link->{$args['ns']}->group($args['key'], $args['initial'], $args['$reduce'], $options);
-				$this->addLog($queryString, $group);
+				$queryString = $ns .'.group('. json_encode($key) .', '. json_encode($initial) .', '. $reduce->__toString() .', '. json_encode($options) .')';
+				$results = $link->{$ns}->group($key, $initial, $reduce, $options);
+				$this->addLog($queryString, $results);
 			} catch (MongoException $e) {
-				$this->_error = $e->getMessage();
-				$this->_errno = $e->getCode();
-				$this->addLog($queryString, $this->error(), 1);
-				return [];
+				$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 			}
-			if (!empty($r['err']) || !empty($r['errmsg'])) {
-				$this->_error = empty($r['err']) ? $r['errmsg'] : $r['err'];
-				$this->_errno = empty($r['code']) ? -1 : $r['code'];
-				$this->addLog($queryString, $this->error(), 1);
-				return [];
+			$res = [];
+			if (!empty($results['retval'])) {
+				foreach ($results['retval'] as $retval) {
+					++self::$queryRow;
+					$res[] = (object) $this->_toString($retval);
+				}
+				// mongodb 的 group 不支持排序 添加支持
+				if (!empty($sort)) {
+					$this->_sort = $sort;
+					usort($res, [$this, 'sort']);
+				}
 			}
-			if (empty($group['retval'])) {
-				return [];
-			}
-			$r = [];
-			foreach ($group['retval'] as $v) {
-				++self::$queryRow;
-				$r[] = (object) $this->_toString($v);
-			}
-			// mongodb 的 group 不支持排序 添加支持
-			if (!empty($args['sort'])) {
-				$this->sort = $args['sort'];
-				usort($r,[$this, 'sort']);
-			}
-			return $r;
+			return $res;
 		}
 
 
+		$args += ['collection' => '', 'fields' => [], 'query' => [], 'options' => [], 'sort' => [], 'skip' => 0, 'limit' => 0];
+		extract($args, EXTR_SKIP);
 
+		$collection || $this->addLog($queryString, 'Collection named empty', 1);
+
+		is_array($query) || is_object($query) || $this->addLog($queryString, 'Query format', 1);
+
+		$query = $this->_idObject($query, true);
 
 
 		// 常规查询
 		try {
-			if (empty($args['collection']) || !isset($args['query']) || (!is_array($args['query']) && !is_object($args['query']))) {
-				return [];
-			}
-			if ($args['query'] && !($args['query'] = $this->_idObject($args['query'], true))) {
-				return [];
-			}
-			$args['fields'] = empty($args['fields']) ? [] : $args['fields'];
-
-			$queryString = $args['collection'] . '.find('. json_encode($args['query']) . ', '. json_encode($args['fields']).')';
-			$cursor = $link->{$args['collection']}->find($args['query'], $args['fields']);
-			if (!empty($args['options'])) {
-				foreach ($args['options'] as $k => $v) {
-					$cursor = $cursor->addOption($k, $v);
-					$queryString .= '.addOption('. $k .', '. (is_array($v) || is_object($v) ? json_encode($v)  : $v) .')';
+			$queryString = $collection . '.find('. json_encode($query) . ', '. json_encode($fields).')';
+			$cursor = $link->{$collection}->find($query, $fields);
+			if ($options) {
+				foreach ($options as $name => $value) {
+					$queryString .= '.addOption('. $name .', '. (is_array($value) || is_object($value) ? json_encode($value)  : $value) .')';
+					$cursor = $cursor->addOption($name, $value);
 				}
 			}
-			if (!empty($args['sort'])) {
-				$cursor = $cursor->sort($args['sort']);
-				$queryString .= '.sort('. json_encode($args['sort']) .')';
+			if ($sort) {
+				$cursor = $cursor->sort($sort);
+				$queryString .= '.sort('. json_encode($sort) .')';
 			}
-			if (!empty($args['skip'])) {
-				$cursor = $cursor->skip($args['skip']);
-				$queryString .= '.skip('. $args['skip'] .')';
+			if ($skip) {
+				$cursor = $cursor->skip($skip);
+				$queryString .= '.skip('. $skip .')';
 			}
-			if (!empty($args['limit'])) {
-				$cursor = $cursor->limit($args['limit']);
-				$queryString .= '.limit('. $args['limit'] .')';
+			if ($limit) {
+				$cursor = $cursor->limit($limit);
+				$queryString .= '.limit('. $limit .')';
 			}
 			$this->explain && $this->addLog($queryString .'.explain()', $cursor->explain());
-			foreach ($cursor as $v) {
+			$results = [];
+			foreach ($cursor as $value) {
 				++self::$queryRow;
-				$r[] = (object) $this->_toString($v);
+				$results[] = (object) $this->_toString($value);
 			}
-			$this->addLog($queryString, $r);
+			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			$this->_error = $e->getMessage();
-			$this->_errno = $e->getCode();
-			$this->addLog($queryString, $this->error(), 1);
-			$r = [];
+			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 		}
-
-		return $r;
+		return $results;
 	}
+
 
 	public function count($args, $slave = true) {
-		if (empty($args['collection']) || !isset($args['query']) || (!is_array($args['query']) && !is_object($args['query']))) {
-			return false;
+		// http://docs.mongodb.org/manual/reference/command/count/
+		// http://docs.mongodb.org/manual/reference/method/db.collection.count/
+		// http://php.net/manual/ja/mongocollection.count.php
+		// http://php.net/manual/ja/mongocursor.count.php
+
+
+		if (empty($args['count']) && !empty($args['collection'])) {
+			$args['count'] = $args['collection'];
 		}
-		if (!$link = $this->link($slave)) {
-			return false;
-		}
-		if ($args['query'] && !($args['query'] = $this->_idObject($args['query'], true))) {
-			return false;
-		}
+		$args += ['count' => '', 'query' => []];
+
+		extract($args, EXTR_SKIP);
+
+		$count || $this->addLog($queryString, 'Collection named empty', 1);
+
+		is_array($query) || is_object($query) || $this->addLog($queryString, 'Query format', 1);
+
+		$query = $this->_idObject($query, true);
+
+		$link = $this->link($slave);
+
+
 		++self::$querySum;
 		try {
-			$args['fields'] = empty($args['fields']) ? [] : $args['fields'];
-			$cursor = $link->{$args['collection']}->find($args['query'], $args['fields']);
-			$queryString = $args['collection'].'.find('. json_encode($args['query']) . ', '. json_encode($args['fields']).')';
-			if (!empty($args['options'])) {
-				foreach ($args['options'] as $k => $v) {
-					$cursor = $cursor->addOption($k, $v);
-					$queryString .= '.addOption('. $k .', '. (is_array($v) || is_object($v) ? json_encode($v)  : $v) .')';
-				}
-			}
-			$this->explain && $this->addLog($queryString .'.explain()', $cursor->explain());
-			$queryString .= '.count(true)';
-			$count = $cursor->count(true);
-			$this->addLog($queryString, $count);
+			$options = array_intersect_key($options, ['hint' => '', 'limit' => '', 'skip' => '', 'maxTimeMS' => '']);
+
+			$queryString = $count.'.count('. json_encode($query) . ', '. json_encode($options) .')';
+			$result = $link->{$count}->count($query, $options);
+			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			$this->_error = $e->getMessage();
-			$this->_errno = $e->getCode();
-			$this->addLog($queryString, $this->error(), 1);
+			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 			return false;
 		}
-		return $count;
+		return $result;
 	}
 
 
-	public function start() {
+	public function startTransaction() {
+		$this->addLog('startTransaction', 'Mongodb no transaction', 1);
 	 	return false;
     }
     public function commit() {
+    	$this->addLog('commit', 'Mongodb no transaction', 1);
     	return false;
     }
     public function rollback() {
+    	$this->addLog('rollback', 'Mongodb no transaction', 1);
     	return false;
     }
 
 	private function _idObject($args, $call = false, $logical = false) {
 		if (!$call) {
 			if (isset($args['_id'])) {
-				if (!$args['_id'] = $this->_id($args['_id'], $call)) {
-					return false;
-				}
+				$args['_id'] = $this->_id($args['_id'], $call);
 			} elseif (isset($args->_id)) {
-				if (!$args->_id = $this->_id($args->_id, $call)) {
-					return false;
-				}
+				$args->_id = $this->_id($args->_id, $call);
 			}
 		} else {
 			foreach ($args as $k => &$v) {
 				if ($k === '_id') {
-					if (!$v = $this->_id($v, $call)) {
-						return false;
-					}
+					$v = $this->_id($v, $call);
 				} elseif ($logical || ($k && $k{0} == '$')) {
 					if ($v && (is_array($v) || is_object($v)) && ($logical || in_array($k, ['$gt', '$gte', '$in', '$lt', '$lte', '$ne', '$nin', '$and', '$nor', '$not', '$or', '$mod', '$all', '$elemMatch']))) {
-						if (!$v = $this->_idObject($v, $call, in_array($k, ['$and', '$nor', '$not', '$or']))) {
-							return false;
-						}
+						$v = $this->_idObject($v, $call, in_array($k, ['$and', '$nor', '$not', '$or']));
 					}
 				}
 			}
@@ -810,66 +885,50 @@ class Mongo extends Base{
 		if ($call && (is_array($_id) || is_object($_id))) {
 			foreach ($_id as &$v) {
 				if (is_array($v) || is_object($v)) {
-					if (!$v = $this->_id($v, true)) {
-						return false;
-					}
+					$v = $this->_id($v, true);
 				} else {
 					if (!$v instanceof MongoId) {
 						try {
 							$v = new MongoId($v);
 						} catch (MongoException $e) {
-							$this->_error = $e->getMessage();
-							$this->_errno = $e->getCode();
-							$this->addLog('MongoId()', $this->error(), 1);
-							return false;
+							$this->addLog('this.MongoId('. (is_array($v) || is_object($v) ? json_encode($v) : $v) .')', $e->getMessage(), 1, $e->getCode());
 						}
 					}
 				}
 			}
 		} else {
-			if (!$_id) {
-				return false;
-			}
+			$_id || $this->addLog('this.MongoId()', '_id is empty', 1);
 			try {
 				$_id = new MongoId($_id);
 			} catch (MongoException $e) {
-				$this->_error = $e->getMessage();
-				$this->_errno = $e->getCode();
-				$this->addLog('MongoId()', $this->error(), 1);
-				return false;
+				$this->addLog('this.MongoId('. (is_array($v) || is_object($v) ? json_encode($v) : $v) .')', $e->getMessage(), 1, $e->getCode());
 			}
 		}
 		return $_id;
 	}
 
 
-	private function _command($command, $options = []) {
-		if (!$command || !($link = $this->link(false))) {
-			return false;
-		}
+	private function _command(array $command, array $options = []) {
+		$queryString = 'this.command('.json_encode($command).', '. json_encode($options).' )';
+		$command || $this->addLog($queryString, 'Command is empty', 1);
+		$link = $this->link(false);
+
 		++self::$querySum;
 		try {
-			$queryString = 'this.command('.json_encode($command).', '. json_encode($options).' )';
-			$r = $link->command($command, $options);
-			$this->addLog($queryString, $r);
+			$results = $link->command($command, $options);
+			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			$this->_error = $e->getMessage();
-			$this->_errno = $e->getCode();
-			$this->addLog($queryString, $this->error(), 1);
-			return false;
+			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 		}
-		if (!empty($r['err']) || !empty($r['errmsg']) ) {
-			$this->_error = empty($r['err']) ? $r['errmsg'] : $r['err'];
-			$this->_errno = empty($r['code']) ? -1 : $r['code'];
-			$this->addLog($queryString, $this->error(), 1);
-			return false;
+		if (!empty($results['err']) || !empty($results['errmsg']) ) {
+			$this->addLog($queryString, $results, 1);
 		}
-		return $r;
+		return $results;
 	}
 
 
 	public function sort($a, $b) {
-		foreach ($this->sort as $k => $v) {
+		foreach ($this->_sort as $k => $v) {
 			if (isset($a->{$k}) && isset($b->{$k})) {
 				if ($a->{$k} > $b->{$k}) {
 					return $v > 0 ? 1 : -1;

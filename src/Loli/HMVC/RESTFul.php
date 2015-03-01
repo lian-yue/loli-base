@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-09 15:15:25
-/*	Updated: UTC 2015-02-18 06:43:31
+/*	Updated: UTC 2015-02-26 05:42:21
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
@@ -16,7 +16,7 @@ class_exists('Loli\HMVC\Controller') || exit;
 class  RESTFul extends Controller{
 
 	// 主要字段
-	public $primary = [ 'user_id' => '\d', 'qq' => '[0-9a-zA-Z_-]'];
+	protected $primary = ['user_id' => '\d', 'qq' => '[0-9a-zA-Z_-]'];
 
 	// 默认
 	public function __construct(Request &$request, Response &$response) {
@@ -78,7 +78,6 @@ class  RESTFul extends Controller{
 					'DELETE' => $primary,
 				]
 			],
-
 		];
 
 		$this->allows = array_merge($allows, $this->allows);

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-10 14:44:19
+/*	Updated: UTC 2015-02-26 05:14:49
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -66,9 +66,9 @@ abstract class Base {
 	*
 	*	返回值 bool
 	**/
-	public function __construct($a = '', $type = false) {
+	public function __construct($im = '', $type = false) {
 		@ini_set('memory_limit', $this->memory);
-		$a && $this->create($a, $type);
+		$im && $this->create($im, $type);
 	}
 
 	/**
@@ -226,7 +226,7 @@ abstract class Base {
 	**/
 	public function resizeDimensions($max_w = 0, $max_h = 0, $crop = false, $enlarge = false, $fill = false) {
 		if ($max_w <= 0 && $max_h <= 0) {
-			throw new Exception('Resize', 70);
+			throw new Exception('Resize');
 		}
 
 		$w = $this->width();

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-05-12 18:03:40
-/*	Updated: UTC 2015-02-03 09:19:52
+/*	Updated: UTC 2015-02-26 05:48:43
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
@@ -17,30 +17,27 @@ class FTP extends Base{
 
 	private $_link;
 
-	public $dir = '/';
+	protected $dir = '/';
 
-	public $chmod = 0644;
+	protected $chmod = 0644;
 
-	public $chmodDir = 0755;
+	protected $chmodDir = 0755;
 
-	public $host;
+	protected $host;
 
-	public $port = 21;
+	protected $port = 21;
 
-	public $user = false;
+	protected $user = false;
 
-	public $pass = false;
+	protected $pass = false;
 
-	public $pasv = false;
+	protected $pasv = false;
 
-	public $ssl = false;
+	protected $ssl = false;
 
-	public $timeout = 15;
+	protected $timeout = 15;
 
-	public $mode = FTP_BINARY;
-
-	public $buffer = 2097152;
-
+	protected $mode = FTP_BINARY;
 
 
 	public function __construct($args) {

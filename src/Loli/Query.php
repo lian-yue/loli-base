@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 09:43:36
-/*	Updated: UTC 2015-02-18 10:25:21
+/*	Updated: UTC 2015-02-26 05:38:23
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -16,15 +16,6 @@ use StdClass;
 trait_exists('Loli\Model', true) || exit;
 class Query{
 	use Model;
-
-	// 缓存时间
-	public $ttl = 0;
-
-	// 缓存数据
-	public $data = [];
-
-	// table表
-	public $table;
 
 	// args索引
 	public $args = [];
@@ -40,14 +31,13 @@ class Query{
 	public $query = [];
 
 
-	//  关联 joins
-	public $joins = [
-	//	'关联的key的id' ['this' => $this->key 中的key位置支持 a.b.c, 'type' => 'join类型', 'on' => ['自己id', 别人id], 'auto' => 是否自动加载, 'use' => 是否使用, 'table' => '表' 'args' => '查询数组',  'fields' => '附加值段' 'as' => '排序自动添加' 'query' => '附加查询' '注意' 附加查询如果写了可能会附加到 其他表上面去哦 按照 优先级顺序的 如果没写的话读对象里面的查询会过滤掉全局的];
-	];
 
 
+	// 是否使用从数据库
+	public $slave = true;
 
-
+	// table表
+	public $table;
 
 	// 自增字段 string
 	public $insertID;
@@ -64,40 +54,51 @@ class Query{
 
 
 
+	//  关联 joins
+	protected $joins = [
+	//	'关联的key的id' ['this' => $this->key 中的key位置支持 a.b.c, 'type' => 'join类型', 'on' => ['自己id', 别人id], 'auto' => 是否自动加载, 'use' => 是否使用, 'table' => '表' 'args' => '查询数组',  'fields' => '附加值段' 'as' => '排序自动添加' 'query' => '附加查询' '注意' 附加查询如果写了可能会附加到 其他表上面去哦 按照 优先级顺序的 如果没写的话读对象里面的查询会过滤掉全局的];
+	];
+
+
+	// 缓存时间
+	protected $ttl = 0;
+
+	// 缓存数据
+	protected $data = [];
+
+
+
 	// 添加 bool 或者 允许的字段
-	public $add = [];
+	protected $add = [];
 
 	// 写入 bool 或者 允许的字段
-	public $set = [];
+	protected $set = [];
 
 	// 更新 bool 或者 允许的字段
-	public $update = [];
+	protected $update = [];
 
 	// 删除 bool
-	public $delete = false;
+	protected $delete = false;
 
 
 
 	// 添加多个 bool 或者 允许的字段
-	public $adds = [];
+	protected $adds = [];
 
 	// 写入多个 bool 或者 允许的字段
-	public $sets = [];
+	protected $sets = [];
 
 	// 更新多个 bool 或者 允许的字段
-	public $updates = [];
+	protected $updates = [];
 
 	// 删除多个 bool
-	public $deletes = false;
+	protected $deletes = false;
 
 	// 创建
-	public $create = [];
+	protected $create = [];
 
 	// 数据库引擎
-	public $engine = false;
-
-	// 是否使用从数据库
-	public $slave = true;
+	protected $engine = false;
 
 	public function __invoke() {
 		return call_user_func_array([$this, 'get'], func_get_args());
@@ -1015,7 +1016,7 @@ class Query{
 
 
 	// 整理数据类型
-	public function defaults(array $args, $key = [], $merge = false) {
+	protected function defaults(array $args, $key = [], $merge = false) {
 		if (!$args || empty($this->{$key[0]})) {
 			return false;
 		}

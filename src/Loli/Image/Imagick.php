@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-12 15:00:16
-/*	Updated: UTC 2015-02-10 15:11:00
+/*	Updated: UTC 2015-02-26 09:54:23
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -22,7 +22,7 @@ class Imagick extends Base{
 	public function create($file, $type = false) {
 		$this->_im && $this->destroy();
 		if (!$file || !is_file($file)) {
-			throw new Exception('Image does not exist', 10);
+			throw new Exception('Image does not exist');
 		}
 
 		try {
@@ -45,7 +45,7 @@ class Imagick extends Base{
 			$this->_im->setImageFormat(reset($this->types[$this->_type]));
 		} catch(ImagickException $e) {
 			$this->_type = $this->_im = false;
-			throw new Exception($e->getMessage(), 11);
+			throw new Exception($e->getMessage());
 		}
 		return $this;
 	}
@@ -59,7 +59,7 @@ class Imagick extends Base{
 
 	public function width() {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 		$a = $this->_im->getImagePage();
 		return $a['width'];
@@ -68,7 +68,7 @@ class Imagick extends Base{
 
 	public function height() {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 		$a = $this->_im->getImagePage();
 		return $a['height'];
@@ -76,14 +76,14 @@ class Imagick extends Base{
 
 	public function type() {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 		return $this->_type;
 	}
 
 	public function frames() {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 		if ($this->type() != self::TYPE_GIF) {
 			return 1;
@@ -98,7 +98,7 @@ class Imagick extends Base{
 
 	public function length() {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 		if ($this->type() != self::TYPE_GIF) {
 			return 0;
@@ -113,7 +113,7 @@ class Imagick extends Base{
 
 	public function rotate($angle) {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 		try {
 			$bg = new ImagickPixel('transparent');
@@ -129,7 +129,7 @@ class Imagick extends Base{
 				$this->_im->rotateImage($bg, $angle);
 			}
 		} catch(ImagickException $e) {
-			throw new Exception($e->getMessage(), 30);
+			throw new Exception($e->getMessage());
 		}
 		return $this;
 	}
@@ -137,7 +137,7 @@ class Imagick extends Base{
 
 	public function flip($mode = self::FLIP_HORIZONTAL) {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 		try {
 			if ($this->type() == self::TYPE_GIF) {
@@ -154,7 +154,7 @@ class Imagick extends Base{
 				$mode == self::FLIP_VERTICAL || $this->_im->flopImage();
 			}
 		} catch(ImagickException $e) {
-			throw new Exception($e->getMessage(), 40);
+			throw new Exception($e->getMessage());
 		}
 		return $this;
 	}
@@ -162,11 +162,11 @@ class Imagick extends Base{
 
 	public function text($text, $font, $size = 30, $color = '#FFFFFF', $x = '0%', $y = '-0%', $angle = 0,  $opacity = 1.0) {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 
 		if (!$font || !is_file($font)) {
-			throw new Exception('Font file does not exist', 50);
+			throw new Exception('Font file does not exist');
 		}
 		$angle = $angle % 360;
 
@@ -220,17 +220,17 @@ class Imagick extends Base{
 			}
 			$draw->destroy();
 		} catch(ImagickException $e) {
-			throw new Exception($e->getMessage(), 51);
+			throw new Exception($e->getMessage());
 		}
 		return $this;
 	}
 
 	public function insert($file, $x = 0, $y = 0, $opacity = 1.0) {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 		if (!$file || !is_file($file)) {
-			throw new Exception('Image does not exist', 60);
+			throw new Exception('Image does not exist');
 		}
 		try {
 			$src = new \Imagick($file);
@@ -266,7 +266,7 @@ class Imagick extends Base{
 				$this->_im->drawImage($draw);
 			}
 		} catch (ImagickException $e) {
-			throw new Exception($e->getMessage(), 61);
+			throw new Exception($e->getMessage());
 		}
 		return $this;
 	}
@@ -277,7 +277,7 @@ class Imagick extends Base{
 
 	public function resampled($new_w, $new_h, $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h) {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 		try {
 			if ($this->type() == self::TYPE_GIF) {
@@ -319,7 +319,7 @@ class Imagick extends Base{
 				}
 			}
 		} catch (ImagickException $e) {
-			throw new Exception($e->getMessage(), 70);
+			throw new Exception($e->getMessage());
 		}
 		return $this;
 	}
@@ -328,10 +328,10 @@ class Imagick extends Base{
 
 	public function save($save, $type = false) {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 		if (!$save) {
-			throw new Exception('Path', 80);
+			throw new Exception('Path');
 		}
 
 		$info = pathinfo($save);
@@ -366,7 +366,7 @@ class Imagick extends Base{
 			$perms = $stat['mode'] & 0000666;
 			@chmod($save, $perms);
 		} catch (ImagickException $e) {
-			throw new Exception($e->getMessage(), 81);
+			throw new Exception($e->getMessage());
 		}
 
 		return $this;
@@ -376,7 +376,7 @@ class Imagick extends Base{
 
 	public function show($type = false) {
 		if (!$this->_im) {
-			throw new Exception('Resource', 1);
+			throw new Exception('Resource');
 		}
 		try {
 			reset($this->types);
@@ -393,7 +393,7 @@ class Imagick extends Base{
 			header('Content-Type: ' . (empty($this->mime[$this->_type]) ? reset($this->mime) : $this->mime[$this->_type]));
 			echo $this->_type == self::TYPE_GIF ? $this->_im->getImagesBlob() : $this->_im->getImage();
 		} catch (ImagickException $e) {
-			throw new Exception($e->getMessage(), 90);
+			throw new Exception($e->getMessage());
 		}
 		return $this;
 	}

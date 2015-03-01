@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-11-20 03:56:25
-/*	Updated: UTC 2015-02-24 14:39:36
+/*	Updated: UTC 2015-02-26 05:42:25
 /*
 /* ************************************************************************** */
 namespace Loli\HMVC;
@@ -18,7 +18,7 @@ class Controller{
 	use Model;
 	protected $request, $response;
 
-	public $allows = [];
+	protected $allows = [];
 	/*public $allows = [
 		'index' => [
 			[

@@ -7,15 +7,11 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2015-02-10 12:48:56
-/*	Updated: UTC 2015-02-26 09:50:59
+/*	Created: UTC 2015-02-27 09:59:36
+/*	Updated: UTC 2015-02-27 10:02:23
 /*
 /* ************************************************************************** */
-namespace Loli\Image;
-use Loli\Exception as Exception_;
-class_exists('Loli\Exception') || exit;
-class Exception extends Exception_{
-
-
-
+namespace Loli\DB;
+class_exists('Loli\DB\Exception') || exit;
+class ConnectException extends Exception{
 }

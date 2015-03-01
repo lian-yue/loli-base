@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-05 16:44:04
-/*	Updated: UTC 2015-01-26 15:14:55
+/*	Updated: UTC 2015-02-27 12:44:15
 /*
 /* ************************************************************************** */
 namespace Loli\RBAC;
@@ -36,7 +36,7 @@ trait Base{
 	public function auth($ID, $keys, $column = '', $value = '', $compare = '=') {
 		static $r, $date, $static;
 		if (empty($date)) {
-			$date = gmtdate('Y-m-d H:i:s');
+			$date = gmdate('Y-m-d H:i:s');
 		}
 		$ID = (int) $ID;
 		$k = implode('/', $keys);

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-25 14:45:44
+/*	Updated: UTC 2015-02-28 11:24:28
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -47,18 +47,27 @@ abstract class Base{
 	public static $queryRow = 0;
 
 	public function __construct(array $args) {
-		if (!empty($args['slave'])) {
-			foreach ($args['slave'] as $v) {
-				$this->addSlave($v);
-			}
-			unset($args['slave']);
-		}
 		$this->explain = !empty($args['explain']);
 
-		if (!empty($args['master'])) {
-			foreach ($args['master'] as $v) {
-				$this->addMaster($v);
+		// 从数据库
+		if (!empty($args['slaves'])) {
+			foreach ($args['slaves'] as $slave) {
+				$this->addSlave($slave);
 			}
+			unset($args['slaves']);
+		} elseif (!empty($args['slave'])) {
+			$this->addSlave($args['slave']);
+			unset($args['slave']);
+		}
+
+		// 主数据库
+		if (!empty($args['masters'])) {
+			foreach ($args['masters'] as $master) {
+				$this->addMaster($master);
+			}
+			unset($args['masters']);
+		} elseif (!empty($args['master'])) {
+			$this->addSlave($args['master']);
 			unset($args['master']);
 		} else {
 			$this->addMaster($args);
@@ -67,65 +76,103 @@ abstract class Base{
 
 
 	public function link($slave = true) {
+		// 是否运行过链接
 		$this->link = true;
+
+		// 从数据库
 		if ($slave && $this->_slaves && $this->autoCommit) {
 			$this->slave = true;
+
+			// 链接从数据库
 			if ($this->_slave === null) {
 				shuffle($this->_slaves);
 				$i = 0;
 				foreach ($this->_slaves as $args) {
-					if (($this->_slave = $this->connect($args)) || $i > 3) {
-						$this->isLink = true;
+					if ($i > 3) {
 						break;
+					}
+					if ($this->explain) {
+						$this->_slave = $this->connect($args);
+					} else {
+						try {
+							$this->_slave = $this->connect($args);
+							break;
+						} catch (\Exception $e) {
+						}
 					}
 					++$i;
 				}
 			}
+
+			// 从数据库有 返回
 			if ($this->_slave) {
 				return $this->_slave;
 			}
 		}
+
+
+
+		// 主数据库
 		$this->slave = false;
+
+		// 链接主数据库
 		if ($this->_master === null) {
 			shuffle($this->_masters);
 			$i = 0;
 			foreach ($this->_masters as $args) {
-				if (($this->_master = $this->connect($args)) || $i > 3) {
-					$this->isLink = true;
+				if ($i > 3) {
 					break;
+				}
+				if ($this->explain) {
+					$this->_master = $this->connect($args);
+				} else {
+					try {
+						$this->_master = $this->connect($args);
+						break;
+					} catch (\Exception $e) {
+					}
 				}
 				++$i;
 			}
-			!$this->_master && $this->addLog('Link', $e->error(), 2);
+			$this->_master || $this->addLog('Link', 'Master link is unavailable', 2);
 		}
 		return $this->_master;
 	}
 
-	public function addSlave($args) {
+	public function addSlave(array $args) {
 		$this->_slaves[] = $args;
 		return true;
 	}
-	public function addMaster($args) {
+	public function addMaster(array $args) {
 		$this->_masters[] = $args;
 		return true;
 	}
 
-	public function addLog($query, $value = '', $level = 0) {
+	public function addLog($query, $data = '', $level = 0, $code = 0, $file = __FILE__ , $line = __LINE__) {
+		$data = $data ? "\n". (is_array($data) || is_object($data) ? var_export($data, true) : (string) $data)  : '';
+
+		// 记录日志
 		if (class_exists('Loli\Log')) {
-			$data = $data ? "\n". (is_array($value) || is_object($value) ? var_export($data, true) : (string) $value)  : '';
 			$levels = [0 => Log::LEVEL_QUERY, 1 => Log::LEVEL_ERROR, 2 => Log::LEVEL_ALERT];
-			return Log::write($query . $data, $levels[$level]);
+			Log::write($query . $data, $levels[$level]);
 		}
-		return false;
+
+		// 连接错误
+		if ($level == 2) {
+			throw new ConnectException($query, $data, $code, $file, $line);
+		}
+
+		// 查询错误
+		if ($level == 1) {
+			throw new Exception($query, $data, $code, $file, $line);
+		}
 	}
 
-	abstract public function connect($args);
-	abstract public function error();
-	abstract public function errno();
+	abstract public function connect(array $args);
 
 
+	abstract public function ping();
 	abstract public function tables();
-
 	abstract public function exists($table);
 	abstract public function truncate($table);
 	abstract public function drop($table);
@@ -143,7 +190,7 @@ abstract class Base{
 	abstract public function count($query, $slave = true);
 
 
-	abstract public function start();
+	abstract public function startTransaction();
 	abstract public function commit();
 	abstract public function rollback();
 }

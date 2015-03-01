@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-02-25 13:38:48
+/*	Updated: UTC 2015-02-27 05:08:07
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -55,8 +55,6 @@ if (!headers_sent()) {
 if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 	new Debug($_SERVER['LOLI']['DEBUG']);
 }
-
-
 
 
 

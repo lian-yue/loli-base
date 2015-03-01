@@ -8,11 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 10:37:27
-/*	Updated: UTC 2015-02-24 14:41:40
+/*	Updated: UTC 2015-02-26 13:25:40
 /*
 /* ************************************************************************** */
 namespace Loli;
-use Loli\HMVC\View, Loli\HMVC\Error, Loli\HMVC\Message, stdClass;
+use Loli\HMVC\View, Loli\HMVC\Error, Loli\HMVC\Message, Loli\DB\Exception as DBException, stdClass;
 class Router{
 
 	// 全部 资源
@@ -268,9 +268,12 @@ class Router{
 			// 错误捕获
 		} catch (Message $messages) {
 			// 消息捕获
+		} catch (DBException $e) {
+			// 数据库异常
+			$errors = new Error(['DB', $e->getMessage()], new Error(500));
 		} catch (\Exception $e) {
 			// 其他异常捕获 创建错误
-			$errors = new Error;
+			$errors = new Error(500);
 		}
 
 
