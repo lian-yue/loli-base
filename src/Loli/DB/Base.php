@@ -31,7 +31,7 @@ abstract class Base{
 	private $_slaves = [];
 
 	// 从数据库链接
-	private $_slavelink;
+	private $_slaveLink;
 
 	// 上次ping时间
 	protected $slavePingTime;
@@ -101,7 +101,7 @@ abstract class Base{
 			$this->slave = true;
 
 			// 链接从数据库
-			if ($this->_slavelink === null) {
+			if ($this->_slaveLink === null) {
 				shuffle($this->_slaves);
 				$i = 0;
 				foreach ($this->_slaves as $args) {
@@ -109,10 +109,10 @@ abstract class Base{
 						break;
 					}
 					if ($this->explain) {
-						$this->_slavelink = $this->connect($args);
+						$this->_slaveLink = $this->connect($args);
 					} else {
 						try {
-							$this->_slavelink = $this->connect($args);
+							$this->_slaveLink = $this->connect($args);
 							break;
 						} catch (\Exception $e) {
 						}
@@ -123,14 +123,14 @@ abstract class Base{
 			}
 
 			// 自动ping
-			if ($this->_slavelink && $this->pingInterval > 0 && ($this->slavePingTime + $this->pingInterval) < time()) {
+			if ($this->_slaveLink && $this->pingInterval > 0 && ($this->slavePingTime + $this->pingInterval) < time()) {
 				$this->slavePingTime = time();
 				$this->ping();
 			}
 
 			// 从数据库有 返回
-			if ($this->_slavelink) {
-				return $this->_slavelink;
+			if ($this->_slaveLink) {
+				return $this->_slaveLink;
 			}
 		}
 
@@ -140,7 +140,7 @@ abstract class Base{
 		$this->slave = false;
 
 		// 链接主数据库
-		if ($this->_masterink === null) {
+		if ($this->_masterLink === null) {
 			shuffle($this->_masters);
 			$i = 0;
 			foreach ($this->_masters as $args) {
@@ -148,10 +148,10 @@ abstract class Base{
 					break;
 				}
 				if ($this->explain) {
-					$this->_masterink = $this->connect($args);
+					$this->_masterLink = $this->connect($args);
 				} else {
 					try {
-						$this->_masterink = $this->connect($args);
+						$this->_masterLink = $this->connect($args);
 						break;
 					} catch (\Exception $e) {
 					}
@@ -160,7 +160,7 @@ abstract class Base{
 			}
 			$this->masterPingTime = time();
 
-			$this->_masterink || $this->addLog('Link', 'Master link is unavailable', 2);
+			$this->_masterLink || $this->addLog('Link', 'Master link is unavailable', 2);
 		}
 
 		// 自动 ping
@@ -168,7 +168,7 @@ abstract class Base{
 			$this->masterPingTime = time();
 			$this->ping();
 		}
-		return $this->_masterink;
+		return $this->_masterLink;
 	}
 
 	public function addSlave(array $args) {
@@ -203,7 +203,7 @@ abstract class Base{
 	abstract public function connect(array $args);
 
 
-	abstract public function ping($slave === null);
+	abstract public function ping($slave = null);
 	abstract public function tables();
 	abstract public function exists($table);
 	abstract public function truncate($table);
