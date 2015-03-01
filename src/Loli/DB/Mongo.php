@@ -55,7 +55,7 @@ class Mongo extends Base{
 	}
 
 
-	public function ping() {
+	public function ping($slave = null) {
 		return true;
 	}
 

@@ -84,8 +84,8 @@ class MySQLi extends Base{
 		return $results;
 	}
 
-	public function ping() {
-		$link = $this->link($this->slave);
+	public function ping($slave = null) {
+		$link = $this->link($slave === null ? $this->slave : $slave);
 		if ($link->ping()) {
 			return true;
 		}
