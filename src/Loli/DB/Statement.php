@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-10 08:00:28
-/*	Updated: UTC 2015-03-11 14:44:19
+/*	Updated: UTC 2015-03-11 15:21:38
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -26,9 +26,11 @@ class Statement {
 	protected $documents = [];
 
 	protected $options = [];
+
 	protected $slave = NULL;
 
 	public function __construct(Base $base, $statement, $tables = [], $slave = NULL) {
+		$this->slave = $slave;
 		$this->statement = $statement;
 		$this->tables((array)$tables);
 	}
