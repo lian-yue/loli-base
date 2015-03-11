@@ -45,7 +45,7 @@ class File extends Base{
 
 	public function add($data, $key, $list = 'default', $ttl = 0) {
 		++$this->count['add'];
-		if ($data === null || $data === false || ($ttl = intval($ttl)) < -1 || $this->get($key, $list) !== false) {
+		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1 || $this->get($key, $list) !== false) {
 			return false;
 		}
 		if (is_object($data)) {
@@ -58,7 +58,7 @@ class File extends Base{
 
 	public function set($data, $key, $list = 'default', $ttl = 0) {
 		++$this->count['set'];
-		if ($data === null || $data === false || ($ttl = intval($ttl)) < -1) {
+		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1) {
 			return false;
 		}
 		if (is_object($data)) {

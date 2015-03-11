@@ -607,7 +607,7 @@ class HTML{
 	public function defaultCall($tag, array $attr, $single = false, $html = '') {
 		// attr
 		foreach ($attr as $k => $v) {
-			if (!isset($attr[$k]) || ($v = $this->Attr->run($attr[$k], $k, $tag)) === null) {
+			if (!isset($attr[$k]) || ($v = $this->Attr->run($attr[$k], $k, $tag)) === NULL) {
 				unset($attr[$k]);
 				continue;
 			}
@@ -708,12 +708,12 @@ class HTML{
 	**/
 	public function param($tag, array $attr, $single = false, $html = '') {
 		$tag = end($this->stack);
-		if (empty($attr['name']) || !isset($attr['value']) || ($attr['name'] == 'type' && !strpos($attr['value'], '/')) || ($attr['value'] = $this->Attr->run($attr['value'],  $attr['name'], $tag)) === null) {
+		if (empty($attr['name']) || !isset($attr['value']) || ($attr['name'] == 'type' && !strpos($attr['value'], '/')) || ($attr['value'] = $this->Attr->run($attr['value'],  $attr['name'], $tag)) === NULL) {
 			return '';
 		}
 		$attr['value'] = $this->Attr->run($attr['value'],  $attr['name'], $tag);
 		foreach($attr as $k => &$v) {
-			if (!in_array($k, ['name', 'value']) && ($v = $this->Attr->run($v, $k, $tag)) === null) {
+			if (!in_array($k, ['name', 'value']) && ($v = $this->Attr->run($v, $k, $tag)) === NULL) {
 				unset($attr[$k]);
 			}
 		}
@@ -999,7 +999,7 @@ class Attr{
 	**/
 	public function run($value, $attr, $tag = '') {
 		$attr = strtolower($attr);
-		return empty($this->call[$attr]) ? null : call_user_func($this->call[$attr], $value, $attr, $tag);
+		return empty($this->call[$attr]) ? NULL : call_user_func($this->call[$attr], $value, $attr, $tag);
 	}
 
 
@@ -1032,14 +1032,14 @@ class Attr{
 	**/
 	public function url($value) {
 		if (empty($value)) {
-			return null;
+			return NULL;
 		}
 		if (isset($this->cache['url'][$value]) || (isset($this->data['url']) && array_key_exists($value, $this->data['url']))) {
 			return $this->cache['url'][$value];
 		}
 		$parse = parse_url($value);
 		if (!empty($parse['scheme']) && !in_array(strtolower($parse['scheme']), ['http', 'https', 'ftp', 'gopher', 'news', 'telnet', 'rtsp', 'mms', 'callto', 'bctp', 'synacast', 'thunder', 'flashget', 'qqid', 'magnet', 'ed2k'])) {
-			return $this->cache['url'][$value] = null;
+			return $this->cache['url'][$value] = NULL;
 		}
 		return $this->cache['url'][$value] = $value;
 	}
@@ -1052,7 +1052,7 @@ class Attr{
 	**/
 	public function style($value) {
 		if (empty($value)) {
-			return null;
+			return NULL;
 		}
 		if (isset($this->cache['style'][$value]) || (isset($this->data['style']) && array_key_exists($value, $this->data['style']))) {
 			return $this->cache['style'][$value];
@@ -1091,7 +1091,7 @@ class Attr{
 		}
 
 		if (empty($style)) {
-			return $this->cache['style'][$value] = null;
+			return $this->cache['style'][$value] = NULL;
 		}
 
 		$r = '';
@@ -1108,7 +1108,7 @@ class Attr{
 	**/
 	public function class_($value) {
 		if (!$value = trim($value)) {
-			return null;
+			return NULL;
 		}
 		if (isset($this->cache['class'][$value]) || (isset($this->data['class']) && array_key_exists($value, $this->data['class']))) {
 			return $this->cache['class'][$value];
@@ -1122,7 +1122,7 @@ class Attr{
 			$r[] = preg_replace('/[^0-9a-z_-]/i', '', $v);
 		}
 		if (!$r = implode(' ', $r)) {
-			return $this->cache['class'][$value] = null;
+			return $this->cache['class'][$value] = NULL;
 		}
 		return $this->cache['class'][$value] = $r;
 	}
@@ -1136,12 +1136,12 @@ class Attr{
 	**/
 	public function id($value) {
 		if (!$value = trim($value)) {
-			return null;
+			return NULL;
 		}
 		if (isset($this->cache['id'][$value]) || (isset($this->data['id']) && array_key_exists($value, $this->data['id']))) {
 			return $this->cache['id'][$value];
 		}
-		return $this->cache['id'][$value] = !in_array($value, $this->id) && $this->prefix && substr($value, 0, strlen($this->prefix)) != $this->prefix ? null : preg_replace('/[^0-9a-z_-]/i', '', $value);
+		return $this->cache['id'][$value] = !in_array($value, $this->id) && $this->prefix && substr($value, 0, strlen($this->prefix)) != $this->prefix ? NULL : preg_replace('/[^0-9a-z_-]/i', '', $value);
 	}
 
 
@@ -1152,12 +1152,12 @@ class Attr{
 	**/
 	public function name($value) {
 		if (!$value = trim($value)) {
-			return null;
+			return NULL;
 		}
 		if (isset($this->cache['name'][$value]) || (isset($this->data['name']) && array_key_exists($value, $this->data['name']))) {
 			return $this->cache['name'][$value];
 		}
-		return $this->cache['name'][$value] = !in_array($value, $this->name) && $this->prefix && substr($value, 0, strlen($this->prefix)) != $this->prefix ? null : preg_replace('/[^0-9a-z_-]/i', '', $value);
+		return $this->cache['name'][$value] = !in_array($value, $this->name) && $this->prefix && substr($value, 0, strlen($this->prefix)) != $this->prefix ? NULL : preg_replace('/[^0-9a-z_-]/i', '', $value);
 	}
 
 
@@ -1168,7 +1168,7 @@ class Attr{
 	**/
 	public function align($value) {
 		if (!in_array($value, ['left', 'right', 'top', 'bottom', 'center', 'middle'])) {
-			return null;
+			return NULL;
 		}
 		return $value;
 	}
@@ -1179,7 +1179,7 @@ class Attr{
 	**/
 	public function color($value) {
 		if (!preg_match('/^\s*([0-9a-z#]+|rgba?\([0-9,. ]\))\s*$/i', $value)) {
-			return null;
+			return NULL;
 		}
 		return $value;
 	}
@@ -1194,7 +1194,7 @@ class Attr{
 		if (in_array($tag, ['video', 'audio']) && preg_match('/^(video|audio|image)\/[0-9a-z_-]+$/i', $value)) {
 			return $value;
 		}
-		return null;
+		return NULL;
 	}
 
 
@@ -1202,7 +1202,7 @@ class Attr{
 	*	target
 	**/
 	public function target($value) {
-		return in_array($value, $this->target) ? $this->target : null;
+		return in_array($value, $this->target) ? $this->target : NULL;
 	}
 
 
@@ -1218,7 +1218,7 @@ class Attr{
 	**/
 	public function lang($value) {
 		if (!preg_match('/^[a-z_-]{2,10}$/i', $value)) {
-			return null;
+			return NULL;
 		}
 		return $value;
 	}
@@ -1228,7 +1228,7 @@ class Attr{
 	**/
 	public function dir($value) {
 		if (!in_array($value, ['rtl', 'rtl'])) {
-			return null;
+			return NULL;
 		}
 		return $value;
 	}
@@ -1238,7 +1238,7 @@ class Attr{
 	**/
 	public function usemap($value) {
 		if (!preg_match('/^[#.]'. $this->prefix .'[0-9a-z_-]+$/i', $value)) {
-			return null;
+			return NULL;
 		}
 		return $value;
 	}
@@ -1248,7 +1248,7 @@ class Attr{
 	**/
 	public function shape($value) {
 		if (!in_array($value, ['default', 'rect', 'circ', 'poly'])) {
-			return null;
+			return NULL;
 		}
 		return $value;
 	}
@@ -1263,7 +1263,7 @@ class Attr{
 	*	method
 	**/
 	public function method($value) {
-		return $value ? (strtoupper($value) == 'POST' ? 'POST' : 'GET') : null;
+		return $value ? (strtoupper($value) == 'POST' ? 'POST' : 'GET') : NULL;
 	}
 
 	/**
@@ -1271,7 +1271,7 @@ class Attr{
 	**/
 	public function rules($value){
 		if (!in_array($value, ['none', 'groups', 'rows', 'cols', 'all'])) {
-			return null;
+			return NULL;
 		}
 		return $value;
 	}
@@ -1280,7 +1280,7 @@ class Attr{
 	**/
 	public function frame($value) {
 		if (!in_array($value, ['void', 'above', 'below', 'hsides', 'vsides', 'lhs', 'rhs', 'box', 'border'])) {
-			return null;
+			return NULL;
 		}
 		return $value;
 	}
@@ -1289,7 +1289,7 @@ class Attr{
 	**/
 	public function valign($value) {
 		if (!in_array($value, ['top', 'middle', 'bottom', 'baseline'])) {
-			return null;
+			return NULL;
 		}
 		return $value;
 	}
@@ -1299,7 +1299,7 @@ class Attr{
 	**/
 	public function media($value, $attr, $tag) {
 		if ($tag != 'style') {
-			return null;
+			return NULL;
 		}
 		if (!empty($this->cache['media'][$value])) {
 			return $this->cache['media'][$value];
@@ -1350,20 +1350,20 @@ class Attr{
 	*	autocomplete
 	**/
 	public function autocomplete($value) {
-		return in_array(strtolower($value), ['on', 'off']) ? $value : null;
+		return in_array(strtolower($value), ['on', 'off']) ? $value : NULL;
 	}
 	/**
 	*	classid
 	**/
 	public function classid($value, $attr, $tag) {
-		return $tag == 'object' && in_array(strtolower($value), $this->classid) ? $value : null;
+		return $tag == 'object' && in_array(strtolower($value), $this->classid) ? $value : NULL;
 	}
 
 	public function rel($value, $attr, $tag){
 		if (!empty($this->rel[$value]) && ($this->rel[$value] === true || in_array($tag, $this->rel[$value]))) {
 			return $value;
 		}
-		return null;
+		return NULL;
 	}
 
 	public function minMaxStep($value){

@@ -86,7 +86,7 @@ class Table{
 						$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 						unset($parse['user'], $parse['pass'], $parse['host'], $parse['scheme']);
 						if (is_array($v['url'])) {
-							$parse['query'] = array_intersect_key($parse['query'],  ['$order' => null] + array_flip($v['url']));
+							$parse['query'] = array_intersect_key($parse['query'],  ['$order' => NULL] + array_flip($v['url']));
 						}
 						$parse['query']['$orderby'] = $k;
 						$parse['query']['$order'] = empty($parse['query']['$order']) || strtoupper($parse['query']['$order']) != 'ASC' ? 'ASC' : 'DESC';

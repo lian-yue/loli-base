@@ -100,6 +100,9 @@ class Query{
 	// 数据库引擎
 	protected $engine = false;
 
+	// 是否过滤掉不必要的字段
+	protected $intersect = false;
+
 	public function __invoke() {
 		return call_user_func_array([$this, 'get'], func_get_args());
 	}
@@ -114,7 +117,7 @@ class Query{
 	*
 	*	返回值 字符串
 	**/
-	public function str(array $query) {
+	public function query(array $query) {
 		$query += $this->query;
 
 
@@ -280,6 +283,7 @@ class Query{
 		return $this->Query->get($this->Query->parse($query, $args), $table, $fields, 'AND');
 	}
 
+
 	/**
 	*	获取 多行
 	*
@@ -289,9 +293,9 @@ class Query{
 	*	返回值 true false
 	**/
 	public function results(array $query) {
-		$query['$count'] = null;
+		$query['$count'] = NULL;
 		$r = [];
-		foreach($this->DB->results($this->str($query), $this->slave) as $v) {
+		foreach($this->DB->results($this->query($query), $this->slave) as $v) {
 			$r[] = $this->r($v);
 		}
 		return $r;
@@ -306,9 +310,9 @@ class Query{
 	*	返回值 true false
 	**/
 	public function row(array $query) {
-		$query['$count'] = null;
+		$query['$count'] = NULL;
 		$query['$limit'] = 1;
-		if ($r = $this->DB->row($this->str($query), $this->slave)) {
+		if ($r = $this->DB->row($this->query($query), $this->slave)) {
 			return $this->r($r);
 		}
 		return false;
@@ -325,7 +329,7 @@ class Query{
 	*/
 	public function count(array $query) {
 		$query['$count'] = true;
-		return $this->DB->count($this->str($query), $this->slave);
+		return $this->DB->count($this->query($query), $this->slave);
 	}
 
 
@@ -443,141 +447,154 @@ class Query{
 	**/
 	public function add(array $args) {
 		// 过滤数组
-		if (!($a = $this->defaults($args, ['add'], true)) || !($table = $this->table($a + $args, 1))) {
+		if (!($document = $this->defaults($args, ['add'], true)) || !($table = $this->table($document + $args, 1))) {
 			return false;
 		}
 
 		$this->slave = false;
 
 		// 主要字段检测
-		if ($this->primary) {
-			$q = [];
-			foreach ($this->primary as $k) {
-				if (!$get = isset($a[$k])) {
+		$query = [];
+		$isQuery = false;
+		foreach ($this->primary as $column) {
+			if (!$isQuery = isset($document[$column])) {
+				break;
+			}
+			$query[] = (object)['column' => $column, 'compare' => '=', 'value' => $document[$column]];
+		}
+		if ($isQuery && call_user_func_array([$this, 'get'], $query)) {
+			return false;
+		}
+
+		// 唯一值检测
+		foreach ($this->uniques as $unique) {
+			$query = [];
+			$isQuery = false;
+			foreach($unique as $column) {
+				if (!$isQuery = isset($document[$column])) {
 					break;
 				}
-				$q[$k] = $a[$k];
+				$query[] = (object)['column' => $column, 'compare' => '=', 'value' => $document[$column]];
 			}
-			if ($get && call_user_func_array([$this, 'get'], $q)) {
+			if ($isQuery && $this->DB->row($this->Query->get(['$limit' => 1] + $query, $table), false)) {
 				return false;
 			}
 		}
 
-		// 唯一值检测
-		if ($this->uniques) {
-			foreach ($this->uniques as $uniques) {
-				$qq = [];
-				foreach($uniques as $k) {
-					if (!$get = isset($a[$k])) {
-						break;
-					}
-					$qq[$k] = $a[$k];
-				}
-				if ($get && $this->DB->row($this->Query->get(['$limit' => 1] + $qq, $table), false)) {
-					return false;
-				}
-			}
-		}
 
 		// 过滤 w
-		if (!$a = $this->w($a, false, $args)) {
+		if (!$document = $this->w($document, false, $args)) {
 			return false;
 		}
 
 		// 添加进去
-		if (!$r = $this->DB->insert($this->Query->add($a, $table), false)) {
+		if (!$result = $this->DB->insert($this->Query->add($document, $table), false)) {
 			return false;
 		}
 
-		// 有 insertID
-		if ($this->insertID) {
-			$a[$this->insertID] = $r = empty($a[$this->insertID]) ? $this->DB->insertID : $a[$this->insertID];
+		if (is_array($result) || is_object($result)) {
+			$document = $result = (object) $result;
+		} elseif ($this->insertID) {
+			$result = $document[$this->insertID] = $this->DB->insertID;
+			$document = (object) $document;
 		}
 
 		// 完成回调
-		$this->c((object) $a, false, $a + $args);
-		return $r;
+		$this->c($document, false, ((array)$document) + $args);
+		return $document;
 	}
 
 
 	public function set(array $args) {
 		// 过滤数组
-		if (!($a = $this->defaults($args, ['set'], true)) || !($table = $this->table($a + $args, 1))) {
+		if (!($document = $this->defaults($args, ['set'], true)) || !($table = $this->table($document + $args, 1))) {
 			return false;
 		}
 
 		$this->slave = false;
-		// 旧值
-		$old = false;
-		if ($this->primary) {
-			$q = [];
-			foreach ($this->primary as $k) {
-				if (!$get = isset($a[$k])) {
-					break;
-				}
-				$q[$k] = $a[$k];
-			}
 
-			if ($get && ($old = $this->DB->row($this->Query->get(['$limit' => 1] + $q, $table)))) {
-				$a = array_intersect_key($a + (array) $old, (array) $old);
+		// 旧值
+		$query = [];
+		$isQuery = false;
+		foreach ($this->primary as $column) {
+			if (!$isQuery = isset($document[$column])) {
+				break;
 			}
+			$query[] = (object)['column' => $column, 'compare' => '=', 'value' => $document[$column]];
+		}
+		$oldDocument = false;
+		if ($isQuery && ($oldDocument = $this->DB->row($this->Query->get(['$limit' => 1] + $query, $table))) && $this->intersect) {
+			$document = array_intersect_key($document, (array) $oldDocument);
 		}
 
 		// 过滤 w
-		if (!$a = $this->w($a, $old, $args)) {
+		if (!$document = $this->w($document, $oldDocument, $args)) {
 			return false;
 		}
 
 		// 写入
-		if (($r = $this->DB->replace($this->Query->set($a, $table), false)) === false) {
-			return false;
-		}
+		$result = $this->DB->replace($this->Query->set($document, $table), false);
 
-		// 有 insertID
-		if ($this->insertID) {
-			$r = $a[$this->insertID] = $this->DB->insertID;
+		if (is_array($result) || is_object($result)) {
+			$document = $result = (object) $result;
+		} elseif ($this->insertID) {
+			$result = $document[$this->insertID] = $this->DB->insertID;
+			$document = (object) $document;
 		}
 
 		// 完成回调
-		$this->c((object) ($a + ($old ? (array) $old : [])), $old, $a + $args);
+		$this->c($document, $oldDocument, ((array) $document) + $args);
 
-		return $r;
+		return $result;
 	}
 
 
-	public function update(array $args, $b) {
-		if (!$b || !$this->primary || count(array_filter(func_get_args())) <= count($this->primary)) {
+	public function update(array $args, $id) {
+		if ($id === NULL || !$this->primary || count(array_filter(func_get_args())) <= count($this->primary)) {
 			return false;
 		}
 		$this->slave = false;
 
-		if (!$a = $this->defaults($args, ['update'])) {
+		if (!$document = $this->defaults($args, ['update'])) {
 			return false;
 		}
 
-		$q = [];
-		foreach ($this->primary as $i => $k) {
-			if (is_array($q[$k] = func_get_arg($i+1)) || is_object($q[$k])) {
+		$query = [];
+		$tableDdocument = [];
+		foreach ($this->primary as $i => $column) {
+			if (($value = unc_get_arg($i+1)) === NULL) {
 				return false;
 			}
+			$tableDdocument[$column] = $value;
+			$query[] = (object)['column' => $column, 'compare' => '=', 'value' => $value];
 		}
 
-		if (!$table = $this->table($q + $a + $args, 1)) {
+		if (!$table = $this->table($tableDdocument + $document + $args, 1)) {
 			return false;
 		}
 
-		if (!$old =  $this->DB->row($this->Query->get(['$limit' => 1] + $q, $table))) {
+		if (!$oldDdocument = $this->DB->row($this->Query->get(['$limit' => 1] + $query, $table))) {
 			return false;
 		}
 
 
-		$w = [];
-		foreach ($this->primary as $v) {
-			$w[$v] = $old->{$v};
-		}
+		//$w = [];
+		//foreach ($this->primary as $v) {
+		//	$w[$v] = $old->{$v};
+		//}
 
 
 		// 唯一值检测
+		foreach ($this->uniques as $unique) {
+			$query = [];
+			foreach($unique as $column) {
+				if (isset($document[$column])) {
+					if (isset($document[$column]) && isset($oldDdocument->{$column}) && ($document[$column] !== $oldDdocument->{$column} && !is_object($oldDdocument->{$column}))) {
+						$query[] = (object)['column' => $column, 'compare' => '=', 'value' => $document[$column]];
+					}
+				}
+			}
+		}
 		if ($this->uniques) {
 			foreach ($this->uniques as $uniques) {
 				$q = [];
@@ -1021,36 +1038,38 @@ class Query{
 			return false;
 		}
 		if ($this->defaults) {
-			$a = [];
+			$document = [];
 			$defaults = $this->defaults;
-			foreach ($defaults as $k => $v) {
-				if (isset($args[$k])) {
-					if ($v !== null) {
-						settype($args[$k], gettype($v));
+			foreach ($defaults as $column => $default) {
+				if (isset($args[$column])) {
+					if ($default !== NULL) {
+						settype($args[$column], gettype($default));
 					}
 				}
-				if ($v === null) {
-					unset($defaults[$k]);
+				if ($default === NULL) {
+					unset($defaults[$column]);
 				}
 			}
 		} else {
-			$a = $args;
+			$document = $args;
 		}
-		if (!$a) {
+		if (!$document) {
 			return false;
 		}
 		if ($merge && $this->defaults) {
-			$a += $defaults;
+			$document += $defaults;
 		}
-		foreach($key as $v) {
-			if (is_array($this->{$v}) && $this->{$v}) {
-				if (!$a = array_intersect_key($a, array_flip($this->{$v}))) {
-					return false;
+		if ($this->intersect) {
+			foreach($key as $v) {
+				if (is_array($this->{$v}) && $this->{$v}) {
+					if (!$document = array_intersect_key($document, array_flip($this->{$v}))) {
+						return false;
+					}
+					break;
 				}
-				break;
 			}
 		}
-		return $a;
+		return $document;
 	}
 
 	/**

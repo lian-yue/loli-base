@@ -20,11 +20,11 @@ class Request{
 
 	const TOKEN_HEADER = 'X-Token';
 
-	const TOKEN_COOKIE = 'token';
+	const TOKEN_COOKIE = 'token';  
 
 	const AJAX_HEADER = 'X-Ajax';
 
-	const AJAX_PARAM = 'ajax';
+	const AJAX_PARAM = 'ajax'; 
 
 	private $_scheme = 'http';
 
@@ -52,17 +52,17 @@ class Request{
 
 	private $_IP = false;
 
-	private $_token = null;
+	private $_token = NULL;
 
 	private $_newToken = false;
 
-	private $_ajax = null;
+	private $_ajax = NULL;
 
-	private $_ranges = null;
+	private $_ranges = NULL;
 
-	private $_mobile = null;
+	private $_mobile = NULL;
 
-	private $_API = null;
+	private $_API = NULL;
 
 
 
@@ -317,7 +317,7 @@ class Request{
 		return $this->_querys;
 	}
 
-	public function getQuery($name, $defaultValue = null) {
+	public function getQuery($name, $defaultValue = NULL) {
 		return isset($this->_querys[$name]) ? $this->_querys[$name] : $defaultValue;
 	}
 
@@ -358,7 +358,7 @@ class Request{
 		return $this->_headers;
 	}
 
-	public function getHeader($name, $defaultValue = null) {
+	public function getHeader($name, $defaultValue = NULL) {
 		return isset($this->_headers[$name]) ? $this->_headers[$name] : $defaultValue;
 	}
 
@@ -369,7 +369,7 @@ class Request{
 			}
 		}
 		$this->_headers = [];
-		$this->_API = $this->_mobile = $this->_ranges = null;
+		$this->_API = $this->_mobile = $this->_ranges = NULL;
 		$_COOKIE = [];
 		foreach($headers as $name => $value) {
 			$this->setHeader($name, $value);
@@ -382,7 +382,7 @@ class Request{
 
 	public function setHeader($name, $value) {
 		$nameKey = strtoupper(strtr($name, '-', '_'));
-		if ($value === null && $name !== 'Host') {
+		if ($value === NULL && $name !== 'Host') {
 			unset($this->_headers[$name]);
 			unset($_SERVER['HTTP_'. $nameKey]);
 			if (in_array($name, ['Content-Type', 'Content-length'])) {
@@ -390,9 +390,9 @@ class Request{
 			} elseif ($name == 'Cookie') {
 				$this->_cookies = $_COOKIE = [];
 			} elseif ($name == 'Range') {
-				$this->_ranges = null;
+				$this->_ranges = NULL;
 			} elseif ($name == 'User-Agent') {
-				$this->_API = $this->_mobile = null;
+				$this->_API = $this->_mobile = NULL;
 			} elseif ($name == 'Authorization') {
 				$this->_user = $this->_password = false;
 			}
@@ -406,9 +406,9 @@ class Request{
 			} elseif ($name == 'Cookie') {
 				$this->_cookies = $_COOKIE = parse_string(preg_replace('/;\s*/', '&', $value));
 			} elseif ($name == 'Range') {
-				$this->_ranges = null;
+				$this->_ranges = NULL;
 			} elseif ($name == 'User-Agent') {
-				$this->_API = $this->_mobile = null;
+				$this->_API = $this->_mobile = NULL;
 			} elseif ($name == 'Host') {
 				$value = $value ? strtolower($value) : self::$_defaultHost;
 			} elseif ($name == 'Authorization') {
@@ -430,23 +430,23 @@ class Request{
 		return $this->_cookies;
 	}
 
-	public function getCookie($key, $defaultValue = null) {
+	public function getCookie($key, $defaultValue = NULL) {
 		return isset($this->_cookies[$key]) ? $this->_cookies[$key] : $defaultValue;
 	}
 
 	public function setCookies(array $cookies) {
 		//=,; \t\r\n\013\014
 		$_COOKIE = $this->_cookies = parse_string($cookies);
-		$_SERVER['HTTP_COOKIE'] = http_build_query($_COOKIE, null, '; ');
+		$_SERVER['HTTP_COOKIE'] = http_build_query($_COOKIE, NULL, '; ');
 		return $this;
 	}
 
 	public function setCookie($name, $value) {
-		if ($value === null || !empty($this->_cookies[$name])) {
+		if ($value === NULL || !empty($this->_cookies[$name])) {
 			$this->setCookies([$name => $value]+ $this->_cookies);
 		} else {
 			$_COOKIE = $this->_cookies[$name] = is_array($value) || is_object($value) ? parse_string($value) : $value;
-			$value = http_build_query([$key => $value], null, '; ');
+			$value = http_build_query([$key => $value], NULL, '; ');
 			if (empty($this->_headers['Cookie'])) {
 				$this->_headers['Cookie'] = $value;
 			} else {
@@ -461,7 +461,7 @@ class Request{
 		return $this->_posts;
 	}
 
-	public function getPost($name, $defaultValue = null) {
+	public function getPost($name, $defaultValue = NULL) {
 		return isset($this->_posts[$name]) ? $this->_posts[$name] : $defaultValue;
 	}
 
@@ -472,7 +472,7 @@ class Request{
 	}
 
 	public function setPost($name, $value) {
-		if ($value === null) {
+		if ($value === NULL) {
 			unset($this->_posts[$name], $_POST[$name]);
 			$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
 		} else {
@@ -572,7 +572,7 @@ class Request{
 		return $this->_params;
 	}
 
-	public function getParam($name, $defaultValue = null) {
+	public function getParam($name, $defaultValue = NULL) {
 		return isset($this->_params[$name]) ? $this->_params[$name] : $defaultValue;
 	}
 
@@ -582,8 +582,8 @@ class Request{
 		return $this;
 	}
 
-	public function setParam($name, $value = null) {
-		if ($value === null) {
+	public function setParam($name, $value = NULL) {
+		if ($value === NULL) {
 			unset($this->_params[$name], $_POST[$name]);
 			$_REQUEST = array_merge($this->_querys, $this->_posts, $this->_params);
 		} else {
@@ -604,7 +604,7 @@ class Request{
 	}
 
 	public function getToken($isKey = false) {
-		if ($this->_token === null) {
+		if ($this->_token === NULL) {
 			($token = $this->getHeader(self::TOKEN_HEADER)) || ($token = $this->getCookie(self::TOKEN_COOKIE));
 			try {
 				$this->setToken($token);
@@ -630,7 +630,7 @@ class Request{
 
 
 	public function isAjax() {
-		if ($this->_ajax === null) {
+		if ($this->_ajax === NULL) {
 			if ($param = $this->getParam(self::AJAX_PARAM)) {
 				$this->_ajax = (string) $param;
 			} elseif (in_array($extension = strtolower(pathinfo($this->getPath(), PATHINFO_EXTENSION)), ['json', 'xml'])) {
@@ -652,7 +652,7 @@ class Request{
 	}
 
 	public function getRanges() {
-		if ($this->_ranges === null) {
+		if ($this->_ranges === NULL) {
 			$this->_ranges = [];
 			if (($range = $this->getHeader('Range')) && preg_match('/bytes=\s*([0-9-,]+)/i', $range, $matches)) {
 				foreach (explode(',', $matches[1]) as $subject) {
@@ -681,7 +681,7 @@ class Request{
 
 
 	public function isMobile() {
-		if ($this->_mobile === null) {
+		if ($this->_mobile === NULL) {
 			$this->_mobile = false;
 			if (!$userAgent = $this->getHeader('User-Agent')) {
 			} elseif (strpos($userAgent, 'Mobile') !== false || strpos($userAgent, 'Android') !== false || strpos($userAgent, 'Silk/') !== false || strpos($userAgent, 'Kindle') !== false || strpos($userAgent, 'BlackBerry') !== false || strpos($userAgent, 'Opera Mini') !== false || strpos($userAgent, 'Opera Mobi') !== false) {
@@ -693,7 +693,7 @@ class Request{
 
 
 	public function isAPI() {
-		if ($this->_API === null) {
+		if ($this->_API === NULL) {
 			$this->_API = false;
 			if (!$userAgent = $this->getHeader('User-Agent')) {
 				return false;
@@ -719,12 +719,12 @@ class Request{
 		$this->_files = [];
 		$this->_content = false;
 		$this->_IP = false;
-		$this->_token = null;
+		$this->_token = NULL;
 		$this->_newToken = false;
-		$this->_ajax = null;
-		$this->_ranges = null;
-		$this->_mobile = null;
-		$this->_API = null;
+		$this->_ajax = NULL;
+		$this->_ranges = NULL;
+		$this->_mobile = NULL;
+		$this->_API = NULL;
 		$servers = $GLOBALS['_SERVER'];
 		unset($GLOBALS['_SERVER'], $GLOBALS['_GET'], $GLOBALS['_POST'], $GLOBALS['_COOKIE'], $GLOBALS['_FILES'], $GLOBALS['_ENV'], $GLOBALS['_SESSION']);
 		extract(self::$_g);

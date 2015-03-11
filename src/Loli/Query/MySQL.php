@@ -28,14 +28,14 @@ class MySQL extends Base{
 
 
 	public function create(array $array, $table, $engine = self::ENGINE_INNODB) {
-		if (!$array  || !is_array($array) || !($table = $this->key($table))) {
+		if (!$array || !($table = $this->key($table))) {
 			return false;
 		}
 		$engine = $engine ? $engine : self::ENGINE_INNODB;
 
 		$key = $unique = $primary = [];
 
-		$q ='CREATE TABLE IF NOT EXISTS';
+		$q ='CREATE TABLE ';
 
 		$q .= $table . ' (' ."\n";
 		foreach ($array as $k => $v) {
@@ -207,13 +207,7 @@ class MySQL extends Base{
 	}
 
 
-	public function add(array $array, $table) {
-		return $this->_addAndSet($array, $table);
-	}
 
-	public function set(array $array, $table) {
-		return $this->_addAndSet($array, $table, true);
-	}
 
 	public function get(array $query, $table, $fields = ['*'], $logical = 'AND') {
 		if (!$query || !$table) {
@@ -305,22 +299,18 @@ class MySQL extends Base{
 
 
 
+	public function insert(array $documents, $table) {
+		return $this->_insertAndReplace($documents, $table);
+	}
 
-	/**
-	*	更新 数据
-	*
-	*	1 参数 写入数组
-	*	2 参数 选择数组
-	*	3 参数 表名
-	*	4 参数 选择数组 运算符
-	*
-	*	返回值 string or false
-	**/
-	public function update(array $array, array $query, $table, $logical = 'AND') {
-		if (!is_array($array) || !is_array($query) || !($from = $this->_from($table, false))) {
+	public function replace(array $documents, $table) {
+		return $this->_insertAndReplace($documents, $table, true);
+	}
+
+	public function update(array $document, array $query, $table, $logical = 'AND') {
+		if (!$from = $this->_from($table, false)) {
 			return false;
 		}
-
 
 		// 多个表请求
 		$use = '';
@@ -335,50 +325,46 @@ class MySQL extends Base{
 		}
 
 		$arrays = [];
-		foreach ($array as $k => $v) {
-			if ($v === null) {
+		foreach ($this->parse($document) as $param) {
+			if ($param instanceof Option || $param->value === NULL || !($column = $this->key($param->column))) {
 				continue;
 			}
-			if (!is_object($v) || empty($v->{'$object'}) || $v->{'$object'} !== true) {
-				$v = (object)['value' => $v];
-			}
-			$v->column = $this->key(empty($v->column) ? $k : $v->column);
-			if (!$v->column) {
-				continue;
-			}
-			$v->compare = empty($v->compare) ? '' : strtoupper($v->compare);
-			$v->value = (isset($v->escape) && $v->escape === false ? $v->value : $this->escape($v->value));
-
+			$compare = strtoupper($param->compare);
+			$value = $this->escape($param->value);
+			
 			// 字段 + 运算符 + 值
-			if (in_array($v->compare, ['+', '-', '+$', '-$'])) {
-				$arrays[] = $v->column . ' = '. $v->column .' '. $v->compare{0} .' '. $v->value;
+			if (in_array($compare, ['+', '-', '+$', '-$'])) {
+				$arrays[$column] = $column .' '. $compare{0} .' '. $value;
 				continue;
 			}
 
 			// 值 + 运算符 + 字段
-			if (in_array($v->compare, ['$+', '$-'])) {
-				$arrays[] = $v->column . ' = '. $v->value .' '. $v->compare{1} .' '. $v->column;
+			if (in_array($compare, ['$+', '$-'])) {
+				$arrays[$column] = $value .' '. $compare{1} .' '. $column;
 				continue;
 			}
 
 			// 字符串连接
-			if (in_array($v->compare, ['.', '.$', '$.'])) {
-				$arrays[] = $v->column . ' = CONCAT('. ($v->compare == '$.' ? $v->column .', '. $v->value : $v->column .', '. $v->value) .')';
+			if (in_array($compare, ['CONCAT', '.', '.$', '$.'])) {
+				$arrays[$column] = 'CONCAT('. ($compare == '$.' ? $column .', '. $value : $column .', '. $value) .')';
 				continue;
 			}
 
 			// 替换
-			if ($v->compare == 'REPLACE') {
-				$arrays[] = $v->column . ' = REPLACE('. $v->column .', '. (isset($v->escape) && $v->escape === false ? $v->replace : $this->escape($v->replace)) .', '. $v->value .')';
+			if ($compare == 'REPLACE') {
+				$arrays[$column] =  'REPLACE('. $column .', '. $this->escape($param->search) .', '. $value .')';
 				continue;
 			}
-			$arrays[] = $v->column . ' = '. $v->value;
+			$arrays[$column] = $value;
 		}
 
 		if (!$arrays) {
 			return false;
 		}
-
+		$document = [];
+		foreach ($arrays as $column => $value) {
+			$document[] = $column . ' = ' . $value;
+		}
 
 		$q = 'UPDATE ';
 
@@ -388,7 +374,7 @@ class MySQL extends Base{
 
 		$q .= 'SET ';
 
-		$q .= implode(' , ', $arrays);
+		$q .= implode(' , ', $document);
 
 		$q .= $this->_where($query, $logical);
 
@@ -396,7 +382,6 @@ class MySQL extends Base{
 
 		$q .= $this->_limit($query);
 
-		++$this->count;
 		return $q;
 	}
 
@@ -410,7 +395,7 @@ class MySQL extends Base{
 	* 返回值 数据库查询 字符串
 	**/
 	public function delete(array $query, $table, $logical = 'AND') {
-		if (!is_array($query) || !($from = $this->_from($table))) {
+		if (!$from = $this->_from($table)) {
 			return false;
 		}
 
@@ -438,7 +423,6 @@ class MySQL extends Base{
 
 		$q .= $this->_limit($query);
 
-		++$this->count;
 		return $q;
 	}
 
@@ -446,13 +430,13 @@ class MySQL extends Base{
 
 	public function escape($value) {
 		if (is_array($value) || is_object($value)) {
-			$value = serialize($value);
+			$value = json_encode($value);
 		}
 		if ($value === false) {
 			$value = 0;
 		} elseif ($value === true) {
 			$value = 1;
-		} elseif (is_string($value)) {
+		} elseif (!is_int($value) && !is_float($value)) {
 			$value = addslashes(stripslashes(addslashes($value)));
 			$value = '\''. $value .'\'';
 		}
@@ -471,49 +455,66 @@ class MySQL extends Base{
 
 
 
-	private function _addAndSet(array $array, $table, $set = false) {
-		if (!($table = $this->key($table)) || !is_array($array)) {
+	private function _insertAndReplace(array $documents, $table, $set = false) {
+		if (!$table = $this->key($table)) {
 			return false;
 		}
 
+
 		$arrays = [];
-		foreach ($array as $k => $v) {
+		foreach ($documents as $key => $document) {
+			$array = [];
 			// 单个的
-			if (!is_numeric($k) || !is_array($v)) {
-				if ($arrays || !($array = array_unnull($array))) {
+			if (is_int($key) || !is_array($document)) {
+				foreach ($this->parse($documents) as $param) {
+					if ($param instanceof Option || $param->value === NULL) {
+						continue;
+					}
+					$array[$param->column] = $this->escape($param->value);
+				}
+				if (!$array) {
 					return false;
 				}
-				foreach ($array as $kk => $vv) {
-					$arrays[0][$kk] = $this->escape($vv);
-				}
+				$arrays = [$array]; 
 				break;
 			}
 
 			// 多个的
-			ksort($v);
-			if (!($v = array_unnull($v)) || (($v_k = array_keys($v)) && isset($old_v_k) && $v_k !== $old_v_k)) {
+			foreach ($this->parse($document) as $param) {
+				if ($param instanceof Option || $param->value === NULL) {
+					continue;
+				}
+				$array[$param->column] = $this->escape($param->value);
+			}
+			
+			if (!$array) {
 				return false;
 			}
-			$old_v_k = $v_k;
-			foreach ($v as $kk => $vv) {
-				$arrays[$k][$kk] = $this->escape($vv);
+			ksort($array);
+			
+			// 判断多个的健名 是否一致
+			if (isset($keys)) {
+				if (array_keys($array) !== $keys) {
+					return false;
+				}
+			} else {
+				$keys = array_keys($array);
 			}
+			$arrays[] = $array;
 		}
-
-
 
 
 		$head = [];
-		foreach (end($arrays) as $k => $v) {
-			if (!$k = $this->key($k)) {
+		foreach (end($arrays) as $column => $value) {
+			if (!$column = $this->key($column)) {
 				return false;
 			}
-			$head[] = $k;
+			$head[] = $column;
 		}
 
 		$body = [];
-		foreach ($arrays as $v) {
-			$body[] = '('. implode(',', $v) . ')';
+		foreach ($arrays as $array) {
+			$body[] = '('. implode(',', $array) . ')';
 		}
 
 
@@ -526,7 +527,7 @@ class MySQL extends Base{
 		$q .= ' (' . implode(',',  $head) . ') ';
 
 		$q .= ' VALUES ' . implode(', ', $body);
-		++$this->count;
+
 		return $q;
 	}
 
@@ -539,25 +540,77 @@ class MySQL extends Base{
 	*
 	*	返回值true 或者 false
 	**/
-	private function _from($t, $from = true) {
+	private function _from($table, $from = true) {
+		
+
+		$arrays = [$from ? 'FROM' : ''];
+
 		// 表名
-		if (is_array($t)) {
-			foreach ($t as $k => $v) {
-				if (empty($v['name'])) {
+		if (is_array($table)) {
+			foreach ($table as $key => $value) {
+				if (empty($value['name'])) {
 					return false;
 				}
-				if (!$t[$k]['name'] = $this->key($v['name'])) {
+				if (!$name = $this->key($value['name'])) {
 					return false;
+				}
+
+				if ($i && empty($value['on'])) {
+					$type = empty($value['type']) ? 'INNER JOIN' : preg_replace('/[^A-Z ]/', '', strtoupper($value['type']));
+					$arrays[] = strpos($type, ' JOIN') ? $type : $type . ' JOIN';
+
+					// on 的
+					if (!empty($value['on'])) {
+
+						if (is_array($value['on'])) {
+							$tmp = '';
+							$ii = 0;
+							foreach ($value['on'] as $vv) {
+								if ($ii) {
+									$tmp .= ($ii % 2) == 0 ? ' AND ' : ' = ';
+								}
+								if (!$vv = $this->key($vv)) {
+									return false;
+								}
+								$tmp .= $vv;
+								$ii++;
+							}
+							$value['on'] = $tmp;
+						} else {
+							$arrays[] = $value['on'];
+						}
+					}
 				}
 			}
 		} else {
-			if (!$t = $this->key($t)) {
+			if (!$table = $this->key($table)) {
 				return false;
+			}
+			$arrays[] = $table;
+		}
+
+
+
+
+
+
+
+
+		// 多个表
+		if (is_array($table)) {
+			$arrays = [];
+			$i = 0;
+			foreach ($table as $key => $value) {
+				// 无效的 table
+				if (!$table || !is_array($table) || empty($table['name']) || !($k = $this->key($k))) {
+					return false;
+				}
+
 			}
 		}
 
 		// 多个表
-		if (is_array($t)) {
+		if (is_array($table)) {
 			$q = $from ? ' FROM ' : ' ';
 			$i = 0;
 			foreach ($t as $k => &$table) {
@@ -587,7 +640,7 @@ class MySQL extends Base{
 						$table['on'] = $tmp;
 					}
 				} else {
-					$table['type'] = $table['on'] = null;
+					$table['type'] = $table['on'] = NULL;
 				}
 
 				if (!empty($table['type'])) {

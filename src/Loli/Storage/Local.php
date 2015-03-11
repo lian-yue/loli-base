@@ -20,82 +20,75 @@ class Local extends Base{
 
 	protected $chmodDir = 0755;
 
-	public function __construct($args) {
-		foreach ($args as $k => $v) {
-			if (in_array($k, ['dir', 'chmod', 'chmodDir', 'buffer'])) {
-				$this->$k = $v;
-			}
-		}
-	}
-
-
 	public function put($remote, $local) {
-		if (!($remote = $this->filter($remote)) || !is_file($local)) {
-			return false;
+		if (!is_file($local)){
+			throw new Exception('Storage data does not exist', 5);
 		}
-		$file = $this->dir . '/' . $remote;
+
+		$file = $this->dir . $this->filter($remote);
 		$this->_mkdir(dirname($file));
 		if (!@copy($local, $file)) {
-			return false;
+			throw new Exception('Unable to write data', 6);
 		}
-
 		@chmod($file, $this->chmod);
 		return true;
 	}
 
 
 	public function get($remote) {
-		if (!($remote = $this->filter($remote)) || !$this->exists($remote)) {
-			return false;
+		if (!$this->exists($remote)) {
+			throw new Exception('Storage data does not exist', 5);
 		}
-		return $this->dir. '/'.$remote;
+		return $this->dir. $this->filter($remote);
 	}
 
 
 	public function fput($remote, $resource) {
-		if (!($remote = $this->filter($remote)) || !is_resource($resource)) {
-			return false;
+		if (!is_resource($resource)) {
+			throw new Exception('Resource does not exist', 3);
 		}
-		$file = $this->dir . '/' . $remote;
+
+		$file = $this->dir . $this->filter($remote);
 		$this->_mkdir(dirname($file));
 
 		// 写入文件
-		if (!$fopen = fopen($file, 'wb')) {
-			return false;
+		if (!$fp = fopen($file, 'wb')) {
+			throw new Exception('Unable to write data', 6);
 		}
 		$ftell = ftell($resource);
 		fseek($resource, 0);
 		while (!feof($resource)) {
-		   fwrite($fopen, fread($resource, $this->buffer));
+		   fwrite($fp, fread($resource, $this->buffer));
 		}
 		fseek($resource, $ftell);
-		fclose($fopen);
+		fclose($fp);
 		@chmod($file, $this->chmod);
 		return true;
 	}
 
 
 	public function fget($remote) {
-		if (!($remote = $this->filter($remote)) || !$this->exists($remote)) {
-			return false;
+		if (!$this->exists($remote)) {
+			throw new Exception('Storage data does not exist', 5);
 		}
-		return fopen($this->dir . '/' . $remote , 'rb');
+		return fopen($this->dir . $this->filter($remote), 'rb');
 	}
 
 
 	public function cput($remote, $contents) {
-		if (!($remote = $this->filter($remote)) || $contents === null) {
-			return false;
+		if ($contents === NULL) {
+			throw new Exception('Data storage is empty', 4);
 		}
-		$file = $this->dir . '/' . $remote;
+		$remote = $this->filter($remote);
+		$file = $this->dir .$remote;
 		$this->_mkdir(dirname($file));
 
 		// 写入文件
-		if (!$fopen = fopen($file, 'wb')) {
-			return false;
+		if (!$fp = fopen($file, 'wb')) {
+			throw new Exception('Unable to write data', 6);
 		}
-		fwrite($fopen, $contents);
-		fclose($fopen);
+		fwrite($fp, $contents);
+		fclose($fp);
 		@chmod($file, $this->chmod);
 		return true;
 	}
@@ -103,25 +96,33 @@ class Local extends Base{
 
 
 	public function cget($remote) {
-		if (!($remote = $this->filter($remote)) || !$this->exists($remote)) {
-			return false;
+		if (!$this->exists($remote)) {
+			throw new Exception('Storage data does not exist', 5);
 		}
-		return fread(fopen($file = $this->dir . '/' . $remote, 'rb'), filesize($file));
+		return fread(fopen($file = $this->dir . $this->filter($remote), 'rb'), filesize($file));
 	}
 
 
 	public function rename($source, $destination) {
-		if (!($source = $this->filter($source)) || !($destination = $this->filter($destination)) || !$this->exists($source)) {
-			return false;
+		if (!$this->exists($remote)) {
+			throw new Exception('Storage data does not exist', 5);
 		}
+		$source = $this->filter($source);
+		$destination = $this->filter($destination);
 		$this->_mkdir(dirname($destination));
-		return @rename($this->dir . '/' .$source, $this->dir . '/' .$destination);
+		return @rename($this->dir .$source, $this->dir .$destination);
 	}
 
 
 
 	public function unlink($remote) {
-		return !($remote = $this->filter($remote)) && $this->exists($remote) && @unlink($this->dir . '/' . $remote);
+		if (!$this->exists($source)) {
+			throw new Exception('Storage data does not exist', 5);
+		}
+		if (!@unlink($this->dir . $this->filter($remote))) {
+			throw new Exception('You can not delete', 7);
+		}
+		return true;
 	}
 
 	public function unlinks($remote) {
@@ -132,14 +133,14 @@ class Local extends Base{
 	}
 
 	public function size($remote) {
-		if (!($remote = $this->filter($remote)) || !$this->exists($remote)) {
-			return false;
+		if (!$this->exists($remote)) {
+			throw new Exception('Storage data does not exist', 5);
 		}
-		return filesize($this->dir . '/' . $remote);
+		return filesize($this->dir  . $this->filter($remote));
 	}
 
 	public function exists($remote) {
-		return ($remote = $this->filter($remote)) && is_file($this->dir . '/' . $remote);
+		return is_file($this->dir .$this->filter($remote));
 	}
 
 	private function _mkdir($dir) {

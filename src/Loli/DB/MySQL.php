@@ -17,13 +17,16 @@ class MySQL extends Base{
 	public function connect(array $args) {
 		// 链接到到mysql
 		if (!$link = @mysql_pconnect($server = (empty($args['host']) ? 'localhost' : $args['host']) . ':' . (empty($args['port']) ? 3306 : $args['port']), empty($args['user']) ? 'root' : $args['user'], empty($args['pass']) ? '' : $args['pass'], empty($args['flags']) ? 0 : $args['flags'])) {
-			$this->addLog('mysql_pconnect(' . $server .')', @mysql_error(), 2, @mysql_errno());
+			throw new ConnectException('this.mysql_pconnect(' . $server .')', @mysql_error(), @mysql_errno());
 		}
 
 		// 链接到数据库
-		empty($args['name']) && $this->addLog('mysql_pconnect(' . $server . ').mysql_select_db()', 'Database name can not be empty', 2);
-		mysql_select_db($args['name'], $link) || $this->addLog('mysql_pconnect(' . $server . ').mysql_select_db(' . $args['name'] . ')', mysql_error($link), 2, mysql_errno($link));
-
+		if (empty($args['name'])) {
+			throw new ConnectException('this.mysql_pconnect(' . $server . ').mysql_select_db()', 'Database name can not be empty');
+		}
+		if (!mysql_select_db($args['name'], $link)) {
+			throw new ConnectException('this.mysql_pconnect(' . $server . ').mysql_select_db(' . $args['name'] . ')', mysql_error($link), mysql_errno($link));
+		}
 		// 默认设置
 		mysql_query('SET NAMES \'utf8\'', $link);
 		mysql_query('SET TIME_ZONE = `+0:00`', $link);
@@ -34,11 +37,14 @@ class MySQL extends Base{
 	private function _query($query, $slave = true) {
 
 		// 查询不是字符串
-		is_string($query) || $this->addLog(json_encode($query), 'Query is not a string', 1);
+		if (is_string($query)) {
+			throw new Exception(json_encode($query), 'Query is not a string');
+		}
 
 		// 查询为空
-		($query = trim($query)) || $this->addLog('Query', 'Query is empty', 1);
-
+		if (!$query = trim($query)) {
+			throw new Exception('Query', 'Query is empty');
+		}
 
 		// 是否用主数据库
 		$slave = $slave && $this->autoCommit && !preg_match('/\s*(EXPLAIN)?\s*(SELECT)\s+/i', $query);
@@ -57,7 +63,10 @@ class MySQL extends Base{
 		// 查询是false
 		if ($q === false) {
 			// 如果有错误记录错误
-			mysql_errno($link) && $this->addLog($query, mysql_error($link), 1, mysql_errno($link));
+			if (mysql_errno($link)) {
+				$this->addLog($query);
+				throw new Exception($query, mysql_error($link), mysql_errno($link));
+			}
 			$results = $q;
 		} elseif (preg_match('/^\s*(CREATE|ALTER|TRUNCATE|DROP|SET|START|BEGIN|SERIAL|COMMIT|ROLLBACK|END)(\s+|;)/i', $query)) {
 			// 创建 改变 修改 删除 [表] 设置
@@ -83,18 +92,20 @@ class MySQL extends Base{
 			if ($this->explain && preg_match('/^\s*SELECT\s+/i', $query)) {
 				$this->_query('EXPLAIN ' . $query, $slave);
 			}
+			if (preg_match('/^\s*SELECT\s+(?:(?!\s+FROM\s+).)+SQL_CALC_FOUND_ROWS/i', $query)){
+				$this->foundRows = $this->count('SELECT FOUND_ROWS()', $slave);
+			}
 		}
-
 		$this->addLog($query, $results);
 		return $results;
 	}
 
-	public function ping($slave = null) {
-		$link = $this->link($slave === null ? $this->slave : $slave);
+	public function ping($slave = NULL) {
+		$link = $this->link($slave === NULL ? $this->slave : $slave);
 		if (mysql_ping($link)) {
 			return true;
 		}
-		$this->addLog('this.ping()', mysql_error($link), 1, mysql_errno($link));
+		throw new Exception('this.ping()', mysql_error($link), mysql_errno($link));
 	}
 
 
@@ -114,13 +125,17 @@ class MySQL extends Base{
 
 	public function truncate($table) {
 		$query = 'TRUNCATE TABLE `'. $table .'`';
-		preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table) || $this->addLog($query, 'Table name match', 1);
+		if (!preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table)) {
+			throw new Exception($query, 'Table name match');
+		}
 		return $this->_query($query, false);
 	}
 
 	public function drop($table) {
-		$query = 'DROP TABLE IF EXISTS `'. $table .'`';
-		preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table) || $this->addLog($query, 'Table name match', 1);
+		$query = 'DROP TABLE `'. $table .'`';
+		if (!preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table)) {
+			throw new Exception($query, 'Table name match');
+		}
 		return $this->_query($query, false);
 	}
 
@@ -145,8 +160,19 @@ class MySQL extends Base{
 		return $this->_query($query, false);
 	}
 
+	public function group($query, $slave = true) {
+		return ($results = $this->_query($query, $slave)) ? $results : [];
+	}
+
+
+	public function results($query, $slave = true) {
+		return ($results = $this->_query($query, $slave)) ? $results : [];
+	}
 	public function row($query, $slave = true) {
-		return ($results = $this->_query($query, $slave)) ? reset($results) : false;
+		return ($results = $this->results($query, $slave)) ? reset($results) : false;
+	}
+	public function aggregate($query, $slave = true) {
+		return ($results = $this->_query($query, $slave)) ? $results : [];
 	}
 
 	public function count($query, $slave = true) {
@@ -158,10 +184,6 @@ class MySQL extends Base{
 			$count += array_sum((array) $object);
 		}
 		return $count;
-	}
-
-	public function results($query, $slave = true) {
-		return ($results = $this->_query($query, $slave)) ? $results : [];
 	}
 
 	public function startTransaction() {

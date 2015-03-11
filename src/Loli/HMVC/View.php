@@ -58,7 +58,7 @@ class View{
 		$this->_once = $once;
 		unset($files, $file, $is, $once);
 		foreach ($this->_data as $key => $value) {
-			if (!$key || $value === null || !is_string($key) || $key{0} == '_' || $key == 'this' || $key == 'GLOBALS') {
+			if (!$key || $value === NULL || !is_string($key) || $key{0} == '_' || $key == 'this' || $key == 'GLOBALS') {
 				unset($this->_data[$key]);
 			}
 		}

@@ -8,22 +8,28 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-10 12:48:56
-/*	Updated: UTC 2015-02-27 14:21:45
+/*	Updated: UTC 2015-03-09 15:53:43
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
-use Loli\Exception as Exception_;
-class_exists('Loli\Exception') || exit;
-class Exception extends Exception_{
+use Loli\ErrorException;
+class_exists('Loli\ErrorException') || exit;
+class Exception extends ErrorException{
+	protected $state = '42000';
+	protected $message;
 	protected $query;
-	public function __construct($query, $message, $code = 0, $file = __FILE__ , $line = __LINE__) {
+	protected $severity = 2;
+	public function __construct($query, $message, $state = '', $code = 0, Exception $previous = NULL) {
+		$message = is_array($message) || is_object($message) ? var_export($message, true) : $message;
 		$this->query = $query;
-		parent::__construct($message, $code);
-		$this->file = $file;
-		$this->line = $line;
+		$this->state = $state && $state !== '00000' ? $state : $this->state;
+		parent::__construct($message, $code, $previous);
+	}
+	public function getState(){
+		return $this->state;
 	}
 
-	public function getQuery() {
-		return $this->query;
+	public function getQuery(){
 	}
+
 }

@@ -17,16 +17,21 @@ class MySQLi extends Base{
 	public function connect(array $args) {
 
 		// 数据库名为空
-		empty($args['name']) && $this->addLog('MySQLi().select_db()', 'Database name can not be empty', 2);
+		if (empty($args['name'])) {
+			throw new ConnectException('this.MySQLi().select_db()', 'Database name can not be empt');
+		}
 
 		// 链接到到mysql
 		$link = new \MySQLi($host = empty($args['host']) ? 'localhost' : $args['host'], empty($args['user']) ? 'root' : $args['user'], empty($args['pass']) ? '' : $args['pass'], empty($args['name']) ? 'dbname' : $args['name'], $port = empty($args['port']) ? 3306 : $args['port']);
 
 		// 链接出错
-		$link->connect_errno && $this->addLog('MySQLi('. $host .', '. $port .')', $link->connect_error, 2, $link->connect_errno);
-
+		if ($link->connect_errno) {
+			throw new ConnectException('this.MySQLi('. $host .', '. $port .')', $link->connect_error, $link->connect_errno);
+		}
 		// 选择数据库出错
-		$link->error && $this->addLog('MySQLi('. $host .', '. $port .').select_db('. $args['name'] .')', $link->error, 2, $link->errno);
+		if ($link->error) {
+			throw new ConnectException('this.MySQLi('. $host .', '. $port .').select_db('. $args['name'] .')', $link->error, $link->errno);
+		}
 
 		// 默认设置
 		$link->set_charset('utf8');
@@ -39,12 +44,14 @@ class MySQLi extends Base{
 
 	private function _query($query, $slave = true) {
 		// 查询不是字符串
-		is_string($query) || $this->addLog(json_encode($query), 'Query is not a string', 1);
+		if (is_string($query)) {
+			throw new Exception(json_encode($query), 'Query is not a string');
+		}
 
 		// 查询为空
-		($query = trim($query)) || $this->addLog('Query', 'Query is empty', 1);
-
-
+		if (!$query = trim($query)) {
+			throw new Exception('Query', 'Query is empty');
+		}
 		// 是否用主数据库
 		$slave = $slave && $this->autoCommit && !preg_match('/\s*(EXPLAIN)?\s*(SELECT)\s+/i', $query);
 
@@ -55,7 +62,11 @@ class MySQLi extends Base{
 		$q = $link->query($query);
 		++self::$querySum;
 		if ($q === false) {
-			$link->errno && $this->addLog($query, $link->error, 1, $link->errno);
+			if ($link->errno) {
+				$this->addLog($query);
+				throw new Exception($query, $link->error, $link->errno);
+			}
+			$results = $q;
 		} elseif (preg_match('/^\s*(CREATE|ALTER|TRUNCATE|DROP|SET|START|BEGIN|SERIAL|COMMIT|ROLLBACK|END)(\s+|\;)/i', $query)) {
 			// 创建 改变 修改 删除 [表] 设置
 			$results = $q;
@@ -84,12 +95,12 @@ class MySQLi extends Base{
 		return $results;
 	}
 
-	public function ping($slave = null) {
-		$link = $this->link($slave === null ? $this->slave : $slave);
+	public function ping($slave = NULL) {
+		$link = $this->link($slave === NULL ? $this->slave : $slave);
 		if ($link->ping()) {
 			return true;
 		}
-		$this->addLog('Ping', $link->error, 1);
+		throw new Exception('this.ping()', $link->error, $link->errno);
 	}
 	public function tables() {
 		$tables = [];
@@ -107,13 +118,17 @@ class MySQLi extends Base{
 
 	public function truncate($table) {
 		$query = 'TRUNCATE TABLE `'. $table .'`';
-		preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table) || $this->addLog($query, 'Table name match', 1);
+		if (!preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table)) {
+			throw new Exception($query, 'Table name match');
+		}
 		return $this->_query($query, false);
 	}
 
 	public function drop($table) {
 		$query = 'DROP TABLE IF EXISTS `'. $table .'`';
-		preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table) || $this->addLog($query, 'Table name match', 1);
+		if (!preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table)) {
+			throw new Exception($query, 'Table name match');
+		}
 		return $this->_query($query, false);
 	}
 
@@ -138,8 +153,20 @@ class MySQLi extends Base{
 		return $this->_query($query, false);
 	}
 
-	public function row($query, $slave = true) {
-		return ($results = $this->_query($query, $slave)) ? reset($results) : false;
+
+
+
+	public function select($query, $slave = true) {
+		return ($results = $this->_query($query, $slave)) ? $results : [];
+	}
+	public function distinct($query, $slave = true) {
+		return ($results = $this->_query($query, $slave)) ? $results : [];
+	}
+	public function aggregate($query, $slave = true) {
+		return ($results = $this->_query($query, $slave)) ? $results : [];
+	}
+	public function group($query, $slave = true) {
+		return ($results = $this->_query($query, $slave)) ? $results : [];
 	}
 
 	public function count($query, $slave = true) {
@@ -152,9 +179,6 @@ class MySQLi extends Base{
 		}
 		return $count;
 	}
-	public function results($query, $slave = true) {
-		return ($results = $this->_query($query, $slave)) ? $results : [];
-	}
 
 	public function startTransaction() {
 		$this->autocommit = false;
@@ -166,7 +190,9 @@ class MySQLi extends Base{
 		$link = $this->link(false);
 		$this->autocommit = true;
 		$commit = $link->commit();
-		!$commit && $link->errno && $this->addLog('this.commit()', $link->error, 1, $link->errno);
+		if (!$commit && $link->errno) {
+			throw new Exception('this.commit()', $link->error, $link->errno);
+		}
 		return $commit;
 	}
 
@@ -174,7 +200,9 @@ class MySQLi extends Base{
 		$link = $this->link(false);
 		$this->autocommit = true;
 		$rollback = $link->rollback();
-		!$rollback && $link->errno && $this->addLog('this.rollback()', $link->error, 1, $link->errno);
+		if (!$rollback && $link->errno) {
+			throw new Exception('this.rollback()', $link->error, $link->errno);
+		}
 		return $rollback;
 	}
 }

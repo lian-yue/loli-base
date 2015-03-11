@@ -16,9 +16,6 @@ use Loli\Search;
 
 abstract class Base{
 
-	// 执行次数
-	public $count = 0;
-
 
 	public function __invoke() {
 		return call_user_func_array([$this, 'get'], func_get_args());
@@ -54,11 +51,10 @@ abstract class Base{
 	 * 获得
 	 * @param  [type] $query   查询数组
 	 * @param  [type] $table   表名称
-	 * @param  [type] $fields  选择字段
 	 * @param  string $logical 运算符
 	 * @return false or string
 	 */
-	abstract public function get(array $query, $table, $fields = ['*'], $logical = 'AND');
+	abstract public function get(array $query, $table, $logical = 'AND');
 
 	/**
 	 * 更新
@@ -101,92 +97,52 @@ abstract class Base{
 	 * @param  boolean $args 允许的字段
 	 * @return array
 	 */
-	public function parse($query, $args = false) {
-		$query = parse_string($query);
-		$r = [];
-		foreach ($query as $k => $v) {
-			if ($k && $k{0} == '$') {
-				// 设置的
+	public function parse(array $query, $args = false) {
+		$results = [];
+		foreach ($query as $key => $value) {
 
-				if ($k == '$groupby') {
-					$v = is_array($v) ? $v : explode(',', $v);
-					if (is_array($args)) {
-						foreach($v as $kk => $vv) {
-							$v[$kk] = empty($args[$vv]['column']) ? $vv : $args[$vv]['column'];
-						}
-					}
-				}
-
-				if ($k == '$orderby') {
-					$order = empty($query['$order']) ? [] : (array) $query['$order'];
-					if (is_object($v)) {
-						$v = [$v];
-					}
-					$v = (array) $v;
-					foreach ($v as $kk => $vv) {
-						if (!is_object($vv)) {
-							$vv = (object) ['column' => $vv];
-						}
-						$vv->column = is_array($vv->column) ? $vv->column : explode(',', $vv->column);
-						$vv->desc = isset($vv->desc) ? $vv->desc : (isset($order[$kk]) && strtoupper($order[$kk]) === 'DESC');
-						if (is_array($args)) {
-							foreach ($vv->column as $kkk => $vvv) {
-								$vv->column[$kkk] = empty($args[$vvv]['column']) ? $vvv : $args[$vvv]['column'];
-								$vv->function[$kkk] = isset($vv->function[$kkk]) || empty($args[$vvv]['function']) ? '' : $args[$vvv]['function'];
-							}
-						}
-						$v[$kk] = $vv;
-					}
-				}
-				$r[$k] = $v;
+			// 是参数
+			if ($value instanceof Param) {
+				$results[] = $value;
 				continue;
 			}
 
-
-			// 单对象
-			if (is_object($v) && ($v = $this->_parse($v, $k))) {
-				$r[] = $v;
+			// 分组的
+			if ($key === '$group') {
+				$value = (array) $value;
+				foreach($value as &$v) {
+					if (is_array($args) && !empty($args[$v]['column'])) {
+						$results[] = new Option('group', $args[$v]['column'], $args[$v]);
+					} else {
+						$results[] = new Option('group', $v);
+					}
+				}
 				continue;
 			}
 
-			// 多对象
-			if ((is_array($v) && is_object(reset($v)))) {
-				foreach ($v as $vv) {
-					if ($vv = $this->_parse($vv, $k)) {
-						$r[] = $vv;
+			// 排序的
+			if ($key === '$order') {
+				$order = [];
+				foreach ((array) $value as $k => $v) {
+					if (is_array($args) && !empty($args[$k]['column'])) {
+						$results[] = new Option('order', [$args[$k]['column'] => $v], $args[$k]);
+					} else {
+						$results[] = new Option('order', [$k => $v]);
 					}
 				}
+				continue;
 			}
 
-			// 普通输入的
-			if ((!is_array($args) || isset($args[$k])) && ($v = $this->_parse($v, $k, isset($args[$k]) ? $args[$k] : false))) {
-				$r[] = $v;
+			// 其他选项
+			if ($key && $key{0} == '$') {
+				$results[] = new Option(substr($key, 1), $value);
+				continue;
 			}
-		}
-		return $r;
-	}
 
-	private function _parse($query, $key, $args = false) {
-		if ($query === null) {
-			return false;
+			// 查询的
+			$option = empty($args[$key]) ? [] : (is_array($args) ? $args[$key] : ['column' => $args[$key]]);
+			$results[] = new Param(['column' => empty($args[$key]['column']) ? $key : $args[$key]['column'], 'value' => $value] + $option);
 		}
-		if (!is_object($query)) {
-			$query = (object) ['value' => $query];
-			if (is_array($args)) {
-				foreach ($args as $k => $v) {
-					$query->{$k} = $v;
-				}
-			} elseif ($args) {
-				$query->compare = $args;
-			}
-		}
-		if (!isset($query->column)) {
-			$query->column = $key;
-		}
-		if (!isset($query->value) || !$query->column) {
-			return false;
-		}
-		return $query;
 	}
 
 

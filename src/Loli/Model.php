@@ -28,14 +28,13 @@ trait Model{
 
 	public function __get($key) {
 		++self::$classCounts;
-		if (!isset(self::$_classExixts[$class = 'Model' . $_modelID . $key])) {
-			if (self::$_classExixts[$class] = class_exists($class)) {
-				$this->$key = new $class;
-			}
+		if ($this->_modelID !== '\\' && !isset(self::$_classExixts[$class = 'Model' . $_modelID . $key]) && (self::$_classExixts[$class] = class_exists($class))) {
+			$this->$key = new $class;
 			Filter::run('Model.' . $_modelID . $key, [&$this->$key, &$this]);
 			if (isset($this->_modelID)) {
 				$this->_modelID = $_modelID . $key . '\\';
 			}
+			return $this->$key;
 		}
 
 

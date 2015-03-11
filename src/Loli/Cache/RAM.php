@@ -31,7 +31,7 @@ class RAM extends Base {
 
 	public function add($data, $key, $list = 'default', $ttl = 0) {
 		++$this->count['add'];
-		if ($data === null || $data === false || $this->get($key, $list) !== false) {
+		if ($data === NULL || $data === false || $this->get($key, $list) !== false) {
 			return false;
 		}
 		$this->_data[$list][$key] = $data;
@@ -40,7 +40,7 @@ class RAM extends Base {
 
 	public function set($data, $key, $list = 'default', $ttl = 0) {
 		++$this->count['set'];
-		if ($data === null || $data === false) {
+		if ($data === NULL || $data === false) {
 			return false;
 		}
 		$this->_data[$list][$key] = $data;

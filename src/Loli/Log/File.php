@@ -35,7 +35,7 @@ class File extends Base{
 		is_dir($dir = dirname($path)) || mkdir($dir, 0755, true);
 
 		// 写入日志
-		error_log('[' . $this->formatDate() . ']' . $this->getLevelName($level) . "\n" . $message . "\n\n", 3, $path);
+		error_log('[' . $this->formatDate() . '] ' . $this->getLevelName($level) . ' ' . $message . "\n", 3, $path);
 
 		return true;
 	}

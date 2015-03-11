@@ -149,7 +149,7 @@ class Curl{
 		}
 		if (!empty($this->_chs[$key])) {
 			foreach ($options as $option => $value) {
-				$v === null || curl_setopt($this->_chs[$key], $option, $value);
+				$v === NULL || curl_setopt($this->_chs[$key], $option, $value);
 			}
 		}
 		return true;
@@ -202,7 +202,7 @@ class Curl{
 
 			$options += $this->defaults;
 			foreach ($options as $optoin => $value) {
- 				if ($value === null) {
+ 				if ($value === NULL) {
  					continue;
  				}
  				if ($optoin == CURLOPT_URL) {

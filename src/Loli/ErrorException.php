@@ -12,16 +12,18 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-class ErrorException extends \ErrorException{
+class ErrorException extends Exception{
 
+	protected $severity = 1;
 
+	public function __construct($message = '', $code = 0, $severity = NULL, Exception $previous = NULL) {
+		if ($severity > 0) {
+			$this->previous = $severity;
+		}
+		parent::__construct($message, $code, $previous);
+	}
 
-
-
-
-
-
-
-
-
+	final public function getSeverity() {
+		return $this->severity;
+	}
 }

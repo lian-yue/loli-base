@@ -348,7 +348,7 @@ class GD extends Base {
 			imagepng($this->_im);
 		} else {
 			imageinterlace($this->_im, true);
-			if (!imagejpeg($this->_im, null, $this->quality)) {
+			if (!imagejpeg($this->_im, NULL, $this->quality)) {
 				throw new Exception('Show');
 			}
 		}

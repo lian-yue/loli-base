@@ -17,7 +17,7 @@ class Cache{
 	public static function __callstatic($method, $args) {
 		if (!isset(self::$_link)) {
 			$class = __NAMESPACE__ . '\Cache\\' . (empty($_SERVER['LOLI']['CACHE']['type']) ? 'File' : $_SERVER['LOLI']['CACHE']['type']);
-			self::$_link = new $class($_SERVER['LOLI']['CACHE']['args'], empty($_SERVER['LOLI']['CACHE']['key']) ? '' : $_SERVER['LOLI']['CACHE']['key']);
+			self::$_link = new $class(empty($_SERVER['LOLI']['CACHE']['args']) ? [] : $_SERVER['LOLI']['CACHE']['args'], empty($_SERVER['LOLI']['CACHE']['key']) ? '' : $_SERVER['LOLI']['CACHE']['key']);
 		}
 		return call_user_func_array([self::$_link, $method], $args);
 	}

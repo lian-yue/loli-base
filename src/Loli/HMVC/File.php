@@ -44,7 +44,7 @@ class File{
 	public function __construct(Request &$request, Response &$response, $stream, $fileSize) {
 		if (!empty($_SERVER['LOLI']['FILE'])) {
 			foreach ($$_SERVER['LOLI']['FILE'] as $key => $value) {
-				if ($value !== null && in_array($key, ['header', 'buffer', 'speed', 'flag', 'status'])) {
+				if ($value !== NULL && in_array($key, ['header', 'buffer', 'speed', 'flag', 'status'])) {
 					$this->$key = $value;
 				}
 			}

@@ -13,9 +13,28 @@
 /* ************************************************************************** */
 namespace Loli\HMVC;
 use Iterator, Loli\Exception, Loli\Lang;
+/*
+消息模块
+ 1000 以前是系统预留的
+ 1 ＝ 执行成功
+
+ 2 ＝ 系统基本错误
+ 3 ＝ 系统权限错误(文件权限什么的)
+ 4 ＝ 系统缓存错误
+ 5 ＝ 系统数据库错误
+ 6 ＝ 系统储存错误
+ 7 ＝ 其他通讯错误
+ 9 ＝ Exception错误
+
+
+ 200 － 399 执行成功 并且要设置http状态码的
+ 400 － 599 ＝ 执行失败 并且 要设置 http 状态码的
+
+ */
+
+
 class Message extends Exception implements Iterator{
 	protected $code = 200;
-	protected $message;
 	protected $data;
 	protected $redirect;
 	protected $refresh;
@@ -28,7 +47,7 @@ class Message extends Exception implements Iterator{
 	protected $hosts = ['qq.com'];
 
 	protected $results = [];
-	public function __construct($message = [], $data = [], $redirect = true, $refresh = 3, Message $previous = null) {
+	public function __construct($message = [], $data = [], $redirect = true, $refresh = 3, Message $previous = NULL) {
 		$this->hosts = empty($_SERVER['LOLI']['MESSAGE']['hosts']) ? [] : (array) $_SERVER['LOLI']['MESSAGE']['hosts'];
 
 
@@ -55,7 +74,7 @@ class Message extends Exception implements Iterator{
 
 
 		// code
-		$code = reset($message);
+		$code = (int) reset($message);
 
 		// message
 		$message = self::lang($message);
@@ -79,7 +98,7 @@ class Message extends Exception implements Iterator{
 			if (isset($data['redirect'])) {
 				$redirect = $data['redirect'];
 			}
-			if ($redirect === false || $redirect === true || $redirect === null) {
+			if ($redirect === false || $redirect === true || $redirect === NULL) {
 				$redirect = (bool) $redirect;
 			} else {
 				$redirect = get_redirect($redirect, array_map(function($host){ return '//' . $host;}, $this->hosts));
@@ -179,6 +198,6 @@ class Message extends Exception implements Iterator{
 
 	public function valid() {
 		$key = key($this->results);
-		return ($key !== null && $key !== false);
+		return ($key !== NULL && $key !== false);
 	}
 }

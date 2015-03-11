@@ -95,7 +95,7 @@ function merge_string($a) {
 	if (!is_array($a) && !is_object($a)) {
 		return (string) $a;
 	}
-	return http_build_query(to_array($a), null, '&');
+	return http_build_query(to_array($a), NULL, '&');
 }
 
 
@@ -137,7 +137,7 @@ function to_object($a) {
 
 
 /**
-*	删除 数组中 的 null 值
+*	删除 数组中 的 NULL 值
 *
 *	1 参数 数组
 *	2 参数 是否回调删除多维数组
@@ -149,7 +149,7 @@ function array_unnull(array $a, $call = false) {
 		if ($call && is_array($a) && $a) {
 			 $a[$k] = array_unnull($a, $call);
 		}
-		if ($v === null) {
+		if ($v === NULL) {
 			unset($a[$k]);
 		}
 	}

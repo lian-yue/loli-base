@@ -71,7 +71,7 @@ class Filter{
 		}
 		++self::$_counts[$name];
 
-		$params += [0 => null];
+		$params += [0 => NULL];
 
 		if (empty(self::$_filters[$name])) {
 			return $params[0];

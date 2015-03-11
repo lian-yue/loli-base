@@ -22,7 +22,7 @@ class Mongo extends Base{
 	/**
 	 * 链接数据库
 	 * @param  [type] $args [description]
-	 * @return [type]       [description]
+	 * @return [type]   [description]
 	 */
 	public function connect(array $args) {
 		try {
@@ -33,8 +33,9 @@ class Mongo extends Base{
 			$client = new MongoClient($server);
 
 			// 表名为空
-			empty($args['name']) && $this->addLog('MongoClient('. $server .').selectDB()', 'Database name can not be empty', 2);
-
+			if (empty($args['name'])) {
+				throw new ConnectException('MongoClient('. $server .').selectDB()', 'Database name can not be empty');
+			}
 			// 链接到表
 			$link = $client->selectDB($args['name']);
 
@@ -43,19 +44,18 @@ class Mongo extends Base{
 				$auth = @$link->authenticate($args['user'], $args['pass']);
 
 				// 链接失败
-				empty($auth['ok']) && $this->addLog('this.MongoClient('. $server .').selectDB('. $args['name'] .')->authenticate()', $auth['errmsg'], 2);
+				if (empty($auth['ok'])) {
+					throw new ConnectException('this.MongoClient('. $server .').selectDB('. $args['name'] .')->authenticate()', $auth);
+				}
 			}
 		} catch (MongoException $e) {
-
-			// 链接错误
-			$this->addLog('this.MongoClient('. $server .').selectDB('. $args['name'] .')', $e->getMessage(), 2, $e->getCode());
+			throw new ConnectException('this.MongoClient('. $server .')', $e->getMessage(), $e->getCode());
 		}
-
 		return $link;
 	}
 
 
-	public function ping($slave = null) {
+	public function ping($slave = NULL) {
 		return true;
 	}
 
@@ -75,8 +75,8 @@ class Mongo extends Base{
 				$tables[] = $collection;
 			}
 		 } catch (MongoException $e) {
-		 	// 错误
-			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+			$this->addLog($queryString);
+		 	throw new Exception($queryString, $e->getMessage(), $e->getCode());
 		}
 		return $tables;
 	}
@@ -97,9 +97,12 @@ class Mongo extends Base{
 			$results = $link->{$table}->remove();
 			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+			$this->addLog($queryString);
+		 	throw new Exception($queryString, $e->getMessage(), $e->getCode());
 		}
-		empty($results['ok']) && $this->addLog($queryString, $results, 1);
+		if (empty($results['ok'])) {
+			throw new Exception($queryString, $results);
+		}
 		return empty($results['n']) ? 0 : $results['n'];
 	}
 
@@ -109,9 +112,6 @@ class Mongo extends Base{
 		// http://docs.mongodb.org/manual/reference/method/db.collection.drop/
 		// http://php.net/manual/en/mongocollection.drop.php
 		// 没有表 返回 false
-		if (!$this->exists($table)) {
-			return false;
-		}
 		$link = $this->link(false);
 		$queryString = $table.'.drop()';
 
@@ -120,8 +120,8 @@ class Mongo extends Base{
 			$results = $link->{$table}->drop();
 			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			// 错误
-			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+			$this->addLog($queryString);
+		 	throw new Exception($queryString, $e->getMessage(), $e->getCode());
 		}
 		// 删除成功是否
 		return !empty($results['ok']);
@@ -142,17 +142,16 @@ class Mongo extends Base{
 		}
 
 		// 集合名为空
-		empty($args['create']) && $this->addLog($queryString, 'Collection named empty', 1);
-		if ($this->exists($args['create'])) {
-			return false;
+		if (empty($args['create'])) {
+			throw new Exception($queryString, 'Collection named empty');
 		}
-
 		// 执行 command
 		$results = $this->_command(array_intersect_key($args, ['create' => '', 'capped' => '', 'autoIndexId' => '', 'size' => '', 'max' => '', 'flags' => '', 'usePowerOf2Sizes' => '']));
 
 		// 创建错误
-		empty($results['ok']) && $this->addLog($queryString, $results, 1);
-
+		if (empty($results['ok'])) {
+			throw new Exception($queryString, $results['errmsg']);
+		}
 		// 删除 索引
 		$this->_command(['dropIndexes' => $args['create'], 'index' => '*']);
 
@@ -184,19 +183,28 @@ class Mongo extends Base{
 		$queryString = $insert.'.batchInsert('. json_encode($documents) . ', ' .  json_encode($writeConcern).')';
 
 		// 集合为空
-		$insert || $this->addLog($queryString, 'Collection named empty', 1);
-
+		if (!$insert) {
+			throw new Exception($queryString, 'Collection named empty');
+		}
 		// 文档为空
-		$documents || $this->addLog($queryString, 'Insert the documents is empty', 1);
+		if (!$documents) {
+			throw new Exception($queryString, 'Insert the documents is empty');
+		}
 
 		// 整理数据
 		foreach ($documents as $key => &$document) {
-			is_numeric($key) || $this->addLog($queryString, 'Keys into the document format', 1);
-			is_array($document) || is_object($document) || $this->addLog($queryString, 'Insert the document content', 1);
+			if (!is_int($key)) {
+				throw new Exception($queryString, 'Keys into the document format');
+			}
+			if (!is_array($document) && !is_object($document)) {
+				throw new Exception($queryString, 'Insert the document content');
+			}
 			$document = (array) $document;
 			ksort($document);
-			($document = array_unnull($document)) || $this->addLog($queryString, 'Insert the document is empty', 1);
-			$document = (array) $this->_idObject($document);
+			if (!$document = array_unnull($document)) {
+				throw new Exception($queryString, 'Insert the document is empty');
+			}
+			$document = (array) $this->_IDToObject($document);
 		}
 		unset($document);
 
@@ -210,19 +218,23 @@ class Mongo extends Base{
 			$results = $link->{$insert}->batchInsert($documents, $writeConcern);
 			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+			$this->addLog($queryString);
+		 	throw new Exception($queryString, $e->getMessage(), $e->getCode());
 		}
 
 		// 插入失败的
-		empty($results['ok']) && $this->addLog($queryString, $results, 1);
+		if (empty($results['ok'])) {
+			throw new Exception($queryString, $results);
+		}
 
 		// 读最后个插入的id
 		try {
-			if ($document = $this->_toString(end($documents))) {
+			if ($document = $this->_IDToString(end($documents))) {
 				$this->insertID = is_array($document) ? $document['_id'] : $document->_id;
 			}
 		} catch (Exception $e) {
 		}
+
 		// 返回成功插入的数量
 		return count($documents);
 	}
@@ -241,10 +253,11 @@ class Mongo extends Base{
 			$args['writeConcern']['continueOnError'] = false;
 		}
 
+
 		if (empty($args['save'])) {
 			if (!empty($args['replace'])) {
 				$args['save'] = $args['replace'];
-			} elseif (empty($args['collection'])) {
+			} elseif (!empty($args['collection'])) {
 				$args['save'] = $args['collection'];
 			}
 		}
@@ -257,19 +270,28 @@ class Mongo extends Base{
 		$queryString = $save.'.batchReplace('. json_encode($documents) . ', ' .  $writeConcernString.')';
 
 		// 集合为空
-		$save || $this->addLog($queryString, 'Collection named empty', 1);
-
+		if (!$save) {
+			throw new Exception($queryString, 'Collection named empty');
+		}
 		// 文档为空
-		$documents || $this->addLog($queryString, 'Replace the documents is empty', 1);
+		if (!$documents) {
+			throw new Exception($queryString, 'Replace the documents is empty');
+		}
 
 		// 整理数据
 		foreach ($documents as $key => &$document) {
-			is_numeric($key) || $this->addLog($queryString, 'Keys into the document format', 1);
-			is_array($document) || is_object($document) || $this->addLog($queryString, 'Replace the document content', 1);
+			if (!is_int($key)) {
+				throw new Exception($queryString, 'Keys into the document format');
+			}
+			if (!is_array($document) && !is_object($document)) {
+				throw new Exception($queryString, 'Replace the document content');
+			}
 			$document = (array) $document;
 			ksort($document);
-			($document = array_unnull($document)) || $this->addLog($queryString, 'Replace the document is empty', 1);
-			$document = (array) $this->_idObject($document);
+			if (!$document = array_unnull($document)) {
+				throw new Exception($queryString, 'Replace the document is empty');
+			}
+			$document = (array) $this->_IDToObject($document);
 		}
 		unset($document);
 
@@ -279,30 +301,29 @@ class Mongo extends Base{
 		foreach ($documents as $document) {
 			++self::$querySum;
 			try {
-				$queryString = $save.'.save('. json_encode($document) . ', ' .  $writeConcernString.')';
+				$queryString = $save.'.save('. json_encode($document) . ', ' . $writeConcernString.')';
 				$result = $link->{$save}->save($document, $writeConcern);
 				$this->addLog($queryString, $result);
 			} catch (MongoException $e) {
-				if ($writeConcern['continueOnError']) {
-					try {
-						$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
-					} catch (Exception $e) {
+				$this->addLog($queryString);
+				try {
+	 				throw new Exception($queryString, $e->getMessage(), $e->getCode());
+				} catch (Exception $e) {
+					if (!$writeConcern['continueOnError']) {
+						throw $e;
 					}
-				} else {
-					$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 				}
 				continue;
 			}
 
 			// 插入错误
 			if (empty($save['ok'])) {
-				if ($writeConcern['continueOnError']) {
-					try {
-						$this->addLog($queryString, $result, 1);
-					} catch (Exception $e) {
+				try {
+	 				throw new Exception($queryString, $result);
+				} catch (Exception $e) {
+					if (!$writeConcern['continueOnError']) {
+						throw $e;
 					}
-				} else {
-					$this->addLog($queryString, $result, 1);
 				}
 				continue;
 			}
@@ -311,14 +332,12 @@ class Mongo extends Base{
 
 		// 读最后个插入的id
 		try {
-			if ($document = $this->_toString(end($documents))) {
+			if ($document = $this->_IDToString(end($documents))) {
 				$this->insertID = is_array($document) ? $document['_id'] : $document->_id;
 			}
 		} catch (Exception $e) {
 		}
 		return count($results);
-
-
 	}
 
 
@@ -339,17 +358,24 @@ class Mongo extends Base{
 		$args += ['update' => '', 'updates' => [], 'writeConcern' => []];
 		extract($args, EXTR_SKIP);
 
-		$queryString = 'this.update('. $update. ', ' .  json_encode($updates).', '. ($writeConcern['continueOnError'] ? false : true) .', '. json_encode($writeConcern) .')';
+		$queryString = 'this.update('. $update. ', ' . json_encode($updates).', '. ($writeConcern['continueOnError'] ? false : true) .', '. json_encode($writeConcern) .')';
 
 		// 集合为空
-		$update || $this->addLog($queryString, 'Collection named empty', 1);
-
+		if (!$update) {
+			throw new Exception($queryString, 'Collection named empty');
+		}
 		// 文档为空
-		$updates || $this->addLog($queryString, 'Updates the documents is empty', 1);
+		if (!$updates) {
+			throw new Exception($queryString, 'Updates the documents is empty');
+		}
 
 		foreach ($updates as $key => &$value) {
-			is_numeric($key) || $this->addLog($queryString, 'Keys into the document format', 1);
-			is_array($value) || is_object($value) || $this->addLog($queryString, 'Update the parameters', 1);
+			if (!is_int($key)) {
+				throw new Exception($queryString, 'Keys into the document format');
+			}
+			if (!is_array($value) && !is_object($value)) {
+				throw new Exception($queryString, 'Update the parameters');
+			}
 			$value = (array) $value;
 			if (!isset($value['q']) && isset($value['query'])) {
 				$value['q'] = $value['query'];
@@ -358,19 +384,30 @@ class Mongo extends Base{
 				$value['u'] = $value['update'];
 			}
 
-			isset($value['q']) || $this->addLog($queryString, 'Update query is empty', 1);
-			is_array($value['q']) || is_object($value['q']) || $this->addLog($queryString, 'Update query format', 1);
-			$value['q'] = $this->_idObject($value['q'], true);
+			if (!isset($value['q'])) {
+				throw new Exception($queryString, 'Update query is empty');
+			}
+			if (!is_array($value['q']) && !is_object($value['q'])) {
+				throw new Exception($queryString, 'Update query format');
+			}
+			$value['q'] = $this->_IDToObject($value['q'], true);
 
 
-			empty($value['u']) && $this->addLog($queryString, 'Update document is empty', 1);
-			is_array($value['u']) || is_object($value['u']) || $this->addLog($queryString, 'Update document format', 1);
-			($value['u'] = array_unnull((array)$value['u'])) || $this->addLog($queryString, 'Update document is empty', 1);
+			if (empty($value['u'])) {
+				throw new Exception($queryString, 'Update document is empty');
+			}
+			if (!is_array($value['u']) && !is_object($value['u'])) {
+				throw new Exception($queryString, 'Update document format');
+			}
+
+			if (!$value['u'] = array_unnull((array)$value['u'])) {
+				throw new Exception($queryString, 'Update document is empty');
+			}
 			foreach ($value['u'] as $k => &$v) {
 				if ($k && $k{0} == '$' && $v) {
-					$v = $this->_idObject($v);
+					$v = $this->_IDToObject($v);
 				} elseif ('_id' == $k) {
-					$v = $this->_id($v);
+					$v = $this->_ID($v);
 				}
 			}
 			unset($v);
@@ -392,29 +429,28 @@ class Mongo extends Base{
 			}
 
 			try {
-				$queryString = $update.'.update('. json_encode($value['q']) . ', ' .  json_encode($value['u']) . ', ' . json_encode($options) .')';
+				$queryString = $update.'.update('. json_encode($value['q']) . ', ' . json_encode($value['u']) . ', ' . json_encode($options) .')';
 				$result = $link->{$update}->update($value['q'], $value['u'], $options);
 				$this->addLog($queryString, $result);
 			} catch (MongoException $e) {
-				if ($writeConcern['continueOnError']) {
-					try {
-						$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
-					} catch (Exception $e) {
+				$this->addLog($queryString);
+				try {
+	 				throw new Exception($queryString, $e->getMessage(), $e->getCode());
+				} catch (Exception $e) {
+					if (!$writeConcern['continueOnError']) {
+						throw $e;
 					}
-				} else {
-					$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 				}
 				continue;
 			}
 
 			if (empty($result['ok'])) {
-				if ($writeConcern['continueOnError']) {
-					try {
-						$this->addLog($queryString, $result, 1);
-					} catch (Exception $e) {
+				try {
+	 				throw new Exception($queryString, $result);
+				} catch (Exception $e) {
+					if (!$writeConcern['continueOnError']) {
+						throw $e;
 					}
-				} else {
-					$this->addLog($queryString, $result, 1);
 				}
 				continue;
 			}
@@ -473,26 +509,37 @@ class Mongo extends Base{
 		$args += ['delete' => '', 'deletes' => [], 'writeConcern' => []];
 		extract($args, EXTR_SKIP);
 
-		$queryString = 'this.delete('. $delete. ', ' .  json_encode($deletes).', '. ($writeConcern['continueOnError'] ? false : true) .', '. json_encode($writeConcern) .')';
+		$queryString = 'this.delete('. $delete. ', ' . json_encode($deletes).', '. ($writeConcern['continueOnError'] ? false : true) .', '. json_encode($writeConcern) .')';
 
 		// 集合为空
-		$delete || $this->addLog($queryString, 'Collection named empty', 1);
-
+		if (!$delete) {
+			throw new Exception($queryString, 'Collection named empty');
+		}
 		// 文档为空
-		$deletes || $this->addLog($queryString, 'Deletes the querys is empty', 1);
+		if (!$deletes) {
+			throw new Exception($queryString, 'Deletes the querys is empty');
+		}
 
 
 
 		foreach ($deletes as $key => &$value) {
-			is_numeric($key) || $this->addLog($queryString, 'Keys into the document format', 1);
-			is_array($value) || is_object($value) || $this->addLog($queryString, 'Delete the parameters', 1);
+			if (!is_int($key)) {
+				throw new Exception($queryString, 'Keys into the document format');
+			}
+			if (!is_array($value) && !is_object($value)) {
+				throw new Exception($queryString, 'Delete the parameters');
+			}
 			$value = (array) $value;
 			if (!isset($value['q']) && isset($value['query'])) {
 				$value['q'] = $value['query'];
 			}
-			isset($value['q']) || $this->addLog($queryString, 'Delete query is empty', 1);
-			is_array($value['q']) || is_object($value['q']) || $this->addLog($queryString, 'Delete query format', 1);
-			$value['q'] = $this->_idObject($value['q'], true);
+			if (!isset($value['q'])) {
+				throw new Exception($queryString, 'Delete query is empty');
+			}
+			if (!is_array($value['q']) && !is_object($value['q'])) {
+				throw new Exception($queryString, 'Delete query format');
+			}
+			$value['q'] = $this->_IDToObject($value['q'], true);
 		}
 		unset($value);
 
@@ -511,25 +558,24 @@ class Mongo extends Base{
 				$result = $link->{$delete}->remove($value['q'], $options);
 				$this->addLog($queryString, $result);
 			} catch (MongoException $e) {
-				if ($writeConcern['continueOnError']) {
-					try {
-						$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
-					} catch (Exception $e) {
+				$this->addLog($queryString);
+				try {
+	 				throw new Exception($queryString, $e->getMessage(), $e->getCode());
+				} catch (Exception $e) {
+					if (!$writeConcern['continueOnError']) {
+						throw $e;
 					}
-				} else {
-					$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
 				}
 				continue;
 			}
 
 			if (empty($result['ok'])) {
-				if ($writeConcern['continueOnError']) {
-					try {
-						$this->addLog($queryString, $result, 1);
-					} catch (Exception $e) {
+				try {
+	 				throw new Exception($queryString, $result);
+				} catch (Exception $e) {
+					if (!$writeConcern['continueOnError']) {
+						throw $e;
 					}
-				} else {
-					$this->addLog($queryString, $result, 1);
 				}
 				continue;
 			}
@@ -558,12 +604,9 @@ class Mongo extends Base{
 		*/
 	}
 
-	public function row($args, $slave = true) {
-		return ($r = $this->results(['limit' => 1] + $args, $slave)) ? reset($r) : false;
-	}
 
 
-	public function results($args, $slave = true) {
+	public function select($args, $slave = true) {
 		$command = empty($args['command']) ? '' : $args['command'];
 		$queryString = 'this.results('. json_encode($args).')';
 		$link = $this->link($slave);
@@ -581,8 +624,9 @@ class Mongo extends Base{
 			$options = array_intersect_key($args, ['allowDiskUse' => '', 'explain' => '', 'cursor' => '', 'maxTimeMS' => '']);
 
 
-			$collection || $this->addLog($queryString, 'Collection named empty', 1);
-
+			if (!$collection) {
+				throw new Exception($queryString, 'Collection named empty');
+			}
 			// 记录以存在的键名
 			$keys = [];
 			foreach ($pipeline as $key => $value) {
@@ -612,7 +656,7 @@ class Mongo extends Base{
 			foreach($pipeline as &$foreach) {
 				foreach ($foreach as $key => &$value) {
 					if ($key == '$match' && $value) {
-						$value = $this->_idObject($value, true);
+						$value = $this->_IDToObject($value, true);
 					}
 				}
 			}
@@ -628,11 +672,12 @@ class Mongo extends Base{
 				$results = [];
 				foreach ($cursor as $result) {
 					++self::$queryRow;
-					$results[] = (object) $this->_toString($result);
+					$results[] = (object) $this->_IDToString($result);
 				}
 				$this->addLog($queryString, $results);
 			} catch (MongoException $e) {
-				$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+				$this->addLog($queryString);
+		 	throw new Exception($queryString, $e->getMessage(), $e->getCode());
 			}
 			return $results;
 		}
@@ -651,10 +696,13 @@ class Mongo extends Base{
 			}
 			$args += ['distinct' => '', 'key' => '', 'query' => []];
 			extract($args, EXTR_SKIP);
-			$distinct || $this->addLog($queryString, 'Collection named empty', 1);
-
-			is_array($query) || is_object($query) || $this->addLog($queryString, 'Query format', 1);
-			$query = $this->_idObject($query, true);;
+			if (!$distinct) {
+				throw new Exception($queryString, 'Collection named empty');
+			}
+			if (!is_array($query) && !is_object($query)) {
+				throw new Exception($queryString, 'Query format');
+			}
+			$query = $this->_IDToObject($query, true);;
 
 
 			try {
@@ -663,7 +711,8 @@ class Mongo extends Base{
 				$results = $link->{$distinct}->distinct($key, $query);
 				$this->addLog($queryString, $results);
 			} catch (MongoException $e) {
-				$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+				$this->addLog($queryString);
+		 		throw new Exception($queryString, $e->getMessage(), $e->getCode());
 			}
 			return $results ? $results : [];
 		}
@@ -701,12 +750,17 @@ class Mongo extends Base{
 			extract($args, EXTR_SKIP);
 
 
-			$ns || $this->addLog($queryString, 'Collection named empty', 1);
+			if (!$ns) {
+				throw new Exception($queryString, 'Collection named empty');
+			}
+			if (!is_array($cond) && !is_object($cond)) {
+		 		throw new Exception($queryString, 'Condition format');
+			}
+			$cond = $this->_IDToObject($cond, true);
 
-			is_array($cond) || is_object($cond) || $this->addLog($queryString, 'Condition format', 1);
-			$cond = $this->_idObject($cond, true);
-
-			empty($key) && $this->addLog($queryString, 'Key the is empty', 1);
+			if (empty($key)) {
+				throw new Exception($queryString, 'Key the is empty');
+			}
 
 			if ($reduce instanceof MongoCode) {
 				$reduce = new MongoCode($reduce);
@@ -729,13 +783,14 @@ class Mongo extends Base{
 				$results = $link->{$ns}->group($key, $initial, $reduce, $options);
 				$this->addLog($queryString, $results);
 			} catch (MongoException $e) {
-				$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+				$this->addLog($queryString);
+		 		throw new Exception($queryString, $e->getMessage(), $e->getCode());
 			}
 			$res = [];
 			if (!empty($results['retval'])) {
 				foreach ($results['retval'] as $retval) {
 					++self::$queryRow;
-					$res[] = (object) $this->_toString($retval);
+					$res[] = (object) $this->_IDToString($retval);
 				}
 				// mongodb 的 group 不支持排序 添加支持
 				if (!empty($sort)) {
@@ -750,11 +805,15 @@ class Mongo extends Base{
 		$args += ['collection' => '', 'fields' => [], 'query' => [], 'options' => [], 'sort' => [], 'skip' => 0, 'limit' => 0];
 		extract($args, EXTR_SKIP);
 
-		$collection || $this->addLog($queryString, 'Collection named empty', 1);
+		if (!$collection) {
+			throw new Exception($queryString, 'Collection named empty');
+		}
 
-		is_array($query) || is_object($query) || $this->addLog($queryString, 'Query format', 1);
+		if (!is_array($query) && !is_object($query)) {
+			throw new Exception($queryString, 'Query format');
+		}
 
-		$query = $this->_idObject($query, true);
+		$query = $this->_IDToObject($query, true);
 
 
 		// 常规查询
@@ -763,7 +822,7 @@ class Mongo extends Base{
 			$cursor = $link->{$collection}->find($query, $fields);
 			if ($options) {
 				foreach ($options as $name => $value) {
-					$queryString .= '.addOption('. $name .', '. (is_array($value) || is_object($value) ? json_encode($value)  : $value) .')';
+					$queryString .= '.addOption('. $name .', '. (is_array($value) || is_object($value) ? json_encode($value) : $value) .')';
 					$cursor = $cursor->addOption($name, $value);
 				}
 			}
@@ -783,15 +842,26 @@ class Mongo extends Base{
 			$results = [];
 			foreach ($cursor as $value) {
 				++self::$queryRow;
-				$results[] = (object) $this->_toString($value);
+				$results[] = (object) $this->_IDToString($value);
 			}
 			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+			$this->addLog($queryString);
+		 	throw new Exception($queryString, $e->getMessage(), $e->getCode());
 		}
 		return $results;
 	}
 
+
+	public function distinct($query, $slave = true) {
+		return ($results = $this->_query($query, $slave)) ? $results : [];
+	}
+	public function aggregate($query, $slave = true) {
+		return ($results = $this->_query($query, $slave)) ? $results : [];
+	}
+	public function group($query, $slave = true) {
+		return ($results = $this->_query($query, $slave)) ? $results : [];
+	}
 
 	public function count($args, $slave = true) {
 		// http://docs.mongodb.org/manual/reference/command/count/
@@ -807,11 +877,14 @@ class Mongo extends Base{
 
 		extract($args, EXTR_SKIP);
 
-		$count || $this->addLog($queryString, 'Collection named empty', 1);
+		if (!$count) {
+			throw new Exception($queryString, 'Collection named empty');
+		}
+		if (!is_array($query) && !is_object($query)) {
+			throw new Exception($queryString, 'Query format');
+		}
 
-		is_array($query) || is_object($query) || $this->addLog($queryString, 'Query format', 1);
-
-		$query = $this->_idObject($query, true);
+		$query = $this->_IDToObject($query, true);
 
 		$link = $this->link($slave);
 
@@ -824,40 +897,37 @@ class Mongo extends Base{
 			$result = $link->{$count}->count($query, $options);
 			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
-			return false;
+			$this->addLog($queryString);
+		 	throw new Exception($queryString, $e->getMessage(), $e->getCode());
 		}
 		return $result;
 	}
 
 
 	public function startTransaction() {
-		$this->addLog('startTransaction', 'Mongodb no transaction', 1);
-	 	return false;
-    }
-    public function commit() {
-    	$this->addLog('commit', 'Mongodb no transaction', 1);
-    	return false;
-    }
-    public function rollback() {
-    	$this->addLog('rollback', 'Mongodb no transaction', 1);
-    	return false;
-    }
+		throw new Exception('this.startTransaction()', 'Mongodb no transaction');
+	}
+	public function commit() {
+		throw new Exception('this.commit()', 'Mongodb no transaction');
+	}
+	public function rollback() {
+		throw new Exception('this.rollback()', 'Mongodb no transaction');
+	}
 
-	private function _idObject($args, $call = false, $logical = false) {
+	private function _IDToObject($args, $call = false, $logical = false) {
 		if (!$call) {
 			if (isset($args['_id'])) {
-				$args['_id'] = $this->_id($args['_id'], $call);
+				$args['_id'] = $this->_ID($args['_id'], $call);
 			} elseif (isset($args->_id)) {
-				$args->_id = $this->_id($args->_id, $call);
+				$args->_id = $this->_ID($args->_id, $call);
 			}
 		} else {
 			foreach ($args as $k => &$v) {
 				if ($k === '_id') {
-					$v = $this->_id($v, $call);
+					$v = $this->_ID($v, $call);
 				} elseif ($logical || ($k && $k{0} == '$')) {
 					if ($v && (is_array($v) || is_object($v)) && ($logical || in_array($k, ['$gt', '$gte', '$in', '$lt', '$lte', '$ne', '$nin', '$and', '$nor', '$not', '$or', '$mod', '$all', '$elemMatch']))) {
-						$v = $this->_idObject($v, $call, in_array($k, ['$and', '$nor', '$not', '$or']));
+						$v = $this->_IDToObject($v, $call, in_array($k, ['$and', '$nor', '$not', '$or']));
 					}
 				}
 			}
@@ -865,7 +935,7 @@ class Mongo extends Base{
 		return $args;
 	}
 
-	private function _toString($args) {
+	private function _IDToString($args) {
 		if (isset($args['_id'])) {
 			if ($args['_id'] instanceof MongoId) {
 				$args['_id'] = $args['_id']->__toString();
@@ -878,30 +948,29 @@ class Mongo extends Base{
 		return $args;
 	}
 
-	private function _id($_id, $call = false) {
+	private function _ID($_id, $call = false) {
 		if ($_id instanceof MongoId) {
 			return $_id;
 		}
 		if ($call && (is_array($_id) || is_object($_id))) {
 			foreach ($_id as &$v) {
 				if (is_array($v) || is_object($v)) {
-					$v = $this->_id($v, true);
+					$v = $this->_ID($v, true);
 				} else {
 					if (!$v instanceof MongoId) {
 						try {
 							$v = new MongoId($v);
 						} catch (MongoException $e) {
-							$this->addLog('this.MongoId('. (is_array($v) || is_object($v) ? json_encode($v) : $v) .')', $e->getMessage(), 1, $e->getCode());
+							throw new Exception('this.MongoId('. (is_array($v) || is_object($v) ? json_encode($v) : $v).')', $e->getMessage(), $e->getCode());
 						}
 					}
 				}
 			}
 		} else {
-			$_id || $this->addLog('this.MongoId()', '_id is empty', 1);
 			try {
 				$_id = new MongoId($_id);
 			} catch (MongoException $e) {
-				$this->addLog('this.MongoId('. (is_array($v) || is_object($v) ? json_encode($v) : $v) .')', $e->getMessage(), 1, $e->getCode());
+				throw new Exception('this.MongoId('. (is_array($v) || is_object($v) ? json_encode($v) : $v).')', $e->getMessage(), $e->getCode());
 			}
 		}
 		return $_id;
@@ -910,7 +979,9 @@ class Mongo extends Base{
 
 	private function _command(array $command, array $options = []) {
 		$queryString = 'this.command('.json_encode($command).', '. json_encode($options).' )';
-		$command || $this->addLog($queryString, 'Command is empty', 1);
+		if (!$command) {
+			throw new Exception($queryString, 'Command is empty');
+		}
 		$link = $this->link(false);
 
 		++self::$querySum;
@@ -918,10 +989,14 @@ class Mongo extends Base{
 			$results = $link->command($command, $options);
 			$this->addLog($queryString, $results);
 		} catch (MongoException $e) {
-			$this->addLog($queryString, $e->getMessage(), 1, $e->getCode());
+			$this->addLog($queryString);
+		 	throw new Exception($queryString, $e->getMessage(), $e->getCode());
 		}
-		if (!empty($results['err']) || !empty($results['errmsg']) ) {
-			$this->addLog($queryString, $results, 1);
+		if (!empty($results['errmsg'])) {
+		 	throw new Exception($queryString, $results['errmsg'], empty($results['code']) ? 0 : $results['code']);
+		}
+		if (!empty($results['err'])) {
+		 	throw new Exception($queryString, $results['err']);
 		}
 		return $results;
 	}

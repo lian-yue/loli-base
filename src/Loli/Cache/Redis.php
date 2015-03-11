@@ -47,6 +47,7 @@ class Redis extends Base{
 					$this->_data[$list][$key] = is_numeric($data) ? (int) $data : @unserialize($data);
 				}
 			} catch (RedisException $e) {
+				$this->addMessage($e->getMessage());
 			}
 		}
 		if (is_object($this->_data[$list][$key])) {
@@ -58,7 +59,7 @@ class Redis extends Base{
 
 	public function add($data, $key, $list = 'default', $ttl = 0) {
 		++$this->count['add'];
-		if ($data === null || $data === false || ($ttl = intval($ttl)) < -1 || (!$ttl && $this->get($key, $list, true) !== false)) {
+		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1 || (!$ttl && $this->get($key, $list, true) !== false)) {
 			return false;
 		}
 		if (is_object($data)) {
@@ -76,10 +77,11 @@ class Redis extends Base{
 			if ($obj->setnx($k = $this->_key($key, $list), is_int($data) ? $data : serialize($data))) {
 				$ttl == -1 || $obj->expire($k, $ttl);
 				$this->_data[$list][$key] = $data;
-				$this->_ttl[$list][$key] = null;
+				$this->_ttl[$list][$key] = NULL;
 				$r = true;
 			}
 		} catch (RedisException $e) {
+			$this->addMessage($e->getMessage());
 		}
 		return $r;
 	}
@@ -87,7 +89,7 @@ class Redis extends Base{
 
 	public function set($data, $key, $list = 'default', $ttl = 0) {
 		++$this->count['set'];
-		if ($data === null || $data === false || ($ttl = intval($ttl)) < -1) {
+		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1) {
 			return false;
 		}
 		if (is_object($data)) {
@@ -104,11 +106,11 @@ class Redis extends Base{
 			if ($obj->set($k = $this->_key($key, $list), is_int($data) ? $data : serialize($data))) {
 				$ttl == -1 || $obj->expire($k, $ttl);
 				$this->_data[$list][$key] = $data;
-				$this->_ttl[$list][$key] = null;
+				$this->_ttl[$list][$key] = NULL;
 				$r = true;
 			}
 		} catch (RedisException $e) {
-
+			$this->addMessage($e->getMessage());
 		}
 		return $r;
 	}
@@ -128,12 +130,12 @@ class Redis extends Base{
 		}
 
 
-		$this->_ttl[$list][$key] = $this->_data[$list][$key] = null;
+		$this->_ttl[$list][$key] = $this->_data[$list][$key] = NULL;
 		try {
 			$obj = $this->_obj($key, $list);
 			$r = $obj->exists($k = $this->_key($key, $list)) && $obj->incrby($k, $n);
 		} catch (RedisException $e) {
-
+			$this->addMessage($e->getMessage());
 		}
 		return $r;
 	}
@@ -154,11 +156,12 @@ class Redis extends Base{
 		}
 
 
-		$this->_ttl[$list][$key] = $this->_data[$list][$key] = null;
+		$this->_ttl[$list][$key] = $this->_data[$list][$key] = NULL;
 		try {
 			$obj = $this->_obj($key, $list);
 			$r = $obj->exists($k = $this->_key($key, $list)) && $obj->decrby($k, $n);
 		} catch (RedisException $e) {
+			$this->addMessage($e->getMessage());
 		}
 		return $r;
 	}
@@ -185,6 +188,7 @@ class Redis extends Base{
 		try {
 			$r = $this->_obj($key, $list)->del($this->_key($key, $list));
 		} catch (RedisException $e) {
+			$this->addMessage($e->getMessage());
 		}
 		return $r;
 	}
@@ -201,6 +205,7 @@ class Redis extends Base{
 					$this->_ttl[$list][$key] = $ttl + time();
 				}
 			} catch (RedisException $e) {
+				$this->addMessage($e->getMessage());
 			}
 		}
 
@@ -222,7 +227,7 @@ class Redis extends Base{
 					try {
 						$this->_obj($k, $kk)->flushall();
 					} catch (RedisException $e) {
-
+						$this->addMessage($e->getMessage());
 					}
 				}
 			}
@@ -249,7 +254,7 @@ class Redis extends Base{
 					empty($this->_servers[$list][$key][2]) || $this->_servers[$list][$key]['obj']->auth($this->_servers[$list][$key][2]);
 				}
 			} catch (RedisException $e) {
-				$this->addMessage('Redis '. $host .':' . $port ' message: ' .$e->getMessage());
+				$this->addMessage('Host: ' . $this->_servers[$list][$key][0] .':' .  $this->_servers[$list][$key][1]. '   '. $e->getMessage());
 			}
 		}
 		return $this->_servers[$list][$key]['obj'];

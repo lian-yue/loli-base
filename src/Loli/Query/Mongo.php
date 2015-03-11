@@ -283,7 +283,7 @@ class Mongo extends Base{
 
 		$document = [];
 		foreach ($array as $k => $v) {
-			if ($v === null) {
+			if ($v === NULL) {
 				continue;
 			}
 			if (!is_object($v) || empty($v->{'$object'}) || $v->{'$object'} !== true) {

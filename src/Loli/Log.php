@@ -20,6 +20,7 @@ class Log{
 	const LEVEL_WARNING = Base::LEVEL_WARNING;
 	const LEVEL_ERROR = Base::LEVEL_ERROR;
 	const LEVEL_ALERT = Base::LEVEL_ALERT;
+	const LEVEL_STORAGE = Base::LEVEL_STORAGE;
 	const LEVEL_QUERY = Base::LEVEL_QUERY;
 	const LEVEL_DEBUG = Base::LEVEL_DEBUG;
 

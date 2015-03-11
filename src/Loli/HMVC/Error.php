@@ -16,9 +16,9 @@
  *  错误控制器
  *  使用返回错误  (throw|return) new Error(错误码, 附加数据可选, 上一个错误可选);
  *  使用多个错误
- *  $error = null;
- *  $error = new Error('User empty', [], $error);
- *  $error = new Error('Password empty', [], $error);
+ *  $error = NULL;
+ *  $error = new Error(0xFF, [], $error);
+ *  $error = new Error(0xF5, [], $error);
  *  (throw|return) $error;
  *
  * 返回只能用于 返回视图的函数中

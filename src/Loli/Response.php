@@ -55,24 +55,24 @@ class Response{
 	public function setCookies(array $cookies) {
 		$this->_cookies = [];
 		foreach ($cookies as $name => $cookie) {
-			$cookie += ['value' => null, 'ttl' => 0, 'httponly' => null, $secure => null, 'path' => null, 'domain' => null];
+			$cookie += ['value' => NULL, 'ttl' => 0, 'httponly' => NULL, $secure => NULL, 'path' => NULL, 'domain' => NULL];
 			$this->setCookie($name, $cookie['value'], $cookie['ttl'], $cookie['httponly'], $cookie['secure'], $cookie['path'], $cookie['domain']);
 		}
 		return $this;
 	}
 
-	public function getCookie($name, $defaultValue = null) {
+	public function getCookie($name, $defaultValue = NULL) {
 		return isset($this->_cookies[$name]) ? $this->_cookies[$name] : $defaultValue;
 	}
 
-	public function addCookie($name, $value, $ttl = 0,  $httponly = null, $secure = null, $path = null, $domain = null) {
+	public function addCookie($name, $value, $ttl = 0,  $httponly = NULL, $secure = NULL, $path = NULL, $domain = NULL) {
 		if (empty($this->_cookies[$name])) {
 			return call_user_func_array([$this, 'setCookie'], func_get_args());
 		}
 		return $this;
 	}
 
-	public function setCookie($name, $value, $ttl = 0,  $httponly = null, $secure = null, $path = null, $domain = null) {
+	public function setCookie($name, $value, $ttl = 0,  $httponly = NULL, $secure = NULL, $path = NULL, $domain = NULL) {
 		$this->_cookies[$name] = ['value' => is_array($value) || is_object($value) ? parse_string($value) : $value, 'ttl' => $ttl, 'httponly' => $httponly, 'secure' => $secure, 'path' => $path, 'domain' => $domain];
 		return $this;
 	}
@@ -85,17 +85,17 @@ class Response{
 		return $this;
 	}
 
-	private function _sendCookie($name, $value, $ttl = 0,  $httponly = null, $secure = null, $path = null, $domain = null) {
-		$httponly = $httponly === null ? $this->cookieHttponly : $httponly;
-		$secure = $secure === null ? $this->cookieSecure : $secure;
-		$path = $path === null ? $this->cookiePath : $path;
-		$domain = $domain === null ? $this->cookieDomain : $domain;
+	private function _sendCookie($name, $value, $ttl = 0,  $httponly = NULL, $secure = NULL, $path = NULL, $domain = NULL) {
+		$httponly = $httponly === NULL ? $this->cookieHttponly : $httponly;
+		$secure = $secure === NULL ? $this->cookieSecure : $secure;
+		$path = $path === NULL ? $this->cookiePath : $path;
+		$domain = $domain === NULL ? $this->cookieDomain : $domain;
 		if (is_array($value)) {
 			foreach ($value as $key => $_value) {
 				$this->_sendCookie($name . '['. rawurlencode($key) .']', $_value, $ttl,  $httponly, $secure, $path, $domain);
 			}
 		} else {
-			if ($value === null) {
+			if ($value === NULL) {
 				$value = 'deleted';
 				$ttl = 1;
 			} else {
@@ -113,7 +113,7 @@ class Response{
 	public function setCaches(array $caches) {
 		$this->_caches = [];
 		foreach ($caches as $name => $value) {
-			if ($value === null) {
+			if ($value === NULL) {
 				continue;
 			}
 			$this->_caches[$name] = (string) $value;
@@ -121,12 +121,12 @@ class Response{
 		return $this;
 	}
 
-	public function getCache($name, $defaultValue = null) {
-		return isset($this->_caches[$name]) ? $this->_caches[$name] : null;
+	public function getCache($name, $defaultValue = NULL) {
+		return isset($this->_caches[$name]) ? $this->_caches[$name] : NULL;
 	}
 
 	public function addCache($name, $value) {
-		if ($value === null || isset($this->_caches[$name])) {
+		if ($value === NULL || isset($this->_caches[$name])) {
 			return $this;
 		}
 		$this->_caches[$name] = (string) $value;
@@ -135,7 +135,7 @@ class Response{
 
 
 	public function setCache($name, $value) {
-		if ($value === null) {
+		if ($value === NULL) {
 			unset($this->_caches[$name]);
 		} else {
 			$this->_caches[$name] = (string) $value;
@@ -153,14 +153,14 @@ class Response{
 			} elseif ($name == 'max-age') {
 				// max-age
 				$values[] = $name . '=' . $value;
-				$name == 'max-age' && $this->setHeader('Expires', $value ? gmdate('D, d M Y H:i:s \G\M\T', time() + $value) : null);
+				$name == 'max-age' && $this->setHeader('Expires', $value ? gmdate('D, d M Y H:i:s \G\M\T', time() + $value) : NULL);
 			} elseif (in_array($name, ['public', 'private']) && in_array($values, ['public', 'private'])) {
 				// public  和 private 只能选一个
 			} elseif ($value) {
 				$values[] = $name;
 			}
 		}
-		$this->setHeader('Cache-Control', $values ? implode(', ', $values) : null);
+		$this->setHeader('Cache-Control', $values ? implode(', ', $values) : NULL);
 		return $this;
 	}
 
@@ -182,7 +182,7 @@ class Response{
 	public function setHeaders(array $headers) {
 		$this->_headers = [];
 		foreach ($headers as $name => $values) {
-			if ($values === null) {
+			if ($values === NULL) {
 				continue;
 			}
 			foreach ((array)$values as $value) {
@@ -207,7 +207,7 @@ class Response{
 
 	public function setHeader($name, $values) {
 		unset($this->_headers[$name]);
-		if ($values !== null) {
+		if ($values !== NULL) {
 			foreach ((array)$values as $value) {
 				$this->_headers[$name][] = (string) $value;
 			}
@@ -267,7 +267,7 @@ class Response{
 
 
 	public function addContent($content) {
-		if ($this->_content === null) {
+		if ($this->_content === NULL) {
 			$this->_content = $content;
 		}
 		return $this;
@@ -280,7 +280,7 @@ class Response{
 
 	public function sendContent() {
 		// 204 205 304 和 HEAD 不发送内容
-		if (in_array($this->_status, [204, 205, 304]) || $this->request->getMethod()  == 'OPTIONS' ||  ($this->request->getMethod() == 'HEAD' && $this->getHeader('Content-Length') !== null)) {
+		if (in_array($this->_status, [204, 205, 304]) || $this->request->getMethod()  == 'OPTIONS' ||  ($this->request->getMethod() == 'HEAD' && $this->getHeader('Content-Length') !== NULL)) {
 			return $this;
 		}
 		// 小于200 的发送 空行
@@ -395,7 +395,7 @@ class Response{
 	public function clear() {
 		$this->_headers = $this->_caches = $this->_cookies = [];
 		$this->_status = 200;
-		$this->_content = null;
+		$this->_content = NULL;
 		return $this;
 	}
 }

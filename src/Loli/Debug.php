@@ -15,14 +15,14 @@ namespace Loli;
 
 class Debug {
 	// display 需要输出并且结束的错误
-	public $display = null;
+	public $display = NULL;
 
 	// arg debug输出是否输出 args内容
 	public $args = false;
 
 
 	// log 错误日志
-	public $log = null;
+	public $log = NULL;
 
 	// dir 首页目录
 	public $dir = '';
@@ -39,12 +39,12 @@ class Debug {
 
 
 		// 需要显示的错误级别
-		$this->display === null || error_reporting($this->display);
-		$this->display === null || @ini_set('display_errors', (int) (bool) $this->display);
+		$this->display === NULL || error_reporting($this->display);
+		$this->display === NULL || @ini_set('display_errors', (int) (bool) $this->display);
 
 
 		// 错误日志
-		if ($this->log !== null) {
+		if ($this->log !== NULL) {
 			@ini_set('log_errors', (bool) $this->log);
 			$this->log && @ini_set('error_log', sprintf(is_string($this->log) ? $this->log : dirname(__DIR__). '/debug/%s.log', gmdate('Y-m-d H-i')));
 		}
@@ -97,7 +97,7 @@ class Debug {
 					$args[] = @var_export($vv, true);
 				} elseif (is_resource($vv)) {
 					$args[] = 'Resource .' . get_resource_type($vv);
-				} elseif ($vv === null) {
+				} elseif ($vv === NULL) {
 					$args[] = 'NULL';
 				} else {
 					$args[] = $vv;
@@ -202,7 +202,7 @@ class Debug {
 						$args[] = @var_export($vv, true);
 					} elseif (is_resource($vv)) {
 						$args[] = 'Resource .' . get_resource_type($vv);
-					} elseif ($vv === null) {
+					} elseif ($vv === NULL) {
 						$args[] = 'NULL';
 					} else {
 						$args[] = $vv;

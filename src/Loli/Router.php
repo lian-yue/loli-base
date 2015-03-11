@@ -12,7 +12,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-use Loli\HMVC\View, Loli\HMVC\Error, Loli\HMVC\Message, Loli\DB\Exception as DBException, stdClass;
+use Loli\HMVC\View, Loli\HMVC\Error, Loli\HMVC\Message, stdClass;
 class Router{
 
 	// 全部 资源
@@ -82,7 +82,7 @@ class Router{
 //		self::$_nameSpaces[$nameSpace] = ['host' => $host, 'path' => $path, 'scheme' => $scheme];
 //	}
 
-	//public function add(Request $request, Response $response = null) {
+	//public function add(Request $request, Response $response = NULL) {
 
 	//}
 	//
@@ -94,7 +94,7 @@ class Router{
 	//}
 
 
-	public function __construct(Request &$request, Response &$response = null) {
+	public function __construct(Request &$request, Response &$response = NULL) {
 		if (!$response instanceof Response) {
 			$response = new Response($request);
 		}
@@ -268,12 +268,9 @@ class Router{
 			// 错误捕获
 		} catch (Message $messages) {
 			// 消息捕获
-		} catch (DBException $e) {
-			// 数据库异常
-			$errors = new Error(['DB', $e->getMessage()], new Error(500));
 		} catch (\Exception $e) {
 			// 其他异常捕获 创建错误
-			$errors = new Error(500);
+			$errors = new Error([0x1, $e->getMessage()], new Error(500));
 		}
 
 
@@ -650,7 +647,7 @@ class Router{
 	}
 
 	// 运行
-	public static function run(Request &$request, Response &$response = null) {
+	public static function run(Request &$request, Response &$response = NULL) {
 		array_push(self::$_stacks, self::$_ID);
 		if (!$response instanceof Response) {
 			$response = new Response($request);

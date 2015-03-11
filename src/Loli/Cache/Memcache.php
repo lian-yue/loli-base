@@ -12,6 +12,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
+use Memcached;
 class_exists('Loli\Cache\Base') || exit;
 
 class Memcache extends Base{
@@ -24,6 +25,9 @@ class Memcache extends Base{
 	private $_mem = [];
 
 	private $_d = false;
+
+	// 从新尝试时间
+	protected $retry = 15;
 
 	function __construct(array $args, $key = '') {
 		$this->_key = $key;
@@ -56,7 +60,7 @@ class Memcache extends Base{
 
 	public function add($data, $key, $list = 'default', $ttl = 0) {
 		++$this->count['add'];
-		if ($data === null || $data === false || ($ttl = intval($ttl)) < -1 || (!$ttl && $this->get($key, $list) !== false)) {
+		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1 || (!$ttl && $this->get($key, $list) !== false)) {
 			return false;
 		}
 		if (is_object($data)) {
@@ -78,7 +82,7 @@ class Memcache extends Base{
 
 	public function set($data, $key, $list = 'default', $ttl = 0) {
 		++$this->count['set'];
-		if ($data === null || $data === false || ($ttl = intval($ttl)) < -1) {
+		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1) {
 			return false;
 		}
 		if (is_object($data)) {
@@ -110,7 +114,7 @@ class Memcache extends Base{
 			}
 			return false;
 		}
-		$this->_ttl[$list][$key] = $this->_data[$list][$key] = null;
+		$this->_ttl[$list][$key] = $this->_data[$list][$key] = NULL;
 		return $this->_mem($list)->increment($this->_key($key, $list), $n);
 	}
 
@@ -127,7 +131,7 @@ class Memcache extends Base{
 			}
 			return false;
 		}
-		$this->_ttl[$list][$key] = $this->_data[$list][$key] = null;
+		$this->_ttl[$list][$key] = $this->_data[$list][$key] = NULL;
 		return $this->_mem($list)->decrement($this->_key($key, $list), $n);
 	}
 
@@ -191,8 +195,8 @@ class Memcache extends Base{
 	public function addServers($list, array $a) {
 		if ($this->_d) {
 			if (empty($this->_mem[$list])) {
-				$this->_mem[$list] = new \Memcached;
-				$this->_mem[$list]->setOptions([\Memcached::OPT_COMPRESSION => true, \Memcached::OPT_POLL_TIMEOUT => 1000, \Memcached::OPT_RETRY_TIMEOUT => 60]);
+				$this->_mem[$list] = new Memcached;
+				$this->_mem[$list]->setOptions([Memcached::OPT_COMPRESSION => true, Memcached::OPT_POLL_TIMEOUT => 1000, Memcached::OPT_RETRY_TIMEOUT => $this->retry]);
 			}
 			$this->_mem[$list]->addServers($v[0], $a);
 		} else {
@@ -200,7 +204,7 @@ class Memcache extends Base{
 				$this->_mem[$list] =  new \Memcache;
 			}
 			foreach ($a as $k => $v) {
-				$this->_mem[$list]->addServer($v[0], empty($v[1]) ? 11211: $v[1], true, 1, 1, 60, true, [$this, 'failure']);
+				$this->_mem[$list]->addServer($v[0], empty($v[1]) ? 11211: $v[1], true, 1, 1, $this->retry, true, [$this, 'failure']);
 			}
 		}
 		return true;

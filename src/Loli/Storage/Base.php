@@ -27,7 +27,13 @@ abstract class Base{
 
 	protected $buffer = 2097152;
 
-	abstract public function __construct($args);
+	public function __construct(array $args = []) {
+		foreach ($args as $key => $value) {
+			if ($key && $key{0} != '_' && $value !== NULL && isset($this->$key)) {
+				$this->$key = $value;
+			}
+		}
+	}
 
 	/**
 	*	上传文件
@@ -143,19 +149,17 @@ abstract class Base{
 	*	返回值 string
 	**/
 	public function filter($path) {
-		$path = trim($path, " \t\n\r\0\x0B/\\");
-		$path = preg_replace('/[\/\\\\]+/', '/', $path);
-		if (!$path) {
-			return false;
+		if (!$path = preg_replace('/[\/\\\\]+/', '/', trim($path, " \t\n\r\0\x0B/\\"))) {
+			throw new Exception('Path can not be empty', 1);
 		}
 		$r = [];
-		foreach (explode('/', $path) as $v) {
-			if (!($v = preg_replace('/[\\\"\<\>\|\?\*\:\/	]/', '', $v)) || !trim($v, " \t\n\r\0\x0B.")) {
-				return false;
+		foreach (explode('/', $path) as $name) {
+			if (!$name || trim($name, " \t\n\r\0\x0B.") != $name || preg_match('/[\\\"\<\>\|\?\*\:\/	]/', '', $name)) {
+				throw new Exception('Path format', 1);
 			}
 			$r[] = $v;
 		}
-		return implode('/', $r);
+		return '/' . implode('/', $r);
 	}
 
 
@@ -166,7 +170,7 @@ abstract class Base{
 			$info = new finfo();
 		}
 		if (!is_file($file)) {
-			return false;
+			throw new Exception('File does not exist', 2);
 		}
 		return ['type' => $info->file($file, FILEINFO_MIME_TYPE), 'encoding' => $info->file($file, FILEINFO_MIME_ENCODING)];
 	}

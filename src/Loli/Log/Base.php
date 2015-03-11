@@ -31,8 +31,11 @@ abstract class Base{
 	const LEVEL_ALERT = 32;
 
 
+	// 储存日志
+	const LEVEL_STORAGE = 16384;
+
 	// 查询日志
-	const LEVEL_QUERY = 32818;
+	const LEVEL_QUERY = 32768;
 
 	// debug
 	const LEVEL_DEBUG = 65636;
@@ -44,12 +47,12 @@ abstract class Base{
 		8 => 'warning',
 		16 => 'error',
 		32 => 'alert',
-		32818 => 'query',
+		16384 => 'storage',
+		32768 => 'query',
 		65636 => 'debug',
 	];
 
 	protected $dateFormat = 'c';
-
 
 	// 不用记录的 log
 	protected $record = true;
@@ -60,7 +63,7 @@ abstract class Base{
 	// 实例化并传入参数
 	public function __construct(array $args) {
 		foreach ($args as $key => $value) {
-			if ($value !== null && $key != 'levels' && isset($this->$key)) {
+			if ($value !== NULL && $key != 'levels' && isset($this->$key)) {
 				$this->$key = $value;
 			}
 		}

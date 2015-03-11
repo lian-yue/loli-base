@@ -17,6 +17,8 @@ class FTP extends Base{
 
 	private $_link;
 
+	private $_throw;
+
 	protected $dir = '/';
 
 	protected $chmod = 0644;
@@ -40,29 +42,24 @@ class FTP extends Base{
 	protected $mode = FTP_BINARY;
 
 
-	public function __construct($args) {
-		foreach ($args as $k => $v) {
-			if ($v !== null && in_array($k, ['dir', 'chmod', 'chmodDir', 'host', 'port', 'user', 'pass', 'ssl', 'mode', 'pasv', 'timeout', 'buffer'])) {
-				$this->$k = $v;
-			}
-		}
-	}
-
 	private function _link() {
-		if ($this->_link !== null) {
+		if ($this->_link) {
 			return $this->_link;
+		}
+		if ($this->_link !== NULL) {
+			throw $this->_throw;
 		}
 
 		// 连接
 		$this->_link = $this->ssl && function_exists('ftp_ssl_connect') ? @ftp_ssl_connect($this->host, $this->port, $this->timeout) : @ftp_connect($this->host, $this->port, $this->timeout);
 		if (!$this->_link) {
-			return $this->_link = false;
+			throw $this->_throw = new Exception('Unable to connect to server', 10);
 		}
 
 		// 登陆
 		if ($this->user && $this->pass && !@ftp_login($this->_link, $this->user, $this->pass)) {
-			$this->close();
-			return $this->_link = false;
+			$this->_close();
+			throw $this->_throw = new Exception('Unable to login to the server', 11);
 		}
 
 		// 被动模式
@@ -76,34 +73,36 @@ class FTP extends Base{
 
 
 	public function put($remote, $local) {
-		if (!($remote = $this->filter($remote)) || !is_file($local) || !$this->_link()) {
-			return false;
+		if (!is_file($local)){
+			throw new Exception('Storage data does not exist', 5);
 		}
-		$file = $this->dir . '/' . $remote;
+
+		$file = $this->dir . $this->filter($remote);
 		$this->_mkdir(dirname($file));
 		if (!ftp_put($this->_link(), $file, $local, $this->mode)) {
-			return false;
+			throw new Exception('Unable to write data', 6);
 		}
 		$this->_chmod($file, $this->chmod);
 		return true;
 	}
 
 	public function get($remote) {
-		if (!($remote = $this->filter($remote)) || !$this->exists($remote)) {
-			return false;
+		if (!$this->exists($remote)) {
+			throw new Exception('Storage data does not exist', 5);
 		}
-		return 'ftps://' . ($this->user || $this->pass ?  $this->user . ':' . $this->pass. '@' : '') . $this->host . ':' . $this->port . '/' .$this->dir . '/' . $remote;
+		return 'ftps://' . ($this->user || $this->pass ?  $this->user . ':' . $this->pass. '@' : '') . $this->host . ':' . $this->port . '/' .$this->dir . $this->filter($remote);
 	}
 
 
 	public function fput($remote, $resource) {
-		if (!$this->_link() || !($remote = $this->filter($remote)) || !is_resource($resource)) {
-			return false;
+		if (!is_resource($resource)) {
+			throw new Exception('Resource does not exist', 3);
 		}
-		$file = $this->dir . '/' . $remote;
+
+		$file = $this->dir . $this->filter($remote);
 		$this->_mkdir(dirname($file));
 		if (!ftp_fput($this->_link() ,$file,  $resource, $this->mode)){
-			return false;
+			throw new Exception('Unable to write data', 6);
 		}
 		$this->_chmod($file, $this->chmod);
 		return true;
@@ -111,33 +110,25 @@ class FTP extends Base{
 
 
 	public function fget($remote) {
-		if (!$path = $this->get($remote)) {
-			return false;
-		}
-		return fopen($path, 'rb');
+		return fopen($this->get($remote), 'rb');
 	}
 
 
 	public function cput($remote, $contents) {
-		if (!($remote = $this->filter($remote)) || $contents === null) {
-			return false;
+		if ($contents === NULL) {
+			throw new Exception('Data storage is empty', 4);
 		}
+		$remote = $this->filter($remote);
 		$resource = tmpfile();
 		fwrite($resource, $contents);
-		fclose($fopen);
-		if (!$this->fput($remote, $resource)) {
-			fclose($resource);
-			return false;
-		}
+		$this->fput($remote, $resource);
 		fclose($resource);
 		return true;
 	}
 
 
 	public function cget($remote) {
-		if (!$resource = $this->fget($remote)) {
-			return false;
-		}
+		$resource = $this->fget($remote);
 		$contents = '';
 		while (!feof($resource)) {
 			$contents .= fread($file, $this->buffer);
@@ -149,16 +140,27 @@ class FTP extends Base{
 
 
 	public function rename($source, $destination) {
-		if (!($source = $this->filter($source)) || !($destination = $this->filter($destination)) || !$this->exists($source)) {
-			return false;
+		$source = $this->filter($source);
+		$destination = $this->filter($destination);
+		if (!$this->exists($source)) {
+			throw new Exception('Storage data does not exist', 5);
 		}
 		$this->_mkdir(dirname($destination));
-		return @ftp_rename($this->_link(), $this->dir . '/' .$source, $this->dir . '/' .$destination);
+		if (!@ftp_rename($this->_link(), $this->dir . $source, $this->dir . $destination)){
+			throw new Exception('Unable to rename', 7);
+		}
+		return true;
 	}
 
 
 	public function unlink($remote) {
-		return ($remote = $this->filter($remote)) && $this->exists($remote) && ftp_delete($this->_link(), $this->dir . '/' . $remote);
+		if (!$this->exists($source)) {
+			throw new Exception('Storage data does not exist', 5);
+		}
+		if (!@ftp_delete($this->_link(), $this->dir . $this->filter($remote))) {
+			throw new Exception('You can not delete', 7);
+		}
+		return true;
 	}
 
 	public function unlinks($remote) {
@@ -171,30 +173,27 @@ class FTP extends Base{
 
 
 	public function size($remote) {
-		if (!($remote = $this->filter($remote)) || !$this->exists($remote) || ($size = @ftp_size($this->_link(), $this->dir . '/' . $remote)) == -1) {
-			return false;
+		if (!$this->exists($remote) || ($size = @ftp_size($this->_link(), $this->dir . $remote)) == -1) {
+			throw new Exception('Storage data does not exist', 5);
 		}
 		return $size < 0 ? false : $size;
 	}
 
 	public function exists($remote) {
-		if (!($remote = $this->filter($remote)) || !$this->_link() || !ftp_nlist($this->_link(), $this->dir . '/' . $remote)) {
+		if (!ftp_nlist($this->_link(), $this->dir . $this->filter($remote))) {
 			return false;
 		}
-		return !$this->_isDir($this->dir . '/' . $remote);
+		return !$this->_isDir($this->dir . $this->filter($remote));
 	}
 
 
 
-	public function close() {
-		$this->_link && ftp_close($this->_link);
-		$this->_link = null;
+	private function _close() {
+		$this->_link && @ftp_close($this->_link);
+		$this->_link = NULL;
 	}
 
 	private function _isDir($dir) {
-		if (!$this->_link()) {
-			return false;
-		}
 		$pwd = @ftp_pwd($this->_link());
 		if (!$result = @ftp_chdir($this->_link(), $dir)) {
 			return false;
@@ -207,23 +206,18 @@ class FTP extends Base{
 
 
 	private function _mkdir($dir) {
-		if (!$dir || !$this->_link() || $this->_isDir($dir)) {
-			return false;
+		if (!$dir || $this->_isDir($dir)) {
+			return;
 		}
 		$this->_mkdir(dirname($dir));
 		if (!@ftp_mkdir($this->_link(), $dir)) {
-			return false;
+			throw new Exception('Unable to create directory', 12);
 		}
 		$this->_chmod($dir, $this->chmodDir);
-		return true;
 	}
 
 
 	private function _chmod($path, $mode) {
-		if (!$this->_link()) {
-			return false;
-		}
-
 		// 属性的文件或目录
 		if (!function_exists('ftp_chmod')) {
 			return @ftp_site($this->_link(), sprintf('CHMOD %o %s', $mode, $path));

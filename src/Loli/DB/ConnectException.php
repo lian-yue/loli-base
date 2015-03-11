@@ -14,4 +14,6 @@
 namespace Loli\DB;
 class_exists('Loli\DB\Exception') || exit;
 class ConnectException extends Exception{
+	protected $severity = 3;
+	protected $state = 'HY000';
 }

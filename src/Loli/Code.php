@@ -133,7 +133,7 @@ class Code{
 		}
 
 		if ($type == 0) {
-			return null;
+			return NULL;
 		}
 		if ($type == 1) {
 			return (bool) $value;

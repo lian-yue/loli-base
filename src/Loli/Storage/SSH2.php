@@ -19,6 +19,8 @@ class SSH2 extends Base{
 
 	private $_sftpLink;
 
+	private $_throw;
+
 	protected $dir = '/';
 
 	protected $chmod = 0644;
@@ -41,34 +43,30 @@ class SSH2 extends Base{
 
 	protected $privateKey = false;
 
-	public function __construct($args) {
-		foreach ($args as $k => $v) {
-			if (in_array($k, ['dir', 'chmod', 'host', 'port', 'user', 'pass', 'timeout', 'methods', 'publicKey', 'privateKey', 'buffer'])) {
-				$this->$k = $v;
-			}
-		}
-	}
-
 	private function _link() {
-		if ($this->_link !== null) {
+		if ($this->_link) {
 			return $this->_link;
 		}
+		if ($this->_link !== NULL) {
+			throw $this->_throw;
+		}
 		if (!$this->_link = @ssh2_connect($this->host, $this->port, $this->publicKey || $this->privateKey ? $this->methods + ['hostkey' => 'ssh-rsa'] : $this->methods, ['disconnect' => [$this, 'disconnect']])) {
-			return false;
+			throw $this->_throw = new Exception('Unable to connect to server', 10);
 		}
 
 
 		if ($this->publicKey || $this->privateKey) {
 			if (!@ssh2_auth_pubkey_file($this->_link, $this->user, $this->publicKey, $this->privateKey, $this->pass)) {
-				return $this->_link = false;
+				$this->_link = false;
+				throw $this->_throw = new Exception('Unable to login to the server', 11);
 			}
 		} else {
 			if (!@ssh2_auth_password($this->_link, $this->user, $this->pass)) {
-				return $this->_link = false;
+				$this->_link = false;
+				throw $this->_throw = new Exception('Unable to login to the server', 11);
 			}
 		}
 		$this->_sftpLink = ssh2_sftp($this->_link);
-
 		return $this->_link;
 	}
 
@@ -124,7 +122,7 @@ class SSH2 extends Base{
 
 
 	public function cput($remote, $contents) {
-		if (!($path = $this->_path($remote)) || $contents === null) {
+		if (!($path = $this->_path($remote)) || $contents === NULL) {
 			return false;
 		}
 		$this->_mkdir(dirname($remote));
@@ -181,7 +179,7 @@ class SSH2 extends Base{
 
 
 	public function disconnect() {
-		$this->_sftpLink = $this->_link = null;
+		$this->_sftpLink = $this->_link = NULL;
 	}
 
 
