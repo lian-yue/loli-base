@@ -8,12 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-10 08:00:28
-/*	Updated: UTC 2015-03-11 09:15:47
+/*	Updated: UTC 2015-03-11 14:44:19
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
 class Statement {
-	protected $statement = '';
+	protected $statement;
 
 	protected $tables = [];
 
@@ -271,6 +271,7 @@ class Statement {
 		}
 		return $this;
 	}
+
 	/**
 	 * 偏移选项
 	 * @param  [type] $offset 偏移位置
@@ -296,10 +297,11 @@ class Statement {
 	 * @param  boolean $sum true 的话 统计全部 否则统计返回的 只对查询有效
 	 * @return int
 	 */
-	//abstract public function count($sum = true);
+	abstract public function count($sum = true);
 
+	abstract public function execute();
 
-	//abstract public function results();
+	abstract public function results();
 
-	//abstract public function result();
+	abstract public function __toString();
 }
