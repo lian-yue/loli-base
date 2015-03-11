@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-05 09:48:17
-/*	Updated: UTC 2015-03-11 09:16:31
+/*	Updated: UTC 2015-03-11 13:57:56
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -129,30 +129,6 @@ class PDO extends Base{
 		}
 		return $this;
 	}
-
-
-	public function tables() {
-		$tables = [];
-		try {
-			if ($this->protocol() == 'mysql') {
-				foreach ($this->command('SHOW TABLES;', false)->fetchAll(\PDO::FETCH_CLASS) as $object) {
-					foreach ($object as $table) {
-						$tables[] = $table;
-						break;
-					}
-				}
-			} elseif ($this->protocol() == 'sqlite') {
-				foreach ($this->command('SELECT * FROM sqlite_master WHERE type=\'table\';', false)->fetchAll(\PDO::FETCH_CLASS) as $object) {
-					$tables[] = $object->name;
-				}
-			}
-		} catch (PDOException $e) {
-			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
-			throw new Exception('this.tables()', $e->getMessage(), $info[0], $info[1]);
-		}
-		return $tables;
-	}
-
 
 	public function key($key, $throw = false) {
 		if (!$key || !is_string($key) || !preg_match('/^(?:([0-9a-z_]+)\.)?([0-9a-z_]+|\*)$/i', $key, $matches) || ($matches[1] && is_numeric($matches[1])) || is_numeric($matches[2])) {
