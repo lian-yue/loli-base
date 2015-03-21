@@ -8,14 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-05 09:48:17
-/*	Updated: UTC 2015-03-11 13:57:56
+/*	Updated: UTC 2015-03-17 15:49:45
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
 use PDOException;
 class_exists('Loli\DB\Base') || exit;
 class PDO extends Base{
-
 
 	public function connect(array $servers) {
 		$server = $servers[array_rand($servers)];
@@ -41,7 +40,7 @@ class PDO extends Base{
 	}
 
 
-	public function command($params, $slave = NULL) {
+	public function command($params, $slave = NULL, $type = NULL) {
 		// 查询不是字符串
 		if (!is_string($params)) {
 			throw new Exception(json_encode($params), 'Query is not a string', '42000');
@@ -54,12 +53,15 @@ class PDO extends Base{
 		$params = trim($params, ';') . ';';
 		try {
 			// 返回游标的
-			if (preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $params)) {
-				$link = $this->link($slave);
-				return $link->query($params);
+			if (preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $params) && in_array($type, [NULL, 0])) {
+				return $this->link($slave)->query($params)->fetchAll(\PDO::FETCH_CLASS);
+			} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE)\s+/i', $params) && in_array($type, [NULL, 1], true)) {
+				return $this->link(false)->exec($params);
+			} elseif (in_array($type, [NULL, 2], true)) {
+				return $this->link(false)->query($params)->execute();
+			} else {
+				return $this->link(false)->query($params);
 			}
-			$link = $this->link(false);
-			return $link->exec($params);
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['42000', 0];
 			throw new Exception($params, $e->getMessage(), $info[0], $info[1]);

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-03-11 16:04:09
+/*	Updated: UTC 2015-03-20 11:13:26
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -49,14 +49,17 @@ abstract class Base{
 	// 连接协议
 	protected $protocol;
 
+	// 连接的表
+	protected $database;
+
 	// 是否是事务
 	protected $inTransaction = false;
 
-
+	// cursor 方法名
+	protected $cursor = 'SQLCursor';
 
 	// 是否是运行的 slave
 	public $slave = true;
-
 
 
 	public function __construct(array $masterServers, array $slaveServers = [], $explain = false) {
@@ -65,6 +68,9 @@ abstract class Base{
 		$this->explain = $explain;
 	}
 
+	public function __get($name) {
+		return $this->cursor($name);
+	}
 
 	public function link($slave = NULL) {
 		if ($slave !== NULL) {
@@ -191,16 +197,9 @@ abstract class Base{
 		return $results;
 	}
 
-	protected function statement($statement, $tables, $slave = NULL) {
-		if ($slave === NULL) {
-			$slave = $this->slave;
-		}
-		if ($tables instanceof Statement) {
-			$tables->__construct($this, $statement, $slave);
-			return $tables;
-		}
-		$class = ___CLASS__ . 'Statement';
-		return new $class($this, $statement, $tables, $slave);
+	public function cursor($tables = []) {
+		$class = __NAMESPACE__ . '\\' . $this->cursor;
+		return new $class($this, $tables);
 	}
 
 	public function protocol() {
@@ -215,6 +214,7 @@ abstract class Base{
 		return $this->inTransaction;
 	}
 
+
 	abstract public function command($command, $slave = NULL);
 	abstract public function ping($slave = NULL);
 	abstract public function connect(array $servers);
@@ -225,29 +225,4 @@ abstract class Base{
 	abstract public function key($key);
 	abstract public function value($value);
 
-
-	public function exists($tables) {
-		return $this->statement(__METHOD__, $tables, false);
-	}
-	public function create($tables, array $values, array $options = []) {
-		return $this->statement(__METHOD__, $tables, false)->values($values)->options($options);
-	}
-	public function truncate($tables, array $options = []) {
-		return $this->statement(__METHOD__, $tables, false)->options($options);
-	}
-	public function drop($tables, array $options = []) {
-		return $this->statement(__METHOD__, $tables, false)->options($options);
-	}
-	public function select($tables, array $querys = [], array $options = [], $slave = NULL) {
-		return $this->statement(__METHOD__, $tables, $slave)->querys($querys)->options($options);
-	}
-	public function insert($tables, array $documents = [], array $options = []) {
-		return $this->statement(__METHOD__, $tables, false)->documents($documents)->options($options);
-	}
-	public function update($tables, array $document = [], array $queyrs = [], array $options = []) {
-		return $this->statement(__METHOD__, $tables, false)->document($document)->queyrs($queyrs)->options($options);
-	}
-	public function delete($tables, array $querys = [], array $options = []) {
-		return $this->statement(__METHOD__, $tables, false)->queyrs($queyrs)->options($options);
-	}
 }

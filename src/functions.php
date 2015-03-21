@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-24 03:34:51
+/*	Updated: UTC 2015-03-21 09:18:46
 /*
 /* ************************************************************************** */
 
@@ -249,24 +249,6 @@ function merge_url(array $parse) {
 		$url .= '#'. $parse['fragment'];
 	}
 	return $url;
-}
-
-
-
-
-
-/**
-*	毫秒时间戳
-*
-*	无参数
-*
-*	返回值当前时间戳毫秒
-**/
-function timems() {
-	$r = explode(' ', microtime());
-	$r = ($r[1] + $r [0]) * 1000;
-	$r = explode('.', $r);
-	return $r[0];
 }
 
 

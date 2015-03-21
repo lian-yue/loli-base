@@ -8,11 +8,14 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-05 17:06:44
-/*	Updated: UTC 2015-03-10 08:37:03
+/*	Updated: UTC 2015-03-14 14:13:46
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
-abstract class Param{
+class Param{
+	public function __construct(array $params = []) {
+		$this->setParams($params);
+	}
 	public function setParams(array $params) {
 		foreach ($params as $key => $value) {
 			$this->$key = $value;
