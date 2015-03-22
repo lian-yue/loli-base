@@ -8,11 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-25 13:37:57
-/*	Updated: UTC 2015-02-25 13:38:03
+/*	Updated: UTC 2015-03-21 12:03:53
 /*
 /* ************************************************************************** */
 namespace Loli;
-class ErrorException extends Exception{
+class ErrorException extends \Exception{
 
 	protected $severity = 1;
 

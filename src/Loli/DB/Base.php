@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-03-20 11:13:26
+/*	Updated: UTC 2015-03-21 13:01:30
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -49,14 +49,14 @@ abstract class Base{
 	// 连接协议
 	protected $protocol;
 
-	// 连接的表
-	protected $database;
-
 	// 是否是事务
 	protected $inTransaction = false;
 
 	// cursor 方法名
 	protected $cursor = 'SQLCursor';
+
+	public static $querySum = 0;
+	public static $queryROW = 0;
 
 	// 是否是运行的 slave
 	public $slave = true;

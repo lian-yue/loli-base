@@ -8,43 +8,48 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-02-28 11:29:55
+/*	Updated: UTC 2015-03-21 13:05:31
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
 class_exists('Loli\DB\Base') || exit;
 class MySQLi extends Base{
-	public function connect(array $args) {
+
+	protected $protocol = 'mysql';
+
+	public function connect(array $servers) {
+		$server = $servers[array_rand($servers)];
+
+		// sqlite 需要当前 文件目录的写入权限
+		if ($server['protocol'] != 'mysql') {
+			throw new ConnectException('Does not support this protocol');
+		}
+		$hostname = explode(':', $server['hostname'])+ [1 => 3306];
 
 		// 数据库名为空
-		if (empty($args['name'])) {
-			throw new ConnectException('this.MySQLi().select_db()', 'Database name can not be empt');
+		if (empty($server['database'])) {
+			throw new ConnectException('this.MySQLi().select_db()', 'Database name can not be empty');
 		}
 
 		// 链接到到mysql
-		$link = new \MySQLi($host = empty($args['host']) ? 'localhost' : $args['host'], empty($args['user']) ? 'root' : $args['user'], empty($args['pass']) ? '' : $args['pass'], empty($args['name']) ? 'dbname' : $args['name'], $port = empty($args['port']) ? 3306 : $args['port']);
+		$link = new \MySQLi($hostname[0], $server['username'], $server['password'], $server['database'], $hostname[1]);
 
 		// 链接出错
 		if ($link->connect_errno) {
-			throw new ConnectException('this.MySQLi('. $host .', '. $port .')', $link->connect_error, $link->connect_errno);
+			throw new ConnectException('this.MySQLi()', $link->connect_error, '', $link->connect_errno);
 		}
+
 		// 选择数据库出错
 		if ($link->error) {
-			throw new ConnectException('this.MySQLi('. $host .', '. $port .').select_db('. $args['name'] .')', $link->error, $link->errno);
+			throw new ConnectException('this.MySQLi().select_db()', $link->error, '', $link->errno);
 		}
-
-		// 默认设置
-		$link->set_charset('utf8');
-		$link->query('SET TIME_ZONE = `+0:00`');
-
 
 		return $link;
 	}
 
-
-	private function _query($query, $slave = true) {
+	public function command($query, $slave = NULL) {
 		// 查询不是字符串
-		if (is_string($query)) {
+		if (!is_string($query)) {
 			throw new Exception(json_encode($query), 'Query is not a string');
 		}
 
@@ -52,157 +57,128 @@ class MySQLi extends Base{
 		if (!$query = trim($query)) {
 			throw new Exception('Query', 'Query is empty');
 		}
+		$query = trim($query, ';') . ';';
+
+
 		// 是否用主数据库
-		$slave = $slave && $this->autoCommit && !preg_match('/\s*(EXPLAIN)?\s*(SELECT)\s+/i', $query);
+		$slave = !$this->inTransaction && preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query) ? $slave : false;
 
 		// 链接
 		$link = $this->link($slave);
-
-		// 查询
-		$q = $link->query($query);
 		++self::$querySum;
-		if ($q === false) {
+		// 查询
+		$result = $link->query($query);
+		if ($result === false) {
 			if ($link->errno) {
-				$this->addLog($query);
-				throw new Exception($query, $link->error, $link->errno);
+				throw new Exception($result, $link->error, '', $link->errno);
 			}
-			$results = $q;
-		} elseif (preg_match('/^\s*(CREATE|ALTER|TRUNCATE|DROP|SET|START|BEGIN|SERIAL|COMMIT|ROLLBACK|END)(\s+|\;)/i', $query)) {
-			// 创建 改变 修改 删除 [表] 设置
-			$results = $q;
+			$results = $result;
 		} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE)\s+/i', $query)) {
 			// 插入 删除 更新 替换 资料 [字段]
 			$results = $link->affected_rows;
-			if (preg_match('/^\s*(INSERT|REPLACE) /i', $query)) {
-				// 插入 替换 [字段]
-				$this->insertID = $link->insertID;
-				++self::$querySum;
-			}
-		} else {
+		} elseif (preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query)) {
 			$results = [];
-			while ($row = $q->fetch_object()) {
-				$results[] = $row;
+			while ($fetch = $result->fetch_object()) {
 				++self::$queryRow;
+				$results[] = $fetch;
 			}
-			$results && $q->free_result();
-
-			// 执行  explain
+			$results && $result->free_result();
 			if ($this->explain && preg_match('/^\s*(SELECT)\s+/i', $query)) {
-				$this->_query('EXPLAIN ' . $query, $slave);
+				$this->command('EXPLAIN ' . $query, $slave);
 			}
 		}
-		$this->addLog($query, $results);
+		$this->log($query, $results);
 		return $results;
 	}
 
-	public function ping($slave = NULL) {
-		$link = $this->link($slave === NULL ? $this->slave : $slave);
-		if ($link->ping()) {
-			return true;
+
+
+	public function beginTransaction() {
+		if ($this->inTransaction) {
+			throw new Exception('this.beginTransaction()', 'There is already an active transaction');
 		}
-		throw new Exception('this.ping()', $link->error, $link->errno);
-	}
-	public function tables() {
-		$tables = [];
-		foreach ($this->_query('SHOW TABLES', false) as $object) {
-			foreach ($object as $table) {
-				$tables[] = $table;
-			}
+		++self::$querySum;
+		$this->inTransaction = true;
+		$link = $this->link(false);
+		if (!$link->autoCommit(false) && $link->errno) {
+			throw new Exception('this.beginTransaction()', '', , $link->error, $link->errno);
 		}
-		return $tables;
-	}
-
-	public function exists($table) {
-		return $this->_query('SHOW TABLES LIKE \''. addcslashes(mysql_real_escape_string($table, $link), '%_') .'\'', false) ? $table : false;
-	}
-
-	public function truncate($table) {
-		$query = 'TRUNCATE TABLE `'. $table .'`';
-		if (!preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table)) {
-			throw new Exception($query, 'Table name match');
-		}
-		return $this->_query($query, false);
-	}
-
-	public function drop($table) {
-		$query = 'DROP TABLE IF EXISTS `'. $table .'`';
-		if (!preg_match('/^(?:[a-z_][0-9a-z_]*\.)?[a-z_][0-9a-z_]*$/i', $table)) {
-			throw new Exception($query, 'Table name match');
-		}
-		return $this->_query($query, false);
-	}
-
-
-	public function create($query) {
-		return $this->_query($query, false);
-	}
-
-	public function insert($query) {
-		return $this->_query($query, false);
-	}
-
-	public function replace($query) {
-		return $this->_query($query, false);
-	}
-
-	public function update($query) {
-		return $this->_query($query, false);
-	}
-
-	public function delete($query) {
-		return $this->_query($query, false);
-	}
-
-
-
-
-	public function select($query, $slave = true) {
-		return ($results = $this->_query($query, $slave)) ? $results : [];
-	}
-	public function distinct($query, $slave = true) {
-		return ($results = $this->_query($query, $slave)) ? $results : [];
-	}
-	public function aggregate($query, $slave = true) {
-		return ($results = $this->_query($query, $slave)) ? $results : [];
-	}
-	public function group($query, $slave = true) {
-		return ($results = $this->_query($query, $slave)) ? $results : [];
-	}
-
-	public function count($query, $slave = true) {
-		if (!$results = $this->_query($query, $slave)) {
-			return 0;
-		}
-		$count = 0;
-		foreach ($results as $object) {
-			$count += array_sum((array) $object);
-		}
-		return $count;
-	}
-
-	public function startTransaction() {
-		$this->autocommit = false;
-		$this->link(false)->autoCommit(false);
-		return true;
+		return $this;
 	}
 
 	public function commit() {
+		if (!$this->inTransaction) {
+			throw new Exception('this.commit()', 'There is no active transaction');
+		}
+		++self::$querySum;
+		$this->inTransaction = false;
 		$link = $this->link(false);
-		$this->autocommit = true;
-		$commit = $link->commit();
-		if (!$commit && $link->errno) {
+		$link->commit();
+		if (!$link->commit() && $link->errno) {
 			throw new Exception('this.commit()', $link->error, $link->errno);
 		}
-		return $commit;
+		return $this;
 	}
 
-	public function rollback() {
-		$link = $this->link(false);
-		$this->autocommit = true;
-		$rollback = $link->rollback();
-		if (!$rollback && $link->errno) {
-			throw new Exception('this.rollback()', $link->error, $link->errno);
+	public function rollBack() {
+		if (!$this->inTransaction) {
+			throw new Exception('this.rollBack()', 'There is no active transaction');
 		}
-		return $rollback;
+		++self::$querySum;
+		$this->inTransaction = false;
+		$link = $this->link(false);
+		$rollback = $link->rollBack();
+		if (!$link->rollBack() && $link->errno) {
+			throw new Exception('this.rollBack()', $link->error, $link->errno);
+		}
+		return $this;
 	}
+
+
+	public function lastInsertID() {
+		++self::$querySum;
+		return $this->link(false)->insert_id;
+	}
+
+
+	public function ping($slave = NULL) {
+		$link = $this->link($slave);
+		++self::$querySum;
+		if (!$link->ping()) {
+			throw new ConnectException('this.ping()', $link->error, '', $link->errno);
+		}
+		return $this;
+	}
+
+
+	public function key($key, $throw = false) {
+		if (!$key || !is_string($key) || !preg_match('/^(?:([0-9a-z_]+)\.)?([0-9a-z_]+|\*)$/i', $key, $matches) || ($matches[1] && is_numeric($matches[1])) || is_numeric($matches[2])) {
+			if ($throw) {
+				throw new Exception('this.key('.$key.')', 'Key name is not formatted correctly');
+			}
+			return false;
+		}
+		if (($protocol = $this->protocol()) == 'mysql') {
+			return ($matches[1] ? '`'. $matches[1]. '`.' : '') . ($matches[2] == '*' ? $matches[2] : '`'. $matches[2] .'`');
+		}
+		return ($matches[1] ? '\''. $matches[1]. '\'.' : '') . ($matches[2] == '*' ? $matches[2] : '\''. $matches[2] .'\'');
+	}
+
+	public function value($value) {
+		if (is_array($value) || is_object($value)) {
+			$value = json_encode($value);
+		}
+		if ($value === NULL) {
+			return 'NULL';
+		} elseif ($value === false) {
+			$value = 0;
+		} elseif ($value === true) {
+			$value = 1;
+		} elseif (!is_int($value) && !is_float($value)) {
+			$value = addslashes(stripslashes(addslashes($value)));
+			$value = '\''. $value .'\'';
+		}
+		return $value;
+	}
+
 }

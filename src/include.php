@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-02-27 05:08:07
+/*	Updated: UTC 2015-03-21 11:55:40
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -54,22 +54,6 @@ if (!headers_sent()) {
 // Debug
 if (!empty($_SERVER['LOLI']['DEBUG']['is'])) {
 	new Debug($_SERVER['LOLI']['DEBUG']);
-}
-
-
-
-
-//	./Model/Query.php
-namespace Model;
-class Query {
-	private $_link;
-	public function __call($method, $args) {
-		if (!isset($this->_link)) {
-			$class = __NAMESPACE__. '\Query\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? 'MySQL' : $_SERVER['LOLI']['DB']['type']);
-			return new $class;
-		}
-		return call_user_func_array([$this->_link, $method], $args);
-	}
 }
 
 
