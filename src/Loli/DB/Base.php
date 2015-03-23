@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-03-22 09:28:03
+/*	Updated: UTC 2015-03-23 10:09:11
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -25,7 +25,7 @@ abstract class Base{
 
 
 	// 上次ping时间
-	protected $masterPingTime;
+	protected $_masterPingTime;
 
 
 
@@ -36,7 +36,7 @@ abstract class Base{
 	private $_slaveLink;
 
 	// 上次ping时间
-	protected $slavePingTime;
+	protected $_slavePingTime;
 
 
 
@@ -48,6 +48,9 @@ abstract class Base{
 
 	// 连接协议
 	protected $protocol;
+
+	// 链接到的表
+	protected $database;
 
 	// 是否是事务
 	protected $inTransaction = false;
@@ -63,8 +66,12 @@ abstract class Base{
 
 
 	public function __construct(array $masterServers, array $slaveServers = [], $explain = false) {
-		$this->_masterServers = $masterServers;
-		$this->_slaveServers = $slaveServers;
+		foreach ($masterServers as $servers) {
+			$this->_masterServers[] = $this->parseServers($servers);
+		}
+		foreach ($slaveServers as $servers) {
+			$this->_slaveServers[] = $this->parseServers($servers);
+		}
 		$this->explain = $explain;
 	}
 
@@ -91,7 +98,8 @@ abstract class Base{
 						break;
 					}
 					try {
-						$this->_slaveLink = $this->connect($this->parseServers($servers));
+						$this->_slaveLink = $this->connect($servers);
+						$this->_slavePingTime = time();
 						break;
 					} catch (\Exception $e) {
 						if (!$this->explain) {
@@ -101,13 +109,12 @@ abstract class Base{
 					}
 					++$i;
 				}
-				$this->slavePingTime = time();
 			}
 
 
 			// 自动ping
-			if ($this->_slaveLink && $this->pingInterval > 0 && ($this->slavePingTime + $this->pingInterval) < time()) {
-				$this->slavePingTime = time();
+			if ($this->_slaveLink && $this->pingInterval > 0 && ($this->_slavePingTime + $this->pingInterval) < time()) {
+				$this->_slavePingTime = time();
 				$this->ping();
 			}
 
@@ -134,7 +141,8 @@ abstract class Base{
 					break;
 				}
 				try {
-					$this->_masterLink = $this->connect($this->parseServers($servers));
+					$this->_masterLink = $this->connect($servers);
+					$this->_masterPingTime = time();
 					break;
 				} catch (\Exception $e) {
 					if (!$this->explain) {
@@ -144,7 +152,6 @@ abstract class Base{
 				}
 				++$i;
 			}
-			$this->masterPingTime = time();
 		}
 
 		if (!$this->_masterLink) {
@@ -152,8 +159,8 @@ abstract class Base{
 		}
 
 		// 自动 ping
-		if ($this->pingInterval > 0 && ($this->masterPingTime + $this->pingInterval) < time()) {
-			$this->masterPingTime = time();
+		if ($this->pingInterval > 0 && ($this->_masterPingTime + $this->pingInterval) < time()) {
+			$this->_masterPingTime = time();
 			$this->ping();
 		}
 		return $this->_masterLink;
@@ -197,7 +204,7 @@ abstract class Base{
 		return $results;
 	}
 
-	public function table($tables = []) {
+	public function cursor($tables = []) {
 		$class = __NAMESPACE__ . '\\' . $this->cursor;
 		return new $class($this, $tables);
 	}
@@ -212,10 +219,16 @@ abstract class Base{
 
 	public function protocol() {
 		if ($this->protocol === NULL) {
-			$servers = $this->parseServers(reset($this->_masterServers));
-			$this->protocol = reset($servers)['protocol'];
+			$this->protocol = reset($this->_masterServers)[0]['protocol'];
 		}
 		return $this->protocol;
+	}
+
+	public function database($name = true) {
+		if ($this->database === NULL) {
+			$this->database = reset($this->_masterServers)[0]['database'];
+		}
+		return $name ? basename($this->database) : $this->database;
 	}
 
 	public function inTransaction() {
@@ -223,9 +236,9 @@ abstract class Base{
 	}
 
 
+	abstract protected function connect(array $servers);
+	abstract protected function ping($slave = NULL);
 	abstract public function command($command, $slave = NULL);
-	abstract public function ping($slave = NULL);
-	abstract public function connect(array $servers);
 	abstract public function beginTransaction();
 	abstract public function commit();
 	abstract public function rollBack();

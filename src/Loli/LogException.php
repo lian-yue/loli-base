@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-25 13:37:57
-/*	Updated: UTC 2015-03-22 08:12:36
+/*	Updated: UTC 2015-03-23 10:12:19
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -18,10 +18,10 @@ class LogException extends Exception{
 	protected $log;
 
 	public function __construct($message = '', $code = 0, $level = -1, Exception $previous = NULL) {
-		if ($level > 0) {
+		parent::__construct($message, $code, $previous);
+		if ($level < 0) {
 			$this->level = $level;
 		}
-		parent::__construct($message, $code, $previous);
 		if (!$this->log) {
 			$this->log = $message;
 		}

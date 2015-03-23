@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-03-21 13:05:31
+/*	Updated: UTC 2015-03-23 05:54:00
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -20,8 +20,12 @@ class MySQLi extends Base{
 	public function connect(array $servers) {
 		$server = $servers[array_rand($servers)];
 
+		if ($server['database'] != $this->database()) {
+			throw new ConnectException('this.connect()', 'Database name is incorrect');
+		}
+
 		// sqlite 需要当前 文件目录的写入权限
-		if ($server['protocol'] != 'mysql') {
+		if (!in_array($server['protocol'], ['mysql', 'mysqli'])) {
 			throw new ConnectException('Does not support this protocol');
 		}
 		$hostname = explode(':', $server['hostname'])+ [1 => 3306];
@@ -90,7 +94,6 @@ class MySQLi extends Base{
 		$this->log($query, $results);
 		return $results;
 	}
-
 
 
 	public function beginTransaction() {

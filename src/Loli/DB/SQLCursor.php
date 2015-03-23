@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-11 16:13:26
-/*	Updated: UTC 2015-03-22 04:25:52
+/*	Updated: UTC 2015-03-23 10:26:31
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -176,8 +176,8 @@ class SQLCursor extends Cursor{
 		$usings = $tables = [];
 		foreach ($this->tables as $param) {
 			if ($param->value instanceof SQLCursor) {
-				$execute = $param->value->getExecute();
-				$table = '(' . $param->value->execute(false)->select() . ')';
+				$execute = $param->value->execute;
+				$table = '(' . rtrim($param->value->execute(false)->select(), " \t\n\r\0\x0B;") . ')';
 				$param->value->execute($execute);
 			} elseif ($param->expression) {
 				$table = '('. $param->value .')';
@@ -420,7 +420,7 @@ class SQLCursor extends Cursor{
 			} else {
 				$not = empty($query->not) ? '' : 'NOT';
 			}
-			$compare = empty($this->_compares[$compare]) ? $compare : $this->_compares[$compare];
+			$compare = empty($this->_compares[$compare]) ? ($compare ? $compare : '=') : $this->_compares[$compare];
 
 
 			// 二进制
@@ -437,8 +437,8 @@ class SQLCursor extends Cursor{
 			// 回调类型特殊类型
 			if ($compare == 'CALL') {
 				if ($query->value instanceof SQLCursor) {
-					$execute = $query->value->getExecute();
-					$value = $query->value->execute(false)->select();
+					$execute = $query->value->execute;
+					$value = rtrim($query->value->execute(false)->select(), " \t\n\r\0\x0B;");
 					$query->value->execute($execute);
 				} elseif ($query->expression) {
 					$value = $query->value;
@@ -453,8 +453,8 @@ class SQLCursor extends Cursor{
 
 			// 健名和使用函数
 			if ($column instanceof SQLCursor) {
-				$execute = $query->column->getExecute();
-				$column = $function . '(' . $query->column->execute(false)->select() . ')';
+				$execute = $query->column->execute;
+				$column = $function . '(' . rtrim($query->column->execute(false)->select(), " \t\n\r\0\x0B;") . ')';
 				$query->column->execute($execute);
 			} elseif ($column = $this->DB->key($query->column)) {
 				$column = $function ? $function . '('. $column .')' : $column;
@@ -464,8 +464,8 @@ class SQLCursor extends Cursor{
 
 			// 直接关联的
 			if ($query->value instanceof SQLCursor) {
-				$execute = $query->value->getExecute();
-				$value = '(' . $query->value->execute(false)->select() . ')';
+				$execute = $query->value->execute;
+				$value = '(' . rtrim($query->value->execute(false)->select(), " \t\n\r\0\x0B;") . ')';
 				$query->value->execute($execute);
 				$commands[] = implode(' ', [$binary, $column, $not, ($compare == 'CALL' ? '' : $compare), $value]);
 				continue;
@@ -550,7 +550,6 @@ class SQLCursor extends Cursor{
 					}
 					break;
 				default:
-					$compare = $compare ? $compare : '=';
 					if (empty($this->_compares[$compare])) {
 						throw new Exception($compare, 'Unknown compare');
 					}
@@ -594,8 +593,8 @@ class SQLCursor extends Cursor{
 				continue;
 			}
 			if ($union->value instanceof Cursor) {
-				$execute = $union->value->getExecute();
-				$unions[] = 'UNION ' .($union->all ? '' : 'ALL '). $union->value->execute(false)->select();
+				$execute = $union->value->execute;
+				$unions[] = 'UNION ' .($union->all ? '' : 'ALL '). rtrim($union->value->execute(false)->select(), " \t\n\r\0\x0B;");
 				$union->value->execute($execute);
 				continue;
 			}
@@ -1111,8 +1110,8 @@ class SQLCursor extends Cursor{
 		foreach (end($this->documents) as $param) {
 			$name = $this->DB->key($param->name);
 			if ($param->value instanceof SQLCursor) {
-				$execute = $param->value->getExecute();
-				$value = '(' . $param->value->execute(false)->select() . ')';
+				$execute = $param->value->execute;
+				$value = '(' . rtrim($param->value->execute(false)->select(), " \t\n\r\0\x0B;") . ')';
 				$param->value->execute($execute);
 			} elseif ($param->expression) {
 				$value = '('. $param->value .')';
@@ -1224,10 +1223,10 @@ class SQLCursor extends Cursor{
 			return $command;
 		}
 
-		if (!$lock && $this->ttl && $this->_isCache && is_array($this->data[__FUNCTION__] = Cache::get(json_decode($replaces), __CLASS__))) {
+		if (!$lock && $this->cache[0] && $this->_isCache && is_array($this->data[__FUNCTION__] = Cache::get(json_decode($replaces), __CLASS__))) {
 		} else {
 			$this->data[__FUNCTION__] = $this->DB->command($command, $this->slave);
-			$this->ttl && Cache::set($this->data[__FUNCTION__], json_decode($replaces), __CLASS__, $this->ttl);
+			$this->cache[0] && Cache::set($this->data[__FUNCTION__], json_decode($replaces), __CLASS__, $this->cache[0]);
 			if ($this->_isCache && $rows) {
 				$this->_isCache = false;
 				$this->count();
@@ -1245,7 +1244,7 @@ class SQLCursor extends Cursor{
 		}
 
 
-		if ($this->ttl || !$this->_rows()) {
+		if ($this->cache[0] || !$this->_rows()) {
 			$replaces = [':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union()];
 		}
 		// rows 的
@@ -1260,7 +1259,7 @@ class SQLCursor extends Cursor{
 			return $command;
 		}
 
-		if ($this->ttl && $this->_isCache && ($this->data[__FUNCTION__] = Cache::get(json_decode($replaces), __CLASS__)) !== false) {
+		if ($this->cache[0] && $this->_isCache && ($this->data[__FUNCTION__] = Cache::get(json_decode($replaces), __CLASS__)) !== false) {
 
 		} else {
 			if ($this->_isCache && $this->_rows()) {
@@ -1272,7 +1271,7 @@ class SQLCursor extends Cursor{
 			foreach ((array)$this->DB->command($command, $this->slave) as $row) {
 				$this->data[__FUNCTION__] += array_sum((array) $row);
 			}
-			$this->ttl && Cache::set($this->data[__FUNCTION__], json_decode($replaces), __CLASS__, $this->ttl);
+			$this->cache[0] && Cache::set($this->data[__FUNCTION__], json_decode($replaces), __CLASS__, $this->cache[0]);
 		}
 
 		return $this->data[__FUNCTION__];
@@ -1281,13 +1280,13 @@ class SQLCursor extends Cursor{
 
 
 	public function deleteCacheSelect() {
-		$this->ttl && Cache::delete(json_decode([':field' => $this->_field(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()]), __CLASS__);
+		$this->cache[0] && Cache::delete(json_decode([':field' => $this->_field(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()]), __CLASS__);
 		unset($this->data['select']);
 		return $this;
 	}
 
 	public function deleteCacheCount() {
-		$this->ttl && Cache::delete(json_decode([':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union()]), __CLASS__);
+		$this->cache[0] && Cache::delete(json_decode([':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union()]), __CLASS__);
 		unset($this->data['count']);
 		return $this;
 	}

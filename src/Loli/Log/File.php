@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-25 08:56:01
-/*	Updated: UTC 2015-03-22 07:39:01
+/*	Updated: UTC 2015-03-23 10:11:33
 /*
 /* ************************************************************************** */
 namespace Loli\Log;
@@ -17,7 +17,7 @@ class File extends Base{
 	protected $path = './$date//$level-$time.log';
 
 	public function write($message, $level = self::LEVEL_ACCESS) {
-		if (!in_array($this->writes, $level)) {
+		if (!in_array($level, $this->writes, true)) {
 			return false;
 		}
 		// 进度

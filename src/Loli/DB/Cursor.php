@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-10 08:00:28
-/*	Updated: UTC 2015-03-21 07:18:37
+/*	Updated: UTC 2015-03-23 10:04:17
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -61,7 +61,10 @@ abstract class Cursor{
 	protected $data;
 
 	// 缓存时间
-	protected $ttl = 0;
+	protected $cache = [0, 0];
+
+	// 有修改表的日志
+	private static $_logs = [];
 
 	public function __construct(Base $DB, $tables = [], array $indexs = []) {
 		$this->DB = $DB;
@@ -69,13 +72,15 @@ abstract class Cursor{
 		$this->tables((array)$tables);
 	}
 
-	public function callback(callback $callback) {
-		$this->callback = $callback;
+
+	protected function logs($tables, $write = false) {
+		$this->cache = [$ttl, $refresh];
 		return $this;
 	}
 
-	public function getCallback() {
-		return $this->callback;
+	public function callbacks(array $callbacks = []) {
+		$this->callbacks = $callbacks;
+		return $this;
 	}
 
 	public function execute($execute) {
@@ -92,12 +97,8 @@ abstract class Cursor{
 		return $this;
 	}
 
-	public function getSlave() {
-		return $this->slave;
-	}
-
-	public function ttl($ttl) {
-		$this->ttl = $ttl;
+	public function cache($ttl, $refresh = 0) {
+		$this->cache = [$ttl, $refresh];
 		return $this;
 	}
 

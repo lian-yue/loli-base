@@ -8,33 +8,35 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-22 09:02:15
-/*	Updated: UTC 2015-03-22 14:32:16
+/*	Updated: UTC 2015-03-23 06:36:27
 /*
 /* ************************************************************************** */
 namespace Loli;
 class DB{
 	private $_link;
 	private $_protocols = [
-	'mysql' => 'MySQLi',
-	'mariadb' => 'MySQLi',
+		'mysql' => 'MySQLi',
+		'maria' => 'MySQLi',
+		'mariadb' => 'MySQLi',
 
-	'postgresql' => 'PGSQL',
-	'pgsql' => 'PGSQL',
-	'pg' => 'PGSQL',
+		'postgresql' => 'PGSQL',
+		'pgsql' => 'PGSQL',
+		'pg' => 'PGSQL',
 
-	'sqlserver' => 'MSSQL',
-	'mssql' => 'MSSQL',
+		'sqlserver' => 'MSSQL',
+		'mssql' => 'MSSQL',
 
-	'sqlite' => 'SQLite',
+		'sqlite' => 'SQLite',
 
-	'mongo' => 'Mongo',
-	'mongodb' => 'Mongo',
+		'mongo' => 'Mongo',
+		'mongodb' => 'Mongo',
 
-	'oci' => 'OCI',
-	'oracle' => 'OCI',
+		'oci' => 'OCI',
+		'oracle' => 'OCI',
 
-	'odbc' => 'ODBC',
+		'odbc' => 'ODBC',
 	];
+
 
 	public function __construct(array $masterServers, array $slaveServers = [], $explain = false) {
 		$master = reset($masterServers);
@@ -59,5 +61,9 @@ class DB{
 	}
 	public function __call($method, $args) {
 		return call_user_func_array([$this->_link, $method], $args);
+	}
+
+	public function __get($key) {
+		return $this->_link->$key;
 	}
 }

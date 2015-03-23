@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-05 09:48:17
-/*	Updated: UTC 2015-03-21 13:04:53
+/*	Updated: UTC 2015-03-23 06:09:25
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -16,8 +16,14 @@ use PDOException;
 class_exists('Loli\DB\Base') || exit;
 class PDO extends Base{
 
-	public function connect(array $servers) {
+	protected function connect(array $servers) {
 		$server = $servers[array_rand($servers)];
+		if ($server['protocol'] != $this->protocol()) {
+			throw new ConnectException('this.connect()', 'Database protocol is incorrect');
+		}
+		if (basename($server['database']) != $this->database()) {
+			throw new ConnectException('this.connect()', 'Database name is incorrect');
+		}
 
 		// sqlite 需要当前 文件目录的写入权限
 		if (!in_array($server['protocol'], \PDO::getAvailableDrivers())) {
@@ -25,18 +31,36 @@ class PDO extends Base{
 		}
 		$hostname = explode(':', $server['hostname']);
 		try {
-			if ($server['protocol'] == 'mysql') {
-				$dsnQuery = 'this.PDO(' . $server['protocol']. ':host='. $hostname[0] . (empty($hostname[1]) ? '' : ';port=' . $hostname[1]) . ')';
-				$link = new \PDO($server['protocol']. ':host='. $hostname[0] . (empty($hostname[1]) ? '' : ';port=' . $hostname[1]) .';dbname='.  $server['database'] . ';charset=UTF8', $server['username'], $server['password'], [\PDO::ATTR_PERSISTENT => true, \PDO::ATTR_AUTOCOMMIT => true, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
-				$link->exec('SET TIME_ZONE = `+0:00`');
-			} elseif ($server['protocol'] == 'sqlite') {
-				$link = new \PDO($server['protocol'] .':' . $server['database'] . ';charset=UTF8', $server['username'], $server['password'], [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
-				$dsnQuery = 'this.PDO(' . $server['protocol'] . ':database)';
+			switch ($server['protocol']) {
+				case 'mysql':
+					$dsnQuery = 'this.PDO(mysql:host='. $hostname[0] . (empty($hostname[1]) ? '' : ';port=' . $hostname[1]) . ')';
+					$link = new \PDO('mysql:host='. $hostname[0] . (empty($hostname[1]) ? '' : ';port=' . $hostname[1]) .';dbname='.  $server['database'] . ';charset=UTF8', $server['username'], $server['password'], [\PDO::ATTR_PERSISTENT => true, \PDO::ATTR_AUTOCOMMIT => true, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
+					$link->query('SET TIME_ZONE = `+0:00`')->execute();
+					break;
+				case 'sqlite':
+					$link = new \PDO('sqlite:' . $server['database'] . ';charset=UTF8', $server['username'], $server['password'], [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
+					$dsnQuery = 'this.PDO(sqlite:'.basename($server['database']).')';
+					break;
+				default:
+					throw new ConnectException('this.PDO()', 'Unknown database protocol');
+					break;
 			}
 		} catch (PDOException $e) {
 			throw new ConnectException($dsnQuery, $e->getMessage());
 		}
 		return $link;
+	}
+
+	protected function ping($slave = NULL) {
+		++self::$querySum;
+		try {
+			if (!($status = $this->link($slave)->getAttribute(\PDO::ATTR_CONNECTION_STATUS)) || stripos($status, 'has gone away')) {
+				throw new ConnectException('this.ping()', $status);
+			}
+		} catch (PDOException $e) {
+			throw new ConnectException('this.ping()', $e->getMessage());
+		}
+		return $this;
 	}
 
 
@@ -122,6 +146,7 @@ class PDO extends Base{
 	}
 
 
+
 	public function lastInsertID() {
 		++self::$querySum;
 		try {
@@ -132,17 +157,6 @@ class PDO extends Base{
 		}
 	}
 
-	public function ping($slave = NULL) {
-		++self::$querySum;
-		try {
-			if (!($status = $this->link($slave)->getAttribute(\PDO::ATTR_CONNECTION_STATUS)) || stripos($status, 'has gone away')) {
-				throw new ConnectException('this.ping()', $status);
-			}
-		} catch (PDOException $e) {
-			throw new ConnectException('this.ping()', $e->getMessage());
-		}
-		return $this;
-	}
 
 	public function key($key, $throw = false) {
 		if (!$key || !is_string($key) || !preg_match('/^(?:([0-9a-z_]+)\.)?([0-9a-z_]+|\*)$/i', $key, $matches) || ($matches[1] && is_numeric($matches[1])) || is_numeric($matches[2])) {
