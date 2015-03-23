@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-03-21 13:01:30
+/*	Updated: UTC 2015-03-22 09:28:03
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -197,9 +197,17 @@ abstract class Base{
 		return $results;
 	}
 
-	public function cursor($tables = []) {
+	public function table($tables = []) {
 		$class = __NAMESPACE__ . '\\' . $this->cursor;
 		return new $class($this, $tables);
+	}
+
+
+	public function log($query, $value) {
+		$query = is_array($query) || is_object($query) ? var_export($query, true) : $query;
+		$value = is_array($value) || is_object($value) ? var_export($value, true) : $value;
+		Log::debug($query ."\n\n". $value);
+		return $this;
 	}
 
 	public function protocol() {

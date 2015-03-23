@@ -8,18 +8,16 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-25 08:56:01
-/*	Updated: UTC 2015-02-27 13:01:29
+/*	Updated: UTC 2015-03-22 07:39:01
 /*
 /* ************************************************************************** */
 namespace Loli\Log;
 class_exists('Loli\Log\Base') || exit;
 class File extends Base{
-	protected $path = './$date/$level-$time.log';
+	protected $path = './$date//$level-$time.log';
 
 	public function write($message, $level = self::LEVEL_ACCESS) {
-
-		// 过滤
-		if (!$this->isRecord($level)) {
+		if (!in_array($this->writes, $level)) {
 			return false;
 		}
 		// 进度
@@ -35,7 +33,7 @@ class File extends Base{
 		is_dir($dir = dirname($path)) || mkdir($dir, 0755, true);
 
 		// 写入日志
-		error_log('[' . $this->formatDate() . '] ' . $this->getLevelName($level) . ' ' . $message . "\n", 3, $path);
+		error_log('[' . $this->formatDate() . '] ' . $message . "\n", 3, $path);
 
 		return true;
 	}

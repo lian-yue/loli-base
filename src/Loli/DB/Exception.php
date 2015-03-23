@@ -8,28 +8,30 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-10 12:48:56
-/*	Updated: UTC 2015-03-21 12:05:55
+/*	Updated: UTC 2015-03-22 08:01:00
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
-use Loli\ErrorException;
-class_exists('Loli\ErrorException') || exit;
-class Exception extends ErrorException{
+use Loli\LogException;
+class_exists('Loli\LogException') || exit;
+class Exception extends LogException{
 	protected $state = '42000';
 	protected $message;
 	protected $query;
-	protected $severity = 2;
+	protected $level = 3;
 	public function __construct($query, $message, $state = '', $code = 0, Exception $previous = NULL) {
 		$message = is_array($message) || is_object($message) ? var_export($message, true) : $message;
 		$this->query = is_array($query) || is_object($query) ? var_export($query, true) : $query;
 		$this->state = $state && $state !== '00000' ? $state : $this->state;
+		$this->log = $message .  "\n" . $this->query;
 		parent::__construct($message, $code, $previous);
 	}
-	public function getState(){
+	public function getState() {
 		return $this->state;
 	}
 
-	public function getQuery(){
+	public function getQuery() {
+		return $this->query;
 	}
 
 }

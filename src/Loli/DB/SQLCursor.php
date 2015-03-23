@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-11 16:13:26
-/*	Updated: UTC 2015-03-21 09:07:18
+/*	Updated: UTC 2015-03-22 04:25:52
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -626,24 +626,6 @@ class SQLCursor extends Cursor{
 				throw new Exception('this.cursor.exists()', 'Does not support this protocol');
 				break;
 		}
-		/*if ($this->protocol == 'mysql') {
-			$table = $this->DB->value(addcslashes($param->value, '%_'));
-			$command = 'SHOW TABLES LIKE :table;';;
-		} elseif ($this->protocol == 'sqlite') {
-			$table = $this->DB->value($param->value);
-			$command = 'SELECT * FROM sqlite_master WHERE type=\'table\' AND name=:table;';
-		}/* elseif ($this->protocol == 'mssql') {
-			$table = $this->DB->value($param->value);
-			$command = 'SELECT * FROM syscolumns WHERE type=\'U\' AND name=:table;';
-		} elseif ($this->protocol == 'oci') {
-			$table = $this->DB->value(strtoupper($param->value));
-			$command = 'SELECT * FROM USER_OBJECTS WHERE tname=:table;';
-		} elseif ($this->protocol == 'pgsql') {
-			$table = $this->DB->value(strtoupper($param->value));
-			$command = 'SELECT * FROM pg_class WHERE relname = :table';
-		} else {
-			throw new Exception('this.cursor.exists()', 'Does not support this protocol');
-		}*/
 
 		$command = strtr($command, [':table' => $table]);
 
@@ -656,7 +638,6 @@ class SQLCursor extends Cursor{
 		$result = $this->DB->command($command, false);
 		return $result ? true : false;
 	}
-
 
 
 	// 创建表

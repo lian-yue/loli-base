@@ -8,13 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-17 08:46:33
-/*	Updated: UTC 2015-02-25 13:57:15
+/*	Updated: UTC 2015-03-22 08:19:53
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
 use Memcached;
 class_exists('Loli\Cache\Base') || exit;
-
 class Memcache extends Base{
 
 
@@ -32,47 +31,47 @@ class Memcache extends Base{
 	function __construct(array $args, $key = '') {
 		$this->_key = $key;
 		$this->_d = class_exists('Memcached');
-		foreach ($args as $list => $servers) {
-			$list = is_int($list) ? 'default' : $list;
+		foreach ($args as $group => $servers) {
+			$group = is_int($group) ? 'default' : $group;
 			$servers = (array) $servers;
 			foreach ($servers as $k => $v) {
 				$v = is_array($v) ? $v : explode(':', $v, 2);
 				$v[1] = empty($v[1]) ? '11211' : $v[1];
 				$servers[$k] = $v;
 			}
-			$this->addServers($list, $servers);
+			$this->addServers($group, $servers);
 		}
 	}
 
 
 
-	public function get($key, $list = 'default') {
+	public function get($key, $group = 'default') {
 		++$this->count['get'];
-		if (!isset($this->_data[$list][$key])) {
-			$this->_data[$list][$key] = $this->_mem($list)->get($this->_key($key, $list));
+		if (!isset($this->_data[$group][$key])) {
+			$this->_data[$group][$key] = $this->_mem($group)->get($this->_key($key, $group));
 		}
-		if (is_object($this->_data[$list][$key])) {
-			return clone $this->_data[$list][$key];
+		if (is_object($this->_data[$group][$key])) {
+			return clone $this->_data[$group][$key];
 		}
-		return $this->_data[$list][$key];
+		return $this->_data[$group][$key];
 	}
 
 
-	public function add($data, $key, $list = 'default', $ttl = 0) {
+	public function add($data, $key, $group = 'default', $ttl = 0) {
 		++$this->count['add'];
-		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1 || (!$ttl && $this->get($key, $list) !== false)) {
+		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1 || (!$ttl && $this->get($key, $group) !== false)) {
 			return false;
 		}
 		if (is_object($data)) {
 			$data = clone $data;
 		}
-		if (!$ttl || ($this->_d ? $this->_mem($list)->add($k = $this->_key($key, $list), $data, $_ttl = $ttl == -1 ? 0 : $ttl) : $this->_mem($list)->add($k = $this->_key($key, $list), $data, MEMCACHE_COMPRESSED, $_ttl = $ttl == -1 ? 0 : $ttl))) {
-			$this->_data[$list][$key] = $data;
+		if (!$ttl || ($this->_d ? $this->_mem($group)->add($k = $this->_key($key, $group), $data, $_ttl = $ttl == -1 ? 0 : $ttl) : $this->_mem($group)->add($k = $this->_key($key, $group), $data, MEMCACHE_COMPRESSED, $_ttl = $ttl == -1 ? 0 : $ttl))) {
+			$this->_data[$group][$key] = $data;
 			if ($ttl) {
-				$this->_ttl[$list][$key] = $ttl = $ttl == -1 ? -1 : time() + $ttl;
-				$this->_d ? $this->_mem($list)->set('ttl.'.$k,  $ttl, $_ttl) : $this->_mem($list)->set('ttl.'.$k, $ttl, MEMCACHE_COMPRESSED, $_ttl);
+				$this->_ttl[$group][$key] = $ttl = $ttl == -1 ? -1 : time() + $ttl;
+				$this->_d ? $this->_mem($group)->set('ttl.'.$k,  $ttl, $_ttl) : $this->_mem($group)->set('ttl.'.$k, $ttl, MEMCACHE_COMPRESSED, $_ttl);
 			} else {
-				$this->_ttl[$list][$key] = 0;
+				$this->_ttl[$group][$key] = 0;
 			}
 			return true;
 		}
@@ -80,7 +79,7 @@ class Memcache extends Base{
 	}
 
 
-	public function set($data, $key, $list = 'default', $ttl = 0) {
+	public function set($data, $key, $group = 'default', $ttl = 0) {
 		++$this->count['set'];
 		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1) {
 			return false;
@@ -88,62 +87,62 @@ class Memcache extends Base{
 		if (is_object($data)) {
 			$data = clone $data;
 		}
-		if (!$ttl || ($this->_d ? $this->_mem($list)->set($k = $this->_key($key, $list), $data, $_ttl = $ttl == -1 ? 0 : $ttl) : $this->_mem($list)->set($k = $this->_key($key, $list), $data, MEMCACHE_COMPRESSED, $_ttl = $ttl == -1 ? 0 : $ttl))) {
-			$this->_data[$list][$key] = $data;
+		if (!$ttl || ($this->_d ? $this->_mem($group)->set($k = $this->_key($key, $group), $data, $_ttl = $ttl == -1 ? 0 : $ttl) : $this->_mem($group)->set($k = $this->_key($key, $group), $data, MEMCACHE_COMPRESSED, $_ttl = $ttl == -1 ? 0 : $ttl))) {
+			$this->_data[$group][$key] = $data;
 			if ($ttl) {
-				$this->_ttl[$list][$key] = $ttl = $ttl == -1 ? -1 : time() + $ttl;
-				$this->_d ? $this->_mem($list)->set('ttl.'.$k,  $ttl, $_ttl) : $this->_mem($list)->set('ttl.'.$k, $ttl, MEMCACHE_COMPRESSED, $_ttl);
+				$this->_ttl[$group][$key] = $ttl = $ttl == -1 ? -1 : time() + $ttl;
+				$this->_d ? $this->_mem($group)->set('ttl.'.$k,  $ttl, $_ttl) : $this->_mem($group)->set('ttl.'.$k, $ttl, MEMCACHE_COMPRESSED, $_ttl);
 			} else {
-				$this->_ttl[$list][$key] = 0;
+				$this->_ttl[$group][$key] = 0;
 			}
 			return true;
 		}
 		return false;
 	}
 
-	public function incr($n, $key, $list = 'default') {
+	public function incr($n, $key, $group = 'default') {
 		++$this->count['incr'];
 		if (($n = intval($n)) < 1) {
 			return false;
 		}
 		$r = false;
-		if (isset($this->_ttl[$list][$key]) && $this->_ttl[$list][$key] === 0) {
-			if (isset($this->_data[$list][$key]) && $this->_data[$list][$key] !== false) {
-				$this->_data[$list][$key] += $n;
+		if (isset($this->_ttl[$group][$key]) && $this->_ttl[$group][$key] === 0) {
+			if (isset($this->_data[$group][$key]) && $this->_data[$group][$key] !== false) {
+				$this->_data[$group][$key] += $n;
 				return true;
 			}
 			return false;
 		}
-		$this->_ttl[$list][$key] = $this->_data[$list][$key] = NULL;
-		return $this->_mem($list)->increment($this->_key($key, $list), $n);
+		$this->_ttl[$group][$key] = $this->_data[$group][$key] = NULL;
+		return $this->_mem($group)->increment($this->_key($key, $group), $n);
 	}
 
-	public function decr($n, $key, $list = 'default') {
+	public function decr($n, $key, $group = 'default') {
 		++$this->count['incr'];
 		if (($n = intval($n)) < 1) {
 			return false;
 		}
 		$r = false;
-		if (isset($this->_ttl[$list][$key]) && $this->_ttl[$list][$key] === 0) {
-			if (isset($this->_data[$list][$key]) && $this->_data[$list][$key] !== false) {
-				$this->_data[$list][$key] += $n;
+		if (isset($this->_ttl[$group][$key]) && $this->_ttl[$group][$key] === 0) {
+			if (isset($this->_data[$group][$key]) && $this->_data[$group][$key] !== false) {
+				$this->_data[$group][$key] += $n;
 				return true;
 			}
 			return false;
 		}
-		$this->_ttl[$list][$key] = $this->_data[$list][$key] = NULL;
-		return $this->_mem($list)->decrement($this->_key($key, $list), $n);
+		$this->_ttl[$group][$key] = $this->_data[$group][$key] = NULL;
+		return $this->_mem($group)->decrement($this->_key($key, $group), $n);
 	}
 
 
-	public function delete($key, $list = 'default', $ttl = 0) {
+	public function delete($key, $group = 'default', $ttl = 0) {
 		++$this->count['delete'];
 		if ($ttl > 0) {
-			$mem = $this->_mem($list);
-			if (($data = $mem->get($k = $this->_key($key, $list))) === false) {
-				return isset($this->_data[$list][$key]) && $this->_data[$list][$key] !== false;
+			$mem = $this->_mem($group);
+			if (($data = $mem->get($k = $this->_key($key, $group))) === false) {
+				return isset($this->_data[$group][$key]) && $this->_data[$group][$key] !== false;
 			}
-			if (($e = $this->_mem($list)->get('ttl.'. $this->_key($key, $list))) == -1 || $e === false || $e > (time() + $ttl)) {
+			if (($e = $this->_mem($group)->get('ttl.'. $this->_key($key, $group))) == -1 || $e === false || $e > (time() + $ttl)) {
 				if (!($this->_d ? $mem->set($k, $data, $ttl) : $mem->set($k, $data, MEMCACHE_COMPRESSED, $ttl))){
 					return false;
 				}
@@ -151,27 +150,27 @@ class Memcache extends Base{
 				return true;
 			}
 		}
-		if (isset($this->_ttl[$list][$key]) && $this->_ttl[$list][$key] === 0) {
-			unset($this->_ttl[$list][$key], $this->_data[$list][$key]);
+		if (isset($this->_ttl[$group][$key]) && $this->_ttl[$group][$key] === 0) {
+			unset($this->_ttl[$group][$key], $this->_data[$group][$key]);
 			return true;
 		}
 
-		unset($this->_ttl[$list][$key], $this->_data[$list][$key]);
-		$k = $this->_key($key, $list);
-		$this->_mem($list)->delete('ttl.' . $k, 0);
-		return $this->_mem($list)->delete($k, 0);
+		unset($this->_ttl[$group][$key], $this->_data[$group][$key]);
+		$k = $this->_key($key, $group);
+		$this->_mem($group)->delete('ttl.' . $k, 0);
+		return $this->_mem($group)->delete($k, 0);
 	}
 
 
-	public function ttl($key, $list = 'default') {
-		if (!isset($this->_ttl[$list][$key])) {
-			$this->_ttl[$list][$key] = $this->_mem($list)->get('ttl.'. $this->_key($key, $list));
+	public function ttl($key, $group = 'default') {
+		if (!isset($this->_ttl[$group][$key])) {
+			$this->_ttl[$group][$key] = $this->_mem($group)->get('ttl.'. $this->_key($key, $group));
 		}
-		if (!$this->_ttl[$list][$key] || $this->_ttl[$list][$key] == -1) {
-			return $this->_ttl[$list][$key];
+		if (!$this->_ttl[$group][$key] || $this->_ttl[$group][$key] == -1) {
+			return $this->_ttl[$group][$key];
 		}
-		if (($ttl = $this->_ttl[$list][$key] - time()) < 0) {
-			return $this->_ttl[$list][$key] = false;
+		if (($ttl = $this->_ttl[$group][$key] - time()) < 0) {
+			return $this->_ttl[$group][$key] = false;
 		}
 		return $ttl;
 	}
@@ -192,34 +191,34 @@ class Memcache extends Base{
 		return true;
 	}
 
-	public function addServers($list, array $a) {
+	public function addServers($group, array $servers) {
 		if ($this->_d) {
-			if (empty($this->_mem[$list])) {
-				$this->_mem[$list] = new Memcached;
-				$this->_mem[$list]->setOptions([Memcached::OPT_COMPRESSION => true, Memcached::OPT_POLL_TIMEOUT => 1000, Memcached::OPT_RETRY_TIMEOUT => $this->retry]);
+			if (empty($this->_mem[$group])) {
+				$this->_mem[$group] = new Memcached;
+				$this->_mem[$group]->setOptions([Memcached::OPT_COMPRESSION => true, Memcached::OPT_POLL_TIMEOUT => 1000, Memcached::OPT_RETRY_TIMEOUT => $this->retry]);
 			}
-			$this->_mem[$list]->addServers($v[0], $a);
+			$this->_mem[$group]->addServers($v[0], $servers);
 		} else {
-			if (empty($this->_mem[$list])) {
-				$this->_mem[$list] =  new \Memcache;
+			if (empty($this->_mem[$group])) {
+				$this->_mem[$group] =  new \Memcache;
 			}
-			foreach ($a as $k => $v) {
-				$this->_mem[$list]->addServer($v[0], empty($v[1]) ? 11211: $v[1], true, 1, 1, $this->retry, true, [$this, 'failure']);
+			foreach ($servers as $k => $v) {
+				$this->_mem[$group]->addServer($v[0], empty($v[1]) ? 11211: $v[1], true, 1, 1, $this->retry, true, [$this, 'failure']);
 			}
 		}
 		return true;
 	}
 
 	public function failure($host, $port) {
-		$this->addMessage('Memcache '. $host .':' . $port);
+		new Exception('Memcache '. $host .':' . $port);
 	}
 
 
-	private function _mem($list) {
-		return empty($this->_mem[$list]) ? $this->_mem['default'] : $this->_mem[$list];
+	private function _mem($group) {
+		return empty($this->_mem[$group]) ? $this->_mem['default'] : $this->_mem[$group];
 	}
 
-	private function _key($key, $list) {
-		return md5($key . $this->_key) . substr(md5($this->_key . $key), 12, 8) . $list;
+	private function _key($key, $group) {
+		return md5($key . $this->_key) . substr(md5($this->_key . $key), 12, 8) . $group;
 	}
 }

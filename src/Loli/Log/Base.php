@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-25 08:56:16
-/*	Updated: UTC 2015-02-27 13:03:38
+/*	Updated: UTC 2015-03-22 07:41:18
 /*
 /* ************************************************************************** */
 namespace Loli\Log;
@@ -16,46 +16,38 @@ use Loli\Exception;
 abstract class Base{
 
 	// 信息 访问日志什么的
-	const LEVEL_ACCESS = 2;
+	const LEVEL_ACCESS = 0;
 
 	// 通知
-	const LEVEL_NOTICE = 4;
+	const LEVEL_NOTICE = 1;
 
 	// 警告
-	const LEVEL_WARNING = 8;
+	const LEVEL_WARNING = 2;
 
 	// 错误
-	const LEVEL_ERROR = 16;
+	const LEVEL_ERROR = 3;
 
 	// 警报 比如链接 mysql 什么的不可用
-	const LEVEL_ALERT = 32;
+	const LEVEL_ALERT = 4;
 
-
-	// 储存日志
-	const LEVEL_STORAGE = 16384;
-
-	// 查询日志
-	const LEVEL_QUERY = 32768;
-
-	// debug
-	const LEVEL_DEBUG = 65636;
+	// DEBUG 日志
+	const LEVEL_DEBUG = 9;
 
 	// 日志
 	protected $levels = [
-		2 => 'access',
-		4 => 'notice',
-		8 => 'warning',
-		16 => 'error',
-		32 => 'alert',
-		16384 => 'storage',
-		32768 => 'query',
-		65636 => 'debug',
+		0 => 'access',
+		1 => 'notice',
+		2 => 'warning',
+		3 => 'error',
+		4 => 'alert',
+		9 => 'debug',
 	];
 
-	protected $dateFormat = 'c';
+	// 允许写入的级别
+	protected $writes = [0, 1, 2, 3, 4, 5 ,9];
 
-	// 不用记录的 log
-	protected $record = true;
+
+	protected $dateFormat = 'c';
 
 	// 进度
 	protected $progress = [];
@@ -82,24 +74,14 @@ abstract class Base{
 
 
 
-	//判断是否允许写
-	protected function isRecord($level) {
-		if ($this->record < 1) {
-			return false;
-		}
-		if ($this->record != 1 && !($this->record & $level)) {
-			return false;
-		}
-		return true;
-	}
-
 	// 级别
 	protected function getLevelName($level) {
 		if (isset($this->levels[$level])) {
 			return $this->levels[$level];
 		}
-		trigger_error('Level "'.$level.'" is not defined', E_USER_ERROR);
+		trigger_error('Error log level', E_USER_ERROR);
 	}
+
 
 	// 进度
 	protected function getProgress($message, $level) {

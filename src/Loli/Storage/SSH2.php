@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-10-25 12:08:21
-/*	Updated: UTC 2015-02-26 05:49:23
+/*	Updated: UTC 2015-03-22 08:15:11
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
@@ -51,19 +51,19 @@ class SSH2 extends Base{
 			throw $this->_throw;
 		}
 		if (!$this->_link = @ssh2_connect($this->host, $this->port, $this->publicKey || $this->privateKey ? $this->methods + ['hostkey' => 'ssh-rsa'] : $this->methods, ['disconnect' => [$this, 'disconnect']])) {
-			throw $this->_throw = new Exception('Unable to connect to server', 10);
+			throw $this->_throw = new ConnectException('Unable to connect to server', 10);
 		}
 
 
 		if ($this->publicKey || $this->privateKey) {
 			if (!@ssh2_auth_pubkey_file($this->_link, $this->user, $this->publicKey, $this->privateKey, $this->pass)) {
 				$this->_link = false;
-				throw $this->_throw = new Exception('Unable to login to the server', 11);
+				throw $this->_throw = new ConnectException('Unable to login to the server', 11);
 			}
 		} else {
 			if (!@ssh2_auth_password($this->_link, $this->user, $this->pass)) {
 				$this->_link = false;
-				throw $this->_throw = new Exception('Unable to login to the server', 11);
+				throw $this->_throw = new ConnectException('Unable to login to the server', 11);
 			}
 		}
 		$this->_sftpLink = ssh2_sftp($this->_link);

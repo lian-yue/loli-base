@@ -8,11 +8,10 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-17 08:31:12
-/*	Updated: UTC 2015-02-26 13:26:51
+/*	Updated: UTC 2015-03-22 13:19:31
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
-use Loli\Log;
 abstract class Base{
 
 	// 记录使用次数
@@ -33,7 +32,7 @@ abstract class Base{
 	*
 	*	返回 你原先存入的数据
 	**/
-	abstract public function get($key, $list = 'default');
+	abstract public function get($key, $group = 'default');
 
 	/**
 	*	添加 缓存
@@ -46,7 +45,7 @@ abstract class Base{
 	*	已经存在内容覆盖
 	*	返回 true 成功 返回 false 失败
 	*/
-	abstract public function add($data, $key, $list = 'default', $ttl = 0);
+	abstract public function add($data, $key, $group = 'default', $ttl = 0);
 
 
 	/**
@@ -60,7 +59,7 @@ abstract class Base{
 	*	已经存在内容覆盖
 	*	返回 true 成功 返回 false 失败
 	*/
-	abstract public function set($data, $key, $list = 'default', $ttl = 0);
+	abstract public function set($data, $key, $group = 'default', $ttl = 0);
 
 
 	/**
@@ -73,7 +72,7 @@ abstract class Base{
 	*
 	*	返回 true 成功 返回 false 失败
 	*/
-	abstract public function incr($n, $key, $list = 'default');
+	abstract public function incr($n, $key, $group = 'default');
 
 	/**
 	*	减少 值
@@ -85,7 +84,7 @@ abstract class Base{
 	*
 	*	返回 true 成功 返回 false 失败
 	*/
-	abstract public function decr($n, $key, $list = 'default');
+	abstract public function decr($n, $key, $group = 'default');
 
 
 	/**
@@ -97,16 +96,16 @@ abstract class Base{
 	*
 	*	返回 true 成功 返回 false 失败
 	**/
-	abstract public function delete($key, $list = 'default', $ttl = 0);
+	abstract public function delete($key, $group = 'default', $ttl = 0);
 
 
 	/**
 	 * 获得 或设置 过期时间
 	 * @param  [type]  $key  列表
-	 * @param  string  $list 时间
+	 * @param  string  $group 时间
 	 * @return -1 永不过期  0 = 临时的  1 = 1秒后过期  false = 已过期
 	 */
-	abstract public function ttl($key, $list = 'default');
+	abstract public function ttl($key, $group = 'default');
 
 
 	/**
@@ -121,19 +120,11 @@ abstract class Base{
 
 	/**
 	 * 添加服务器
-	 * @param [type] $list 服务器组
-	 * @param [type] $a    服务器信息
+	 * @param [type] $group 服务器组
+	 * @param [type] $servers    服务器信息
 	 */
-	abstract public function addServers($list, array $a);
+	abstract public function addServers($group, array $servers);
 
-
-	/**
-	 * 错误记录
-	 * @param [type] $message [description]
-	 */
-	protected function addMessage($message) {
-		return class_exists('Loli\Log') && Log::alert($message);
-	}
 }
 
 

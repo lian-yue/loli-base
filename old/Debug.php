@@ -8,12 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-15 14:00:37
-/*	Updated: UTC 2015-02-26 04:46:10
+/*	Updated: UTC 2015-03-22 06:27:02
 /*
 /* ************************************************************************** */
 namespace Loli;
 
-class Debug {
+class Debug{
 	// display 需要输出并且结束的错误
 	public $display = NULL;
 

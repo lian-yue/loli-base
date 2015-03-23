@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-11 15:06:55
+/*	Updated: UTC 2015-03-22 06:24:46
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -18,7 +18,7 @@ class HTML{
 	// 储存所有 标签
 	public $tag = [
 		'a', 'abbr', 'acronym', 'address', 'applet', 'area', 'article', 'aside', 'audio',
-		'b', 'base', 'basefont', 'bdi', 'bdo', 'big', 'blockquote', 'blockcode', 'body', 'br', 'button',
+		'b', 'basefont', 'bdi', 'bdo', 'big', 'blockquote', 'blockcode', 'body', 'br', 'button',
 		'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'command',
 		'datalist', 'dd', 'del', 'details', 'dfn', 'dir', 'div', 'dl', 'dt',
 		'em', 'embed',
@@ -42,7 +42,7 @@ class HTML{
 	];
 
 	// 下面是特殊的 html 标签
-	// 'html', 'meta', 'link', 'script', 'style', 'head', 'body', 'title', 'noframes', 'noscript', 'frameset', 'frame', 'iframe', 'applet', 'polygon', 'svg'
+	// 'base', 'html', 'meta', 'link', 'script', 'style', 'head', 'body', 'title', 'noframes', 'noscript', 'frameset', 'frame', 'iframe', 'applet', 'polygon', 'svg'
 	// 'object', 'embed'
 	// 'form', 'input', 'select', 'option', 'textarea', 'button'
 

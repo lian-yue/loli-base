@@ -8,20 +8,25 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-08 08:27:43
-/*	Updated: UTC 2015-03-21 11:57:24
+/*	Updated: UTC 2015-03-22 08:43:28
 /*
 /* ************************************************************************** */
-namespace Loli;
+//namespace Loli;
 
-
+/*
 trait Model{
+	private $_modelID = __NAMESPACE__;
+
+
+
+
 
 	//private static $_classExixts = [];
 
 	//protected static $classCounts = 0;
 
 	//private $_modelID = '\\';
-
+	//private $_modelID = __NAMESPACE__;
 	//public static function __call($key, $args) {
 	//	return call_user_func_array($this->$key, $args);
 	//}
@@ -48,4 +53,4 @@ trait Model{
 	//	}
 	//	return $_MODEL[$key];
 	//}
-}
+}*/

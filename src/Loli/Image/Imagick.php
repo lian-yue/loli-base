@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-12 15:00:16
-/*	Updated: UTC 2015-02-26 09:54:23
+/*	Updated: UTC 2015-03-22 14:33:12
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -177,7 +177,7 @@ class Imagick extends Base{
 			}
 		}
 
-
+		// 不会算法 所以这不支持45度什么的
 		try {
 			$draw = new ImagickDraw();
 			$draw->setFont($font);

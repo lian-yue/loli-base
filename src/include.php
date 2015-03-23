@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-03-21 11:55:40
+/*	Updated: UTC 2015-03-22 09:01:20
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -64,9 +64,25 @@ class DB{
 	private $_link;
 	public function __call($method, $args) {
 		if (!isset($this->_link)) {
-			empty($_SERVER['LOLI']['DB']) && trigger_error( 'Variables $_SERVER[\'LOLI\'][\'DB\'] does not exist', E_USER_ERROR);
-			$class = __NAMESPACE__ . '\DB\\' . (empty($_SERVER['LOLI']['DB']['type']) || in_array($_SERVER['LOLI']['DB']['type'], ['MySQL', 'MySQLi']) ? (class_exists('MySQLi') ? 'MySQLi' : 'MySQL') : $_SERVER['LOLI']['DB']['type']);
-			$this->_link = new $class($_SERVER['LOLI']['DB']);
+			empty($_SERVER['LOLI']['DB']['masters']) && trigger_error( 'Variables $_SERVER[\'LOLI\'][\'DB\'] does not exist', E_USER_ERROR);
+			if (!empty($_SERVER['LOLI']['DB']['class'])) {
+				$class = $_SERVER['LOLI']['DB']['class'];
+			} else {
+				$master = reset($_SERVER['LOLI']['DB']['masters']);
+				if (is_int(key($master))) {
+					$master = reset($master);
+				}
+				if (!is_array($master)) {
+					$protocol = parse_url($master, PHP_URL_SCHEME);
+				} else {
+					$protocol = empty($master['protocol']) ? 'mysql' : $master['protocol'];
+				}
+				if ( && !in_array($protocol = strtolower($protocol), \PDO::getAvailableDrivers())) {
+					throw new ConnectException('Does not support this protocol');
+				}
+			}
+			$class = __CLASS__.'\\' . $class;
+			$this->_link = new $class($_SERVER['LOLI']['DB']['masters'], $_SERVER['LOLI']['DB']['slaves'], $_SERVER['LOLI']['DB']['explain']);
 		}
 		return call_user_func_array([$this->_link, $method], $args);
 	}

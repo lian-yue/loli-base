@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-05-12 18:03:40
-/*	Updated: UTC 2015-02-26 05:48:43
+/*	Updated: UTC 2015-03-22 08:14:55
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
@@ -53,13 +53,13 @@ class FTP extends Base{
 		// 连接
 		$this->_link = $this->ssl && function_exists('ftp_ssl_connect') ? @ftp_ssl_connect($this->host, $this->port, $this->timeout) : @ftp_connect($this->host, $this->port, $this->timeout);
 		if (!$this->_link) {
-			throw $this->_throw = new Exception('Unable to connect to server', 10);
+			throw $this->_throw = new ConnectException('Unable to connect to server', 10);
 		}
 
 		// 登陆
 		if ($this->user && $this->pass && !@ftp_login($this->_link, $this->user, $this->pass)) {
 			$this->_close();
-			throw $this->_throw = new Exception('Unable to login to the server', 11);
+			throw $this->_throw = new ConnectException('Unable to login to the server', 11);
 		}
 
 		// 被动模式
