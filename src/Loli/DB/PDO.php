@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-05 09:48:17
-/*	Updated: UTC 2015-03-23 06:09:25
+/*	Updated: UTC 2015-03-23 13:57:37
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -43,7 +43,6 @@ class PDO extends Base{
 					break;
 				default:
 					throw new ConnectException('this.PDO()', 'Unknown database protocol');
-					break;
 			}
 		} catch (PDOException $e) {
 			throw new ConnectException($dsnQuery, $e->getMessage());

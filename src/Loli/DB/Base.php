@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-03-23 10:09:11
+/*	Updated: UTC 2015-03-23 13:30:37
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -49,7 +49,7 @@ abstract class Base{
 	// 连接协议
 	protected $protocol;
 
-	// 链接到的表
+	// 链接到的表 or 链接的id
 	protected $database;
 
 	// 是否是事务

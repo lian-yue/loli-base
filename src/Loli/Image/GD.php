@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-16 08:55:06
-/*	Updated: UTC 2015-02-26 09:52:40
+/*	Updated: UTC 2015-03-23 13:58:17
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -139,7 +139,6 @@ class GD extends Base {
 				$src_y = $height -1;
 				$src_width = -$width;
 				$src_height = -$height;
-				break;
 		}
 		$image = $this->_create($width, $height);
 		if (!imagecopyresampled($image, $this->_im, 0, 0, $src_x, $src_y , $width, $height, $src_width, $src_height)) {

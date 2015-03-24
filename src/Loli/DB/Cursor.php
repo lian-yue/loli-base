@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-10 08:00:28
-/*	Updated: UTC 2015-03-23 10:04:17
+/*	Updated: UTC 2015-03-24 04:18:32
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -23,6 +23,9 @@ abstract class Cursor{
 
 	// 链接的协议
 	protected $protocol;
+
+	// 链接的数据库 or 链接 的 ID
+	protected $database;
 
 	// 是否要执行 false = 数据语句信息
 	protected $execute = true;
@@ -63,18 +66,48 @@ abstract class Cursor{
 	// 缓存时间
 	protected $cache = [0, 0];
 
-	// 有修改表的日志
+	// 有修改表的日志  /*[数据库 or ID=>[表名=>执行时间戳]]*/
 	private static $_logs = [];
 
 	public function __construct(Base $DB, $tables = [], array $indexs = []) {
 		$this->DB = $DB;
+		$this->database = $DB->database();
 		$this->protocol = $DB->protocol();
 		$this->tables((array)$tables);
 	}
 
 
-	protected function logs($tables, $write = false) {
-		$this->cache = [$ttl, $refresh];
+	public function slave($slave) {
+		$this->slave = $slave;
+		return $this;
+	}
+
+	// 读取主从同步
+	protected function getSlave() {
+		if ($this->slave === NULL) {
+			$this->slave = $this->DB->slave;
+		}
+		if (!$this->slave) {
+			return false;
+		}
+		if (!empty($this->_logs[$this->database]) && !empty($this->data['uses'])) {
+			foreach ($this->_logs[$this->database] as $table => $time) {
+				if (in_array($table, $this->data['uses']) && $time > time()) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	// 写入主从同步
+	protected function setSlave($ttl = 2) {
+		if (empty($this->data['uses'])) {
+			return $this;
+		}
+		foreach ($this->data['uses'] as $table) {
+			$this->_logs[$this->database][$table] = time() + ($ttl < 2 ? 2 : $ttl);
+		}
 		return $this;
 	}
 
@@ -83,17 +116,13 @@ abstract class Cursor{
 		return $this;
 	}
 
-	public function execute($execute) {
-		$this->execute = $execute;
+	public function callback($name, callback $callback = NULL) {
+		$this->callbacks[$name] = $callback;
 		return $this;
 	}
 
-	public function getExecute() {
-		return $this->execute;
-	}
-
-	public function slave($slave) {
-		$this->slave = $slave;
+	public function execute($execute) {
+		$this->execute = $execute;
 		return $this;
 	}
 

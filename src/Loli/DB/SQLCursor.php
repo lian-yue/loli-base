@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-11 16:13:26
-/*	Updated: UTC 2015-03-23 10:26:31
+/*	Updated: UTC 2015-03-24 04:18:06
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -122,6 +122,15 @@ class SQLCursor extends Cursor{
 
 	private $_isCache = false;
 
+	private function _command($command, $ttl = 2) {
+		if (!$this->execute) {
+			return $command;
+		}
+		$results = $this->DB->command($command, false);
+		$this->setSlave($ttl);
+		return $results;
+	}
+
 	private function _table() {
 		// 没有表
 		if (!$this->tables) {
@@ -134,6 +143,7 @@ class SQLCursor extends Cursor{
 		}
 		$table = reset($this->tables);
 		$table->keyValue = $this->DB->key($table->value, true);
+		$this->data['users'] = [$table->value];
 		return $table;
 	}
 
@@ -168,7 +178,6 @@ class SQLCursor extends Cursor{
 				break;
 			default:
 				throw new Exception($type, 'Unknown table structure type');
-				break;
 		}
 
 
@@ -554,7 +563,6 @@ class SQLCursor extends Cursor{
 						throw new Exception($compare, 'Unknown compare');
 					}
 					$arrays[] = ['compare' => $compare, 'value' => $this->DB->value($query->value)];
-					break;
 			}
 
 
@@ -573,7 +581,6 @@ class SQLCursor extends Cursor{
 							$array['compare'] = $this->_notCompares[$array['compare']];
 						}
 						$commands[] =  implode(' ', [$array['binary'], $column, $array['not'], $array['compare'], $array['value']]);
-						break;
 				}
 			}
 		}
@@ -623,7 +630,6 @@ class SQLCursor extends Cursor{
 				break;
 			default:
 				throw new Exception('this.cursor.exists()', 'Does not support this protocol');
-				break;
 		}
 
 		$command = strtr($command, [':table' => $table]);
@@ -688,7 +694,6 @@ class SQLCursor extends Cursor{
 				break;
 			default:
 				throw new Exception('this.cursor.create()', 'Does not support this protocol');
-				break;
 		}
 
 
@@ -784,7 +789,6 @@ class SQLCursor extends Cursor{
 					break;
 				default:
 					throw new Exception('this.cursor.create()', 'Does not support this protocol');
-					break;
 			}
 
 
@@ -948,16 +952,7 @@ class SQLCursor extends Cursor{
 		$arrays[':table'] = $table;
 		$arrays[':value'] = "\n{$values}\n";
 		$command = strtr($command, $arrays);
-
-
-
-		// 不执行的
-		if (!$this->execute) {
-			return $command;
-		}
-
-		// 执行
-		return $this->DB->command($command, false);
+		return $this->_command($command, 60);
 	}
 
 	// 清空表
@@ -969,16 +964,9 @@ class SQLCursor extends Cursor{
 				break;
 			default:
 				$command = 'TRUNCATE TABLE :table;';
-				break;
 		}
 		$command = strtr($command, [':table' => $table]);
-
-		// 不需要执行的
-		if (!$this->execute) {
-			return $command;
-		}
-		// 执行
-		return $this->DB->command($command, false);
+		return $this->_command($command, 60);
 	}
 
 
@@ -995,7 +983,6 @@ class SQLCursor extends Cursor{
 			default:
 				$exists = '';
 				$command = 'DROP TABLE :table;';
-				break;
 		}
 
 		$ifExists = false;
@@ -1007,12 +994,7 @@ class SQLCursor extends Cursor{
 
 		$command = strtr($command, [':table' => $table, ':exists' => $ifExists ? $exists : '']);
 
-		// 不需要执行的
-		if (!$this->execute) {
-			return $command;
-		}
-		// 执行
-		return $this->DB->command($command, false);
+		return $this->_command($command, 60);
 	}
 
 	// 插入字段
@@ -1077,19 +1059,11 @@ class SQLCursor extends Cursor{
 				break;
 			default:
 				$command = 'INSERT :ignore INTO :table (:column) VALUES :document;';
-				break;
 		}
 
 
 		$command = strtr($command, [':ignore' => $this->_ignore(), ':table' => $table, ':column' => $column, ':document' => $documents]);
-
-		// 不需要执行的
-		if (!$this->execute) {
-			return $command;
-		}
-
-		// 执行
-		return $this->DB->command($command, false);
+		return $this->_command($command);
 	}
 
 	// 更新字段
@@ -1159,13 +1133,7 @@ class SQLCursor extends Cursor{
 
 		$command = strtr($command, [':ignore' => $this->_ignore(), ':using' => $this->_using(), ':form' => $this->_from('UPDATE'), ':value' => $value, ':where' => $this->_where(), ':order' => $this->_order(), ':limit' => $this->_limit()]);
 
-		// 不需要执行的
-		if (!$this->execute) {
-			return $command;
-		}
-
-		// 执行
-		return $this->DB->command($command, false);
+		return $this->_command($command);
 	}
 
 	// 删除字段
@@ -1174,13 +1142,7 @@ class SQLCursor extends Cursor{
 		$command = 'DELETE :ignore :form :where :order :offset :limit';
 
 		$command = strtr($command, [':ignore' => $this->_ignore(), ':using' => $this->_using(), ':form' => $this->_from('DELETE'), ':where' => $this->_where(), ':order' => $this->_order(), ':limit' => $this->_limit()]);
-
-		// 不需要执行的
-		if (!$this->execute) {
-			return $command;
-		}
-		// 执行
-		return $this->DB->command($command, false);
+		return $this->_command($command);
 	}
 
 	// 读取表
@@ -1210,7 +1172,6 @@ class SQLCursor extends Cursor{
 					break;
 				default:
 					throw new Exception($options['lock'], 'Unknown type of lock');
-					break;
 			}
 		}
 
@@ -1223,10 +1184,12 @@ class SQLCursor extends Cursor{
 			return $command;
 		}
 
-		if (!$lock && $this->cache[0] && $this->_isCache && is_array($this->data[__FUNCTION__] = Cache::get(json_decode($replaces), __CLASS__))) {
+		if (!$lock && $this->cache[0] && $this->_isCache && (is_array($this->data[__FUNCTION__] = Cache::get($cacheKey = json_decode(['database' => $this->database, 'protocol' => $this->protocol] + $replaces), __CLASS__)) && ($this->cache[1] < 1 || $this->cache[0] == -1 || (Cache::ttl($cacheKey, __CLASS__) > $this->cache[1] || !Cache::add(true, 'TTL' . $cacheKey, __CLASS__, $this->cache[1] + 1))))) {
+			// 用缓存的
 		} else {
+			// 不用缓存
 			$this->data[__FUNCTION__] = $this->DB->command($command, $this->slave);
-			$this->cache[0] && Cache::set($this->data[__FUNCTION__], json_decode($replaces), __CLASS__, $this->cache[0]);
+			$this->cache[0] && Cache::set($this->data[__FUNCTION__], json_decode(['database' => $this->database, 'protocol' => $this->protocol] + $replaces), __CLASS__, $this->cache[0]);
 			if ($this->_isCache && $rows) {
 				$this->_isCache = false;
 				$this->count();
@@ -1259,8 +1222,8 @@ class SQLCursor extends Cursor{
 			return $command;
 		}
 
-		if ($this->cache[0] && $this->_isCache && ($this->data[__FUNCTION__] = Cache::get(json_decode($replaces), __CLASS__)) !== false) {
-
+		if ($this->cache[0] && $this->_isCache && (($this->data[__FUNCTION__] = Cache::get(json_decode(['database' => $this->database, 'protocol' => $this->protocol] + $replaces), __CLASS__)) !== false && ($this->cache[1] < 1 || $this->cache[0] == -1 || (Cache::ttl($cacheKey, __CLASS__) > $this->cache[1] || (Cache::ttl($cacheKey, __CLASS__) > $this->cache[1] || !Cache::add(true, 'TTL' . $cacheKey, __CLASS__, $this->cache[1] + 1)))))) {
+			// 用缓存的
 		} else {
 			if ($this->_isCache && $this->_rows()) {
 				$this->_isCache = false;
@@ -1271,7 +1234,7 @@ class SQLCursor extends Cursor{
 			foreach ((array)$this->DB->command($command, $this->slave) as $row) {
 				$this->data[__FUNCTION__] += array_sum((array) $row);
 			}
-			$this->cache[0] && Cache::set($this->data[__FUNCTION__], json_decode($replaces), __CLASS__, $this->cache[0]);
+			$this->cache[0] && Cache::set($this->data[__FUNCTION__], json_decode(['database' => $this->database, 'protocol' => $this->protocol] + $replaces), __CLASS__, $this->cache[0]);
 		}
 
 		return $this->data[__FUNCTION__];
@@ -1280,13 +1243,13 @@ class SQLCursor extends Cursor{
 
 
 	public function deleteCacheSelect() {
-		$this->cache[0] && Cache::delete(json_decode([':field' => $this->_field(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()]), __CLASS__);
+		$this->cache[0] && Cache::delete(json_decode(['database' => $this->database, 'protocol' => $this->protocol, ':field' => $this->_field(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()]), __CLASS__);
 		unset($this->data['select']);
 		return $this;
 	}
 
 	public function deleteCacheCount() {
-		$this->cache[0] && Cache::delete(json_decode([':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union()]), __CLASS__);
+		$this->cache[0] && Cache::delete(json_decode(['database' => $this->database, 'protocol' => $this->protocol, ':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union()]), __CLASS__);
 		unset($this->data['count']);
 		return $this;
 	}

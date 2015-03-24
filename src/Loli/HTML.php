@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-22 06:24:46
+/*	Updated: UTC 2015-03-23 13:58:27
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -368,7 +368,6 @@ class HTML{
 							break;
 						default:
 							$this->html($v);
-							break;
 					}
 					break;
 				default:
