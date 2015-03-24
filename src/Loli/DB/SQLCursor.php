@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-11 16:13:26
-/*	Updated: UTC 2015-03-24 06:34:50
+/*	Updated: UTC 2015-03-24 08:17:42
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -121,6 +121,8 @@ class SQLCursor extends Cursor{
 	];
 
 	private $_isCache = false;
+
+	private $_useTables = [];
 
 	private function _command($command, $ttl = 2) {
 		if (!$this->execute) {
@@ -363,18 +365,24 @@ class SQLCursor extends Cursor{
 
 	private function _where() {
 		if (isset($this->data[__FUNCTION__])) {
-			return $this->data[__FUNCTION__];
+			$this->data['uses'] = array_merge($this->data['uses'], $this->data[__FUNCTION__][1]);
+			return $this->data[__FUNCTION__][0];
 		}
+		$this->_useTables = [];
 		$query = $this->_query($this->querys, false);
-		return $this->data[__FUNCTION__] = $query ? 'WHERE ' . $query : '';
+		$this->data['uses'] = array_merge($this->data['uses'], $this->data[__FUNCTION__][1] = $this->_useTables);
+		return $this->data[__FUNCTION__][0] = $query ? 'WHERE ' . $query : '';
 	}
 
 	private function _having() {
 		if (isset($this->data[__FUNCTION__])) {
-			return $this->data[__FUNCTION__];
+			$this->data['uses'] = array_merge($this->data['uses'], $this->data[__FUNCTION__][1]);
+			return $this->data[__FUNCTION__][0];
 		}
+		$this->_useTables = [];
 		$query = $this->_query($this->querys, true);
-		return $this->data[__FUNCTION__] = $query ? 'HAVING ' . $query : '';
+		$this->data['uses'] = array_merge($this->data['uses'], $this->data[__FUNCTION__][1] = $this->_useTables);
+		return $this->data[__FUNCTION__][0] = $query ? 'HAVING ' . $query : '';
 	}
 
 
@@ -470,6 +478,7 @@ class SQLCursor extends Cursor{
 				$execute = $query->column->execute;
 				$column = $function . '(' . rtrim($query->column->execute(false)->select(), " \t\n\r\0\x0B;") . ')';
 				$query->column->execute($execute);
+				$this->_useTables = array_merge($this->_useTables, $query->column->data['uses']);
 			} elseif ($column = $this->DB->key($query->column)) {
 				$column = $function ? $function . '('. $column .')' : $column;
 			} else {
@@ -481,6 +490,7 @@ class SQLCursor extends Cursor{
 				$execute = $query->value->execute;
 				$value = '(' . rtrim($query->value->execute(false)->select(), " \t\n\r\0\x0B;") . ')';
 				$query->value->execute($execute);
+				$this->_useTables = array_merge($this->_useTables, $query->value->data['uses']);
 				$commands[] = implode(' ', [$binary, $column, $not, ($compare == 'CALL' ? '' : $compare), $value]);
 				continue;
 			}
@@ -704,9 +714,9 @@ class SQLCursor extends Cursor{
 
 
 
-		foreach ($this->values as $param) {
+		foreach ($this->columns as $column) {
 			$value = [];
-			$name = $this->DB->key($param->name, true);
+			$name = $this->DB->key($column->name, true);
 
 			switch ($this->protocol) {
 				case 'mysql':
@@ -717,58 +727,58 @@ class SQLCursor extends Cursor{
 					$stringType = ['text' => 65535, 'mediumtext' => 16777215, 'longtext' => 0];
 					$binaryType = ['blob' => 65535, 'mediumblob' => 16777215, 'logngblob' => 0];
 
-					$isIntegerType = array_key_exists($param->type, $integerType);
-					$isFloatType = in_array($param->type, $floatType);
-					$isIndexStringType = in_array($param->type, $indexStringType);
-					$isindexBinaryType = in_array($param->type, $indexBinaryType);
-					$isStringType = array_key_exists($param->type, $stringType);
-					$isBinaryType = array_key_exists($param->type, $binaryType);
-					if (in_array($param->type, ['bit', 'date', 'time', 'year', 'datetime', 'timestamp'])) {
+					$isIntegerType = array_key_exists($column->type, $integerType);
+					$isFloatType = in_array($column->type, $floatType);
+					$isIndexStringType = in_array($column->type, $indexStringType);
+					$isindexBinaryType = in_array($column->type, $indexBinaryType);
+					$isStringType = array_key_exists($column->type, $stringType);
+					$isBinaryType = array_key_exists($column->type, $binaryType);
+					if (in_array($column->type, ['bit', 'date', 'time', 'year', 'datetime', 'timestamp'])) {
 						// 其他类型
-						$value['type'] = $param->type;
-						if ($param->length && !in_array($param->type, ['date', 'year'])) {
-							$value['length'] = intval($param->length);
+						$value['type'] = $column->type;
+						if ($column->length && !in_array($column->type, ['date', 'year'])) {
+							$value['length'] = intval($column->length);
 						}
-					} elseif ($param->type == 'bool') {
+					} elseif ($column->type == 'bool') {
 						// bool 类型
 						$value['type'] = 'tinyint';
 						$value['length'] = 4;
 					} elseif ($isIntegerType) {
 						// 整数类型
-						$length = $param->length ? intval($param->length) : $integerType[$param->type][0];
+						$length = $column->length ? intval($column->length) : $integerType[$column->type][0];
 						foreach ($integerType as $type => $args) {
 							if ($args[0] == $length || $type == 'bigint') {
 								$value['type'] = $type;
-								$value['length'] = $param->unsigned ? $args[1] : $args[2];
+								$value['length'] = $column->unsigned ? $args[1] : $args[2];
 								break;
 							}
 						}
 					} elseif ($isFloatType) {
 						// 浮点类型
-						$value['type'] = $param->type;
-						if ($param->length) {
-							$length = is_array($param->length) ? array_slice($param->length , 0, 2): explode(',', $param->length, 2);
+						$value['type'] = $column->type;
+						if ($column->length) {
+							$length = is_array($column->length) ? array_slice($column->length , 0, 2): explode(',', $column->length, 2);
 							$length = array_map('intval', $length);
 							$value['length'] = implode(',', $length);
 						}
-					} elseif ($isIndexStringType || ($param->type == key($stringType) && ($param->length && $param->length <= 255) || isset($param->primary) || $param->unique || $param->key)) {
+					} elseif ($isIndexStringType || ($column->type == key($stringType) && ($column->length && $column->length <= 255) || isset($column->primary) || $column->unique || $column->key)) {
 						// 能索引的字符串
 						$isStringType = false;
 						$isIndexStringType = true;
-						$value['type'] = $param->type == key($stringType) ? reset($indexStringType) : $param->type;
-						$value['length'] = $param->length ? intval($param->length) : 255;
-					} elseif ($isindexBinaryType || ($param->type == reset($indexBinaryType) && ($param->length && $param->length <= 255) || isset($param->primary) || $param->unique || $param->key)) {
+						$value['type'] = $column->type == key($stringType) ? reset($indexStringType) : $column->type;
+						$value['length'] = $column->length ? intval($column->length) : 255;
+					} elseif ($isindexBinaryType || ($column->type == reset($indexBinaryType) && ($column->length && $column->length <= 255) || isset($column->primary) || $column->unique || $column->key)) {
 						// 能索引的二进制
 						$isStringType = false;
 						$isindexBinaryType = true;
-						$value['type'] = $param->type == reset($indexBinaryType) ? reset($indexStringType) : $param->type;
-						$value['length'] = $param->length ? intval($param->length) : 255;
+						$value['type'] = $column->type == reset($indexBinaryType) ? reset($indexStringType) : $column->type;
+						$value['length'] = $column->length ? intval($column->length) : 255;
 					} elseif ($isStringType) {
 						// 不能索引的字符串
-						$value['type'] = $param->type;
-						if ($param->length) {
+						$value['type'] = $column->type;
+						if ($column->length) {
 							foreach ($stringType as $type => $length) {
-								if ($param->length <= $length || !$length) {
+								if ($column->length <= $length || !$length) {
 									$value['type'] = $type;
 									break;
 								}
@@ -776,17 +786,17 @@ class SQLCursor extends Cursor{
 						}
 					} elseif ($isBinaryType) {
 						// 不能索引的二进制
-						$value['type'] = $param->type;
-						if ($param->length) {
+						$value['type'] = $column->type;
+						if ($column->length) {
 							foreach ($strType as $type => $length) {
-								if ($param->length <= $length || !$length) {
+								if ($column->length <= $length || !$length) {
 									$value['type'] = $type;
 									break;
 								}
 							}
 						}
 					} else {
-						throw new Exception('this.cursor.create() :' . $param->type, 'Unknown data type');
+						throw new Exception('this.cursor.create() :' . $column->type, 'Unknown data type');
 					}
 					if (empty($options['engine'])) {
 						$options['engine'] = 'InnoDB';
@@ -806,35 +816,35 @@ class SQLCursor extends Cursor{
 
 			// 无符号
 			if ($isIntegerType || $isFloatType) {
-				$value['unsigned'] = (bool) $param->unsigned;
+				$value['unsigned'] = (bool) $column->unsigned;
 			}
 
 			// 编码
-			if ($param->charset && ($isIndexStringType || $isStringType)) {
-				$value['charset'] = $this->DB->value(preg_replace('/[^0-9a-z_]/i', '', $param->charset));
+			if ($column->charset && ($isIndexStringType || $isStringType)) {
+				$value['charset'] = $this->DB->value(preg_replace('/[^0-9a-z_]/i', '', $column->charset));
 			}
 
 			if ($isStringType) {
 				// 全文
-				if (empty($commandValues['search']) && isset($param->search) && $param->search !== false) {
-					$searchs[$name] = $param->search;
+				if (empty($commandValues['search']) && isset($column->search) && $column->search !== false) {
+					$searchs[$name] = $column->search;
 				}
 			} elseif (!$isBinaryType) {
 				// 主键
-				if (empty($commandValues['primary']) && isset($param->primary) && $param->primary !== false) {
-					$primarys[$name] = $param->primary;
+				if (empty($commandValues['primary']) && isset($column->primary) && $column->primary !== false) {
+					$primarys[$name] = $column->primary;
 				}
 
 				// 约束
-				if (empty($commandValues['unique']) && $param->unique && is_array($param->unique)) {
-					foreach ($param->unique as $k => $v) {
+				if (empty($commandValues['unique']) && $column->unique && is_array($column->unique)) {
+					foreach ($column->unique as $k => $v) {
 						$uniques[$k][$v][] = $name;
 					}
 				}
 
 				// 索引
-				if (empty($commandValues['key']) && $param->key && is_array($param->key)) {
-					foreach ($param->key as $k => $v) {
+				if (empty($commandValues['key']) && $column->key && is_array($column->key)) {
+					foreach ($column->key as $k => $v) {
 						$keys[$k][$v][] = $name;
 					}
 				}
@@ -842,7 +852,7 @@ class SQLCursor extends Cursor{
 
 
 			// 自动递增
-			$value['increment'] = $param->increment && $isIntegerType;
+			$value['increment'] = $column->increment && $isIntegerType;
 
 
 			$defaultValues = [
@@ -856,22 +866,22 @@ class SQLCursor extends Cursor{
 			if ($value['increment']) {
 
 			} elseif ($value['type'] == 'bool') {
-				$value['value'] = (bool) $param->value;
+				$value['value'] = (bool) $column->value;
 			} elseif ($isIntegerType || $isFloatType) {
-				$value['value'] = (int) $param->value;
+				$value['value'] = (int) $column->value;
 			} elseif ($isStringType) {
 
-			} elseif (!$param->value && array_key_exists($value['type'], $defaultValues)) {
+			} elseif (!$column->value && array_key_exists($value['type'], $defaultValues)) {
 				if ($defaultValues[$value['type']] !== NULL) {
 					$value['value'] = $this->DB->value($defaultValues[$value['type']]);
 				}
 			} else {
-				$value['value'] = $this->DB->value($param->value);
+				$value['value'] = $this->DB->value($column->value);
 			}
 
 
 			// 是否允许空
-			$value['null'] = (bool) $param->null;
+			$value['null'] = (bool) $column->null;
 
 			// 插入
 			$values[$name] = $value;
@@ -998,7 +1008,6 @@ class SQLCursor extends Cursor{
 		}
 
 		$command = strtr($command, [':table' => $table, ':exists' => $ifExists ? $exists : '']);
-
 		return $this->_command($command, 60);
 	}
 
@@ -1135,17 +1144,13 @@ class SQLCursor extends Cursor{
 
 
 		$command = 'UPDATE :using :form SET :value :where :order :offset :limit';
-
 		$command = strtr($command, [':ignore' => $this->_ignore(), ':using' => $this->_using(), ':form' => $this->_from('UPDATE'), ':value' => $value, ':where' => $this->_where(), ':order' => $this->_order(), ':limit' => $this->_limit()]);
-
 		return $this->_command($command);
 	}
 
 	// 删除字段
 	public function delete() {
-
 		$command = 'DELETE :ignore :form :where :order :offset :limit';
-
 		$command = strtr($command, [':ignore' => $this->_ignore(), ':using' => $this->_using(), ':form' => $this->_from('DELETE'), ':where' => $this->_where(), ':order' => $this->_order(), ':limit' => $this->_limit()]);
 		return $this->_command($command);
 	}

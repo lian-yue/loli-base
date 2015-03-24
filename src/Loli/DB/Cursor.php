@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-10 08:00:28
-/*	Updated: UTC 2015-03-24 04:18:32
+/*	Updated: UTC 2015-03-24 08:21:52
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -38,6 +38,9 @@ abstract class Cursor{
 
 	// indexs 索引 重命名 键信息的
 	protected $indexs = [];
+
+	// 列创建用
+	protected $columns = [];
 
 	// 表名
 	protected $tables = [];
@@ -192,6 +195,26 @@ abstract class Cursor{
 			$this->tables[] = $table;
 		} else {
 			$this->tables[] = new Param($params + ['value'=> $table, 'alias'=> $alias, 'join' => $join, 'on' => $on]);
+		}
+		return $this;
+	}
+
+	public function columns(array $columns) {
+		foreach ($columns as $name => $column) {
+			if ($column instanceof Param) {
+				$this->columns[] = $column;
+			} else {
+				$this->columns[] = new Param($column + ['name' => $name]);
+			}
+		}
+		return $this;
+	}
+
+	public function column($name, $type = NULL, $length = NULL, array $params = []) {
+		if ($name instanceof Param) {
+			$this->columns[] = $name;
+		} else {
+			$this->columns[] = new Param($params + ['name' => $name, 'type' => $type, 'length' => $length]);
 		}
 		return $this;
 	}
