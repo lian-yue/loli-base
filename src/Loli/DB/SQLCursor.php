@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-11 16:13:26
-/*	Updated: UTC 2015-03-24 04:18:06
+/*	Updated: UTC 2015-03-24 06:34:50
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -159,8 +159,11 @@ class SQLCursor extends Cursor{
 
 	private function _from($type) {
 		if (isset($this->data[__FUNCTION__][$type])) {
-			return $this->data[__FUNCTION__][$type];
+			$this->data['uses'] = $this->data[__FUNCTION__][$type][1];
+			return $this->data[__FUNCTION__][$type][0];
 		}
+		$this->data['uses'] = [];
+
 		// 没有表
 		if (!$this->tables) {
 			throw new Exception('', 'Unselected table');
@@ -188,6 +191,7 @@ class SQLCursor extends Cursor{
 				$execute = $param->value->execute;
 				$table = '(' . rtrim($param->value->execute(false)->select(), " \t\n\r\0\x0B;") . ')';
 				$param->value->execute($execute);
+				$this->data['uses'] = array_merge($this->data['uses'], $param->value->data['uses']);
 			} elseif ($param->expression) {
 				$table = '('. $param->value .')';
 			} else {
@@ -195,6 +199,7 @@ class SQLCursor extends Cursor{
 				if ($param->using === false) {
 					$usings[] = $table;
 				}
+				$this->data['uses'][] = $param->value;
 			}
 			$join = $tables ? (in_array($join = strtoupper($param->join), ['INNER', 'LEFT', 'RIGHT', 'FULL']) ? $join : 'INNER') : '';
 			$on = '';
@@ -227,8 +232,8 @@ class SQLCursor extends Cursor{
 				$arrays[] = 'ON '. $value['on'];
 			}
 		}
-
-		return $this->data[__FUNCTION__][$type] = strtr($command, [':using' => implode(',', $usings), ':table' => implode(' ', $arrays)]);
+		$this->data[__FUNCTION__][$type][1] = $this->data['uses'];
+		return $this->data[__FUNCTION__][$type][0] = strtr($command, [':using' => implode(',', $usings), ':table' => implode(' ', $arrays)]);
 	}
 
 	private function _field() {
@@ -1206,7 +1211,6 @@ class SQLCursor extends Cursor{
 			return $this->data[__FUNCTION__];
 		}
 
-
 		if ($this->cache[0] || !$this->_rows()) {
 			$replaces = [':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union()];
 		}
@@ -1239,7 +1243,6 @@ class SQLCursor extends Cursor{
 
 		return $this->data[__FUNCTION__];
 	}
-
 
 
 	public function deleteCacheSelect() {
