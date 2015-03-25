@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-21 09:18:46
+/*	Updated: UTC 2015-03-25 02:32:05
 /*
 /* ************************************************************************** */
 
@@ -269,40 +269,40 @@ function nl2p($string) {
  * 读取 get or post 的 value
  * @param  string
  * @param  string
- * @return string
+ * @return 如果不是 NULL 那就返回默认值的类型
  */
 function r($name, $defaltValue = '') {
-	return isset($_REQUEST[$name]) ? (is_array($_REQUEST[$name]) ? ($_REQUEST[$name] ? '1' : $defaltValue) : (string) $_REQUEST[$name]) : $defaltValue;
+	return isset($_REQUEST[$name]) ? ($defaltValue === NULL ? $_REQUEST[$name] : settype($_REQUEST[$name], gettype($defaltValue))) : $defaltValue;
 }
 
 /**
  * 读取 get 的 value
  * @param  string 字段key
  * @param  string 默认值
- * @return string
+ * @return 如果不是 NULL 那就返回默认值的类型
  */
 function g($name, $defaltValue = '') {
-	return isset($_GET[$name]) ? (is_array($_GET[$name]) ? ($_GET[$name] ? '1' : $defaltValue) : (string) $_GET[$name]) : $defaltValue;
+	return isset($_GET[$name]) ? ($defaltValue === NULL ? $_GET[$name] : settype($_GET[$name], gettype($defaltValue))) : $defaltValue;
 }
 
 /**
  * 读取 post 的 value
  * @param  string
  * @param  string
- * @return string
+ * @return 如果不是 NULL 那就返回默认值的类型
  */
 function p($name, $defaltValue = '') {
-	return isset($_POST[$name]) ? (is_array($_POST[$name]) ? ($_POST[$name] ? '1' : $defaltValue) : (string) $_POST[$name]) : $defaltValue;
+	return isset($_POST[$name]) ? ($defaltValue === NULL ? $_POST[$name] : settype($_POST[$name], gettype($defaltValue))) : $defaltValue;
 }
 
 /**
  * 读取 COOKIE 的 value
  * @param  [type] $name        [description]
  * @param  string $defaltValue [description]
- * @return [type]              [description]
+ * @return 如果不是 NULL 那就返回默认值的类型
  */
 function c($name, $defaltValue = '') {
-	return isset($_COOKIE[$name]) ? (is_array($_COOKIE[$name]) ? ($_COOKIE[$name] ? '1' : $defaltValue) : (string) $_COOKIE[$name]) : $defaltValue;
+	return isset($_COOKIE[$name]) ? ($defaltValue === NULL ? $_COOKIE[$name] : settype($_COOKIE[$name], gettype($defaltValue))) : $defaltValue;
 }
 
 

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-11 16:13:26
-/*	Updated: UTC 2015-03-24 08:17:42
+/*	Updated: UTC 2015-03-25 03:33:10
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -322,7 +322,7 @@ class SQLCursor extends Cursor{
 				if (!$column = $this->DB->key($option->column)) {
 					continue;
 				}
-				if ($option->value === NULL) {
+				if ($option->value === NULL || $option->value === false) {
 					unset($orderby[$column]);
 				} else {
 					$orderby[$column] = $option->order;
@@ -350,9 +350,10 @@ class SQLCursor extends Cursor{
 		$group = [];
 		foreach ($this->options as $option) {
 			if ($option->name == 'group' && $option->value) {
-				$group[] = $option->expression ? $option->value : $this->DB->key($option->value, true);
+				$group[$option->name] = $option->value ? ($option->expression ? $option->value : $this->DB->key($option->value, true)) : NULL;
 			}
 		}
+		$group = array_filter($group);
 		if ($type == 'SELECT') {
 			$group = $group ? 'GROUP BY ' . implode(', ', $group) : '';
 		} else {
@@ -606,8 +607,10 @@ class SQLCursor extends Cursor{
 
 	private function _union() {
 		if (isset($this->data[__FUNCTION__])) {
-			return $this->data[__FUNCTION__];
+			$this->data['uses'] = array_merge($this->data['uses'], $this->data[__FUNCTION__][1]);
+			return $this->data[__FUNCTION__][0];
 		}
+		$useTables = [];
 		// 联合表
 		$unions = [];
 		foreach ($this->unions as $union) {
@@ -618,6 +621,7 @@ class SQLCursor extends Cursor{
 				$execute = $union->value->execute;
 				$unions[] = 'UNION ' .($union->all ? '' : 'ALL '). rtrim($union->value->execute(false)->select(), " \t\n\r\0\x0B;");
 				$union->value->execute($execute);
+				$useTables = array_merge($useTables, $union->data['uses']);
 				continue;
 			}
 
@@ -627,7 +631,8 @@ class SQLCursor extends Cursor{
 			}
 			throw new Exception($union, 'Does not support this type of union');
 		}
-		return $this->data[__FUNCTION__] = implode(' ', $unions);
+		$this->data[__FUNCTION__][1] = $useTables;
+		return $this->data[__FUNCTION__][0] = implode(' ', $unions);
 	}
 
 	// 判断表是否存在
