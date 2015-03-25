@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-25 02:32:05
+/*	Updated: UTC 2015-03-25 05:27:20
 /*
 /* ************************************************************************** */
 
@@ -60,26 +60,16 @@ function load_file() {
 **/
 function parse_string($string) {
 	if (is_array($string) || is_object($string)) {
-		$call = function($arrays) use(&$call) {
-			$arrays = (array) $arrays;
-			foreach ($arrays as $key => &$value) {
-				if (is_array($value) || is_object($value)) {
-					if (!$value = $call($value)) {
-						unset($arrays[$key]);
-					}
-				} elseif (is_bool($value)) {
-					$value = (int) $value;
-				} elseif (!is_string($value) && !is_int($value) && !is_float($value)) {
-					unset($arrays[$key]);
-				}
+		$res = (array) $string;
+		foreach ($res as &$value) {
+			if (is_array($value) || is_object($value)) {
+				$value = parse_string($value);
 			}
-			return $arrays;
-		};
-		$r = $call($string);
+		}
 	} else {
-		parse_str($string, $r);
+		parse_str($string, $res);
 	}
-	return $r;
+	return $res;
 }
 
 
