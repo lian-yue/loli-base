@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-24 14:13:03
-/*	Updated: UTC 2015-03-26 05:38:12
+/*	Updated: UTC 2015-03-26 09:07:16
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -28,6 +28,8 @@ class Request{
 	private static $_defaultHost = 'localhost';
 	private static $_newToken = false;
 	private static $_token = NULL;
+	private static $_postLength = 2097152;
+	private static $_content = 'php://input';
 
 
 
@@ -102,6 +104,11 @@ class Request{
 		unset($headers['X_ORIGINAL_URL']);
 
 
+		if (!empty($_POST)) {
+			$posts = $_POST;
+		} elseif (!empty($_SERVER['CONTENT_LENGTH']) && !empty($_SERVER['REQUEST_METHOD']) && !empty($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_LENGTH'] > 1 && $_SERVER['CONTENT_LENGTH'] > self::$_postLength && in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'PATCH', 'DELETE']) && (stripos($_SERVER['CONTENT_TYPE'], 'application/json') !== false || stripos($_SERVER['CONTENT_TYPE'], 'text/json') !== false)) {
+			$posts = ($jsons = json_decode(trim(file_get_contents('php://input', 'rb')), true)) ? $jsons : [];
+		}
 
 
 
@@ -119,6 +126,9 @@ class Request{
 		self::setMethod(empty($_SERVER['REQUEST_METHOD']) ? 'GET' : $_SERVER['REQUEST_METHOD']);
 		self::setURI($URI);
 		self::setHeaders($headers);
+		self::setPosts($posts);
+		self::setParam(array_merge($_GET, $posts));
+		self::setContent('php://input');
 	}
 
 
@@ -328,15 +338,89 @@ class Request{
 	}
 
 	public static function setPosts(array $posts) {
-		$_POST = parse_string(merge_string($cookies));
+		$_POST = parse_string(merge_string($posts));
 		return true;
 	}
 
+	public static function setPost($name, $value) {
+		if ($value === NULL || $value === false) {
+			unset($_POST[$name]);
+		} else {
+			$_POST[$name] = is_array($value) || is_object($value) ? parse_string(merge_string($value)) : (string) $value;
+		}
+		return true;
+	}
+
+
+	public static function getContent() {
+		return self::$_content;
+	}
+
+	public static function setContent($content) {
+		return self::$_content = $content;
+	}
 
 
 	public static function getParams() {
 		return $_REQUEST;
 	}
+
+	public static function getFiles(){
+		return $_FILES;
+	}
+
+	public static function getFile($name) {
+		return isset($_FILES[$name]) ? $name : false;
+	}
+
+
+	public static function setFiles(array $files) {
+		$_FILES = [];
+		foreach ($files as $key => $value) {
+			self::setFile($key, $value);
+		}
+		return true;
+	}
+
+	public static function setFile($key, array $value) {
+		unset($_FILES[$key]);
+		if (!$value) {
+			return true;
+		}
+		if (empty($value['tmp_name'])) {
+			throw new Exception('Set file path can not be empty');
+		}
+		if (is_array($value['tmp_name'])) {
+			foreach($value['tmp_name'] as $k => $v) {
+				self::addFile($key, $value['tmp_name'][$k], empty($value['name'][$k]) ? false : $value['name'][$k], empty($value['type'][$k]) ? false : $value['type'][$k], isset($value['error'][$k]) ? $value['error'][$k] : UPLOAD_ERR_OK, isset($value['size'][$k]) ? $value['size'][$k] : false);
+			}
+		} else {
+			self::addFile($key, $value['tmp_name'], empty($value['name']) ? false : $value['name'], empty($value['type']) ? false : $value['type'], isset($value['error']) ? $value['error'] : UPLOAD_ERR_OK, isset($value['size']) ? $value['size'] : false);
+		}
+		return true;
+	}
+
+
+	public static function addFile($key, $tmp_name, $name, $type, $error = UPLOAD_ERR_OK, $size = false) {
+		if (!is_string($tmp_name)) {
+			throw new Exception('Add file path can not be empty');
+		}
+		$error = abs((int) $error);
+		if (!$error || $error === UPLOAD_ERR_OK) {
+			if (!is_file($tmp_name)) {
+				throw new Exception('File does not exist');
+			}
+		}
+		$size = $size === false && $error === UPLOAD_ERR_OK ? filesize($tmp_name) : abs((int)$size);
+		$name = $name ? (string) pathinfo((string) $name, PATHINFO_BASENAME) : 'Unknown';
+		$type = $type ? (string) $type : ($error === UPLOAD_ERR_OK && ($mime = File::mime($tmp_name)) ? $mime['type'] : 'application/octet-stream');
+		$file = ['tmp_name' => $tmp_name, 'name' => $name, 'type' => $type, 'error' => $error];
+		foreach ($file as $k => $v) {
+			$_FILES[$key][$k] = isset($_FILES[$key][$k]) ? array_merge((array) $_FILES[$key][$k], [$v]) : $v;
+		}
+		return true;
+	}
+
 
 	public static function getParam($name, $defaultValue = NULL) {
 		return isset($_REQUEST[$name]) ? ($defaultValue === NULL ? $_REQUEST[$name] : settype($_REQUEST[$name], gettype($defaultValue))) : $defaultValue;
@@ -347,6 +431,15 @@ class Request{
 		return true;
 	}
 
+
+	public static function getUsername() {
+		return isset($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : false;
+	}
+
+
+	public static function getPassword() {
+		return isset($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : false;
+	}
 
 	public static function newToken() {
 		$token = uniqid();
@@ -385,29 +478,17 @@ class Request{
 		return true;
 	}
 
-	public static function getUsername() {
-		return isset($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : false;
-	}
-
-
-	public static function getPassword() {
-		return isset($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : false;
-	}
-
 
 	public static function clear() {
-		$_GET = $_POST = $_COOKIE = [];
-		$_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
-		$_SERVER['REQUEST_METHOD'] = 'GET';
 		self::setScheme('http');
 		self::setVersion(1.1);
 		self::setMethod('GET');
 		self::setURI('/');
 		self::setHeaders(['HOST' => self::$_defaultHost]);
 		self::setPosts([]);
-		self::setFiles([]);
 		self::setParams([]);
-		self::$_token = NULL;
+		self::setFiles([]);
+		self::deleteToken();
 	}
 
 }
