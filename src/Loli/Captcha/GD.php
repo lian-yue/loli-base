@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-07 06:35:10
+/*	Updated: UTC 2015-03-25 10:10:38
 /*
 /* ************************************************************************** */
 namespace Loli\Captcha;
@@ -85,7 +85,7 @@ class GD extends Base{
 			$y = isset($y) ? ($y <= $size ? $y * $this->rand(1,1.2) : ($y >= $this->height ? $y * $this->rand(0.8, 1) : $y * $this->rand(0.9,1.1))) : $this->rand($size, $this->height);
 			$text = mb_substr($this->code, $i, 1);
 			imagettftext($this->im, $size, $angle, $x, $y, $color, $font, $text);
-			$line && ($i%2) == 0 && imagettftext($this->im, $size + $this->rand(-3, 3), $this->rand($this->angle[0], $this->angle[1]), $x, $y, $color, $line, mt_rand(0, 9));
+			$line && ($i%2) === 0 && imagettftext($this->im, $size + $this->rand(-3, 3), $this->rand($this->angle[0], $this->angle[1]), $x, $y, $color, $line, mt_rand(0, 9));
 		}
 	}
 }

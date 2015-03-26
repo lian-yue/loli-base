@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-06 14:16:56
-/*	Updated: UTC 2015-02-24 12:38:14
+/*	Updated: UTC 2015-03-25 15:57:46
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -752,7 +752,7 @@ class Request{
 
 
 }
-Request::start();
+Request::init();
 
 
 

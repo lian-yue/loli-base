@@ -8,11 +8,13 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 09:43:36
-/*	Updated: UTC 2015-03-25 05:23:22
+/*	Updated: UTC 2015-03-25 08:53:37
 /*
 /* ************************************************************************** */
 namespace Loli;
-class Table{
+
+
+class Query{
 	// table 表
 	protected $table;
 
@@ -29,7 +31,7 @@ class Table{
 	protected $options = [];
 
 	// 默认插入数组
-	protected $insert = [];
+	protected $defaults = [];
 
 	// 自增字段
 	protected $insertID;
@@ -53,17 +55,51 @@ class Table{
 	protected $data = [];
 
 	// 缓存时间
-	protected $ttl = 0;
+	protected $cache = [0, 0];
 
 
-	// 是否过滤掉不必要的字段
-	protected $intersect = false;
 
-	public function __invoke() {
-		return call_user_func_array([$this, 'get'], func_get_args());
+	public function exists() {
+		$count = 0;
+		foreach ((array) $this->tables([], -1) as $table) {
+			if ($this->DB->->exists()) {
+				++$count;
+			}
+		}
+		return $count;
 	}
 
-	protected function table(array $args, $do = 0) {
-		return $this->table;
+	public function truncate() {
+		$r = 0;
+		foreach ((array) $this->tables([], -1) as $table) {
+			if ($this->DB->truncate()) {
+				++$r;
+			}
+		}
+		return $r;
 	}
+
+	public function drop() {
+		$this->slave = false;
+		$r = 0;
+		foreach ((array) $this->tables([], -1) as $table) {
+			if ($this->DB->drop()) {
+				++$r;
+			}
+		}
+		return $r;
+	}
+
+
+	public function create() {
+		$this->slave = false;
+		$r = 0;
+		foreach ((array) $this->tables([], -1) as $table) {
+			if ($this->create && $this->DB->create()) {
+				++$r;
+			}
+		}
+		return $r;
+	}
+
 }

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-10 08:00:28
-/*	Updated: UTC 2015-03-24 08:21:52
+/*	Updated: UTC 2015-03-25 08:36:13
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -114,13 +114,8 @@ abstract class Cursor{
 		return $this;
 	}
 
-	public function callbacks(array $callbacks = []) {
-		$this->callbacks = $callbacks;
-		return $this;
-	}
-
-	public function callback($name, callback $callback = NULL) {
-		$this->callbacks[$name] = $callback;
+	public function callback(callback $callback = NULL) {
+		$this->callback = $callback;
 		return $this;
 	}
 
@@ -536,8 +531,8 @@ abstract class Cursor{
 	abstract public function count();
 
 
-	abstract public function deleteCacheSelect();
+	abstract public function deleteCacheSelect($refresh = NULL);
 
 
-	abstract public function deleteCacheCount();
+	abstract public function deleteCacheCount($refresh = NULL);
 }

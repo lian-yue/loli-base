@@ -8,11 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 12:09:10
-/*	Updated: UTC 2015-02-25 12:46:47
+/*	Updated: UTC 2015-03-25 09:33:55
 /*
 /* ************************************************************************** */
 namespace Loli;
-class Curl{
+class CURL{
 
 	// curl 文件保存途径
 	protected $cookie = './';
@@ -86,14 +86,14 @@ class Curl{
 		if (function_exists('curl_file_create')) {
 			return curl_file_create($file, $type, $filename);
 		}
-		$r = '@' . $file;
+		$result = '@' . $file;
 		if ($type) {
-			$r .= ';type='. $type;
+			$result .= ';type='. $type;
 		}
 		if ($filename) {
-			$r .= ';filename='. $filename;
+			$result .= ';filename='. $filename;
 		}
-		return $r;
+		return $result;
 	}
 
 	/**
@@ -107,7 +107,7 @@ class Curl{
 	**/
 	public function add($key, $options) {
 		if (!empty($this->curl[$key])) {
-			return false;
+			return $this;
 		}
 		return $this->set($key, $options);
 	}
@@ -124,12 +124,18 @@ class Curl{
 	**/
 	public function set($key, $options) {
 		$options = is_array($options) ? $options : [CURLOPT_URL => $options];
-		if (empty($options[CURLOPT_URL])) {
-			return false;
+
+		$this->_options[$key] = [];
+		foreach ($options as $option => $value) {
+			$option = is_int($option) ? $option : constant('CURLOPT_' . strtoupper($option));
+			$this->_options[$key][$option] = $value;
 		}
-		$this->_options[$key] = $options;
+		if (empty($this->_options[$key][CURLOPT_URL])) {
+			unset($this->_options[$key]);
+			throw new Exception('URL can not be empty');
+		}
 		$this->_info[$key] = [];
-		return true;
+		return $this;
 	}
 
 
@@ -142,9 +148,10 @@ class Curl{
 	 */
 	public function edit($key, array $options) {
 		if (empty($this->_options[$key])) {
-			return false;
+			throw new Exception('Key does not exist');
 		}
 		foreach ($options as $option => $value) {
+			$option = is_int($option) ? $option : constant('CURLOPT_' . strtoupper($option));
 			$this->_options[$key][$option] = $value;
 		}
 		if (!empty($this->_chs[$key])) {
@@ -152,30 +159,28 @@ class Curl{
 				$v === NULL || curl_setopt($this->_chs[$key], $option, $value);
 			}
 		}
-		return true;
+		return $this;
 	}
 
 	/**
 	*	移除 curl
 	*
 	*	1 参数 key
-	*	2 参数 url
-	*	3 参数 附加 curl 属性
 	*
 	*	bool
 	**/
 	public function remove($key) {
 		if (empty($this->_options[$key])) {
-			return false;
+			throw new Exception('Key does not exist');
 		}
 		unset($this->_options[$key], $this->_info[$key], $this->_chs[$key]);
-		return true;
+		return $this;
 	}
 
 
 	public function clear() {
 		$this->_info = $this->_options = $this->_chs = [];
-		return true;
+		return $this;
 	}
 
 	public function info($all = false) {
@@ -193,12 +198,11 @@ class Curl{
 
 	public function get($all = false) {
 		if (!$this->_options) {
-			return $all ? [] : false;
+			throw new Exception('No URL may request');
 		}
 		$this->_chs = [];
 		foreach ($this->_options as $key => $options) {
 			$this->_chs[$key] = curl_init();
-
 
 			$options += $this->defaults;
 			foreach ($options as $optoin => $value) {
@@ -261,7 +265,6 @@ class Curl{
 				$this->_options = $this->_chs = [];
 				return $content;
 			}
-			return false;
 		}
 
 

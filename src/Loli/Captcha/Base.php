@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-07 05:50:20
-/*	Updated: UTC 2015-02-26 05:45:16
+/*	Updated: UTC 2015-03-25 10:10:44
 /*
 /* ************************************************************************** */
 namespace Loli\Captcha;
@@ -143,7 +143,7 @@ abstract class Base {
 		if (!$rgb || !is_string($rgb) || strlen($rgb) < 6) {
 			return false;
 		}
-		if ($rgb{0} == '#') {
+		if ($rgb{0} === '#') {
 			$rgb =  substr($rgb, 1);
 		}
 		return [

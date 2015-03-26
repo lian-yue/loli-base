@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-05 09:48:17
-/*	Updated: UTC 2015-03-23 13:57:37
+/*	Updated: UTC 2015-03-25 10:12:13
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -18,10 +18,10 @@ class PDO extends Base{
 
 	protected function connect(array $servers) {
 		$server = $servers[array_rand($servers)];
-		if ($server['protocol'] != $this->protocol()) {
+		if ($server['protocol'] !== $this->protocol()) {
 			throw new ConnectException('this.connect()', 'Database protocol is incorrect');
 		}
-		if (basename($server['database']) != $this->database()) {
+		if (basename($server['database']) !== $this->database()) {
 			throw new ConnectException('this.connect()', 'Database name is incorrect');
 		}
 
@@ -164,10 +164,10 @@ class PDO extends Base{
 			}
 			return false;
 		}
-		if (($protocol = $this->protocol()) == 'mysql') {
-			return ($matches[1] ? '`'. $matches[1]. '`.' : '') . ($matches[2] == '*' ? $matches[2] : '`'. $matches[2] .'`');
+		if (($protocol = $this->protocol()) === 'mysql') {
+			return ($matches[1] ? '`'. $matches[1]. '`.' : '') . ($matches[2] === '*' ? $matches[2] : '`'. $matches[2] .'`');
 		}
-		return ($matches[1] ? '\''. $matches[1]. '\'.' : '') . ($matches[2] == '*' ? $matches[2] : '\''. $matches[2] .'\'');
+		return ($matches[1] ? '\''. $matches[1]. '\'.' : '') . ($matches[2] === '*' ? $matches[2] : '\''. $matches[2] .'\'');
 	}
 
 	public function value($value) {

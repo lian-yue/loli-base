@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-03-23 05:54:00
+/*	Updated: UTC 2015-03-25 10:11:54
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -20,7 +20,7 @@ class MySQLi extends Base{
 	public function connect(array $servers) {
 		$server = $servers[array_rand($servers)];
 
-		if ($server['database'] != $this->database()) {
+		if ($server['database'] !== $this->database()) {
 			throw new ConnectException('this.connect()', 'Database name is incorrect');
 		}
 
@@ -161,10 +161,10 @@ class MySQLi extends Base{
 			}
 			return false;
 		}
-		if (($protocol = $this->protocol()) == 'mysql') {
-			return ($matches[1] ? '`'. $matches[1]. '`.' : '') . ($matches[2] == '*' ? $matches[2] : '`'. $matches[2] .'`');
+		if (($protocol = $this->protocol()) === 'mysql') {
+			return ($matches[1] ? '`'. $matches[1]. '`.' : '') . ($matches[2] === '*' ? $matches[2] : '`'. $matches[2] .'`');
 		}
-		return ($matches[1] ? '\''. $matches[1]. '\'.' : '') . ($matches[2] == '*' ? $matches[2] : '\''. $matches[2] .'\'');
+		return ($matches[1] ? '\''. $matches[1]. '\'.' : '') . ($matches[2] === '*' ? $matches[2] : '\''. $matches[2] .'\'');
 	}
 
 	public function value($value) {

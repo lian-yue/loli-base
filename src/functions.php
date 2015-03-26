@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-25 05:27:20
+/*	Updated: UTC 2015-03-25 12:21:39
 /*
 /* ************************************************************************** */
 
@@ -161,15 +161,15 @@ function domain_match($match, $domain) {
 		return false;
 	}
 	if (!preg_match('/^(https?|ftp)\:\/\//i', $domain)) {
-		$domain = substr($domain, 0, 2) == '//' ? 'http:' . $domain : 'http://' . $domain;
+		$domain = substr($domain, 0, 2) === '//' ? 'http:' . $domain : 'http://' . $domain;
 	}
-	if (substr($match, 0, 2) == '//') {
+	if (substr($match, 0, 2) === '//') {
 		$match = 'http:' . $match;
 	}
 	if (!($match = parse_url($match)) || empty($match['host']) || !($domain = parse_url($domain)) || empty($domain['host'])) {
 		return false;
 	}
-	return $match['host'] == $domain['host'] || preg_match('/(^|\.)'. preg_quote($domain['host'], '/') .'$/i', $match['host']);
+	return $match['host'] === $domain['host'] || preg_match('/(^|\.)'. preg_quote($domain['host'], '/') .'$/i', $match['host']);
 }
 
 
@@ -261,8 +261,8 @@ function nl2p($string) {
  * @param  string
  * @return 如果不是 NULL 那就返回默认值的类型
  */
-function r($name, $defaltValue = '') {
-	return isset($_REQUEST[$name]) ? ($defaltValue === NULL ? $_REQUEST[$name] : settype($_REQUEST[$name], gettype($defaltValue))) : $defaltValue;
+function r($name, $defaultValue = '') {
+	return isset($_REQUEST[$name]) ? ($defaultValue === NULL ? $_REQUEST[$name] : settype($_REQUEST[$name], gettype($defaultValue))) : $defaultValue;
 }
 
 /**
@@ -271,8 +271,8 @@ function r($name, $defaltValue = '') {
  * @param  string 默认值
  * @return 如果不是 NULL 那就返回默认值的类型
  */
-function g($name, $defaltValue = '') {
-	return isset($_GET[$name]) ? ($defaltValue === NULL ? $_GET[$name] : settype($_GET[$name], gettype($defaltValue))) : $defaltValue;
+function g($name, $defaultValue = '') {
+	return isset($_GET[$name]) ? ($defaultValue === NULL ? $_GET[$name] : settype($_GET[$name], gettype($defaultValue))) : $defaultValue;
 }
 
 /**
@@ -281,30 +281,30 @@ function g($name, $defaltValue = '') {
  * @param  string
  * @return 如果不是 NULL 那就返回默认值的类型
  */
-function p($name, $defaltValue = '') {
-	return isset($_POST[$name]) ? ($defaltValue === NULL ? $_POST[$name] : settype($_POST[$name], gettype($defaltValue))) : $defaltValue;
+function p($name, $defaultValue = '') {
+	return isset($_POST[$name]) ? ($defaultValue === NULL ? $_POST[$name] : settype($_POST[$name], gettype($defaultValue))) : $defaultValue;
 }
 
 /**
  * 读取 COOKIE 的 value
  * @param  [type] $name        [description]
- * @param  string $defaltValue [description]
+ * @param  string $defaultValue [description]
  * @return 如果不是 NULL 那就返回默认值的类型
  */
-function c($name, $defaltValue = '') {
-	return isset($_COOKIE[$name]) ? ($defaltValue === NULL ? $_COOKIE[$name] : settype($_COOKIE[$name], gettype($defaltValue))) : $defaltValue;
+function c($name, $defaultValue = '') {
+	return isset($_COOKIE[$name]) ? ($defaultValue === NULL ? $_COOKIE[$name] : settype($_COOKIE[$name], gettype($defaultValue))) : $defaultValue;
 }
 
 
 /**
  * 读取 header 的 value
  * @param  [type] $name        [description]
- * @param  string $defaltValue [description]
+ * @param  string $defaultValue [description]
  * @return [type]              [description]
  */
-function h($name, $defaltValue = '') {
+function h($name, $defaultValue = '') {
 	$name = 'HTTP_'. strtoupper(strtr($name, '-', '_'));
-	return isset($_SERVER[$name]) ? (string) $_SERVER[$name] : $defaltValue;
+	return isset($_SERVER[$name]) ? (string) $_SERVER[$name] : $defaultValue;
 }
 
 
@@ -385,8 +385,8 @@ function get_redirect($redirects = [], $defaults = []) {
 			continue;
 		}
 		if (!preg_match('/^(https?\:)?\/\/\w+\.\w+/i', $redirect)) {
-			if ($redirect{0} != '/') {
-				$redirect = substr($path = explode('?', empty($_SERVER['REQUEST_URI']) ? '/' : $_SERVER['REQUEST_URI'])[0], -1, 1) == '/' ? $path . $redirect : dirname($path) .'/'. $redirect;
+			if ($redirect{0} !== '/') {
+				$redirect = substr($path = explode('?', empty($_SERVER['REQUEST_URI']) ? '/' : $_SERVER['REQUEST_URI'])[0], -1, 1) === '/' ? $path . $redirect : dirname($path) .'/'. $redirect;
 			}
 			$redirect = '//'. h('Host') . '/' . ltrim($redirect, '/');
 		}
