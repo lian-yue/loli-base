@@ -8,12 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-28 02:20:01
-/*	Updated: UTC 2015-03-28 08:54:31
+/*	Updated: UTC 2015-03-29 08:42:39
 /*
 /* ************************************************************************** */
 namespace Loli\HTML;
 class Style{
-	// 全部 style 属性
+	// 全部 全部允许的属性名
 	protected $names = [
 		'background' => '', 'background-attachment' => '', 'background-color' => '', 'background-image' => '', 'background-position' => '', 'background-repeat' => '', 'background-clip' => '', 'background-origin' => '', 'background-size' => '',
 		'border' => '', 'border-bottom' => '', 'border-bottom-color' => '', 'border-bottom-style' => '', 'border-bottom-width' => '', 'border-color' => '', 'border-left' => '', 'border-left-color' => '', 'border-left-style' => '', 'border-left-width' => '', 'border-right' => '', 'border-right-color' => '', 'border-right-style' => '', 'border-right-width' => '', 'border-style' => '', 'border-top' => '', 'border-top-color' => '', 'border-top-style' => '', 'border-top-width' => '', 'border-width' => '', 'border-collapse' => '', 'border-spacing' => '', 'border-bottom-left-radius' => '', 'border-bottom-right-radius' => '', 'border-image' => '', 'border-image-outset' => '', 'border-image-repeat' => '', 'border-image-slice' => '', 'border-image-source' => '', 'border-image-width' => '', 'border-radius' => '', 'border-top-left-radius' => '', 'border-top-right-radius' => '',
@@ -55,17 +55,21 @@ class Style{
 		'transform' => '', 'transform-origin' => '', 'transform-style' => '', 'perspective' => '', 'perspective-origin' => '', 'backface-visibility' => '',
 		'transition' => '', 'transition-property' => '', 'transition-duration' => '', 'transition-timing-function' => '', 'transition-delay' => '',
 
-		// media 的
+		// media 的属性
 		'grid' => '', 'scan' => '', 'resolution' => '', 'monochrome' => '', 'min-color-index' => '', 'max-color-index' => '', 'device-height' => '', 'device-width' => '',
 	];
 
-	// css 图片
-	protected $stylesUrl = ['background', 'background-attachment', 'background-image'];
+	// 允许使用 url 的属性
+	protected $urls = ['background', 'background-attachment', 'background-image'];
 
 
-	// 允许的class前缀
+	// 允许的前缀
 	protected $prefix = '';
 
+	/**
+	 * __invoke 回调contents 过滤style内容
+	 * @return string 返回 styles
+	 */
 	public function __invoke() {
 		return call_user_func_array([$this, 'contents'], func_get_args());
 	}
@@ -76,7 +80,30 @@ class Style{
 	 * @return string
 	 */
 	public function contents($contents) {
+		// 移除注释
+		$contents = preg_replace('/\/\*.*?\*\//is', '', $contents);
 
+		// 移除很特殊的css匹配
+		//charset  document  font-face import keyframes media page supports
+		$contents = preg_replace('/@\s*((charset|import).*?;|(font-face|page).*?\}|(document|keyframes|)supports[^\{]*?(\{\s*\}|.*?\}\s*\})|media[^\{]*?\{\s*\})/is', '', $contents);
+
+		$contents = trim(preg_replace('/\s+/', ' ', $contents));
+
+
+
+
+
+		$splits = preg_split('/(@media(\s[^{}]*)?\{)?((?(1)|(?<=\})\s*\}))/is', $contents, -1, PREG_SPLIT_DELIM_CAPTURE);
+		print_r($splits);
+		//if (preg_match_all('/@media(\s[^{}]*)?\s*\{((?:(?!\}\s*\}|@media).)*)/is', $contents, $matches)) {
+
+		//}
+		//print_r($matches);
+
+		//$splits = preg_split('/(?:@media(\s[^{}]*?)?\{|\s*(?=\}\s*\}|\}\s*$))/is', $contents, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+		//print_r($splits);
+		//echo $contents;
 	}
 
 	/**
@@ -112,7 +139,6 @@ class Style{
 		if (!($name = strtolower(trim($name))) || !($value = trim($value))) {
 			return false;
 		}
-
 		// 前缀
 		if (substr($name, 0, 3) === '-o-') {
 			$key = substr($name, 3);
@@ -132,13 +158,18 @@ class Style{
 		}
 
 
+		// value
+		if ($this->names[$key] === true) {
+			return $value;
+		}
+
 		// 值允许指定value
 		if (is_array($this->names[$key])) {
-			return in_array(strtolower($value), $this->names[$key]);
+			return in_array(strtolower($$this->names[$key]), $this->names[$key]);
 		}
 
 		// 正则匹配
-		$pattern = $this->names[$key] ? '/'. strtr($this->names[$key], ['/' => '\\/']) .'/i' : '/^(?:[0-9a-z |%#.,-]*(?:(?:rgb|hsl)a?\s*\([0-9,.% ]+\)'. (in_array($key, $this->stylesUrl) ? '|url\s*\(\s*(?:https?\:)?\/\/\w+\.\w+[0-9a-z.\/_-]+?\s*\)' : '') .')?[0-9a-z !|%#.,-]*)*$/i';
+		$pattern = $this->names[$key] ? '/'. strtr($this->names[$key], ['/' => '\\/']) .'/i' : '/^(?:[0-9a-z |%#.,-]*(?:(?:rgb|hsl|translate|rotate|scale|skew|matrix|perspective)([axyz]|3d)?\s*\([a-z0-9,.% -]+\)'. (in_array($key, $this->urls) ? '|url\s*\(\s*(?:https?\:)?\/\/\w+\.\w+[0-9a-z.\/_-]+?\s*\)' : '') .')?[0-9a-z !|%#.,-]*)*$/i';
 		return preg_match($pattern, $value);
 	}
 
@@ -173,43 +204,89 @@ class Style{
 
 
 
-
+	/**
+	 * getName 取得一个 属性名
+	 * @param  string $name 属性名称
+	 * @return boolean|string|array
+	 */
 	public function getName($name) {
 		return isset($this->names[$name]) ? $this->names[$name] : false;
 	}
 
+	/**
+	 * getNames 取得所有允许的 属性
+	 * @return array
+	 */
 	public function getNames() {
 		return $this->names;
 	}
 
+	/**
+	 * addName 添加一个属性
+	 * @param string 				 $name 	属性名
+	 * @param boolean|string|array   $value 属性规则
+	 * @return this
+	 */
 	public function addName($name, $value) {
 		$this->names += [$name => $value];
 		return $this;
 	}
 
+
+	/**
+	 * addNames 添加多个属性
+	 * @param array $names 属性数组
+	 * @return this
+	 */
 	public function addNames(array $names) {
 		$this->names += $names;
 		return $this;
 	}
 
+
+
+	/**
+	 * setName 设置一个属性
+	 * @param string 				 $name 	属性名
+	 * @param boolean|string|array   $value 属性规则
+	 * @return this
+	 */
 	public function setName($name, $value) {
 		$this->names[$name] = $value;
 		return $this;
 	}
 
+
+	/**
+	 * setNames 设置所有允许的属性
+	 * @param array $names 属性数组
+	 * @return this
+	 */
 	public function setNames(array $names) {
 		$this->names = $names + $this->names;
 		return $this;
 	}
 
+	/**
+	 * removeName 删除一个属性
+	 * @param  string $name 属性名
+	 * @return this
+	 */
 	public function removeName($name) {
 		unset($this->names[$name]);
 		return $this;
 	}
-
+	/**
+	 * removeName 删除多个属性
+	 * @param  string $names 属性名数组
+	 * @return this
+	 */
 	public function removeNames(array $names) {
-		foreach ($names as $key =>$name) {
-			unset($this->names[$key], $this->names[$name]);
+		foreach ($names as $key => $name) {
+			unset($this->names[$key]);
+			if (is_string($name)) {
+				unset($this->names[$name]);
+			}
 		}
 		return $this;
 	}

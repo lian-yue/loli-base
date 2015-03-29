@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-29 04:23:00
+/*	Updated: UTC 2015-03-29 06:59:55
 /*
 /* ************************************************************************** */
 namespace Loli\HTML;
@@ -311,7 +311,7 @@ class Format{
 
 
 		// 没有标签
-		if (!$html || !strstr($html, '<') || !($splits = preg_split('/\<(\s*\/\s*)?([a-z0-9]+)((?:\s+(?:\s*(?:[0-9a-z_:-]+)\s*(?:\=\s*(?:"[^"]*"|\'[^\']*\'|[^\'"<> ]*))?)*|))((?(1)|\s*\/?\s*))\>/is', $html, -1, PREG_SPLIT_DELIM_CAPTURE))) {
+		if (!$html || !strstr($html, '<') || !($splits = preg_split("/\<(\s*\/\s*)?([a-z0-9]+)((?:\s+(?:\s*(?:[0-9a-z_:-]+)\s*(?:\=\s*(?:\"[^\"]*\"|'[^']*'|[^'\"<> \t\n\r\x0B]*))?)*|))((?(1)|\s*\/?\s*))\>/is", $html, -1, PREG_SPLIT_DELIM_CAPTURE))) {
 			$this->element && $this->push($this->element);
 			$this->html($this->text($html));
 			$this->pop();
@@ -539,8 +539,8 @@ class Format{
 
 			// 块级元素 内联元素 出现并列
 			if ($this->abreast && $this->above && !in_array($this->above, $this->inlines) && !in_array($this->above, $this->inlinesBlock) && in_array($tag, $this->inlines)) {
-				//$this->push($this->layers && !empty($this->allowChilds[$layer = end($this->layers)]) ? reset($this->allowChilds[$layer]) : $this->abreast);
-				//$while = true;
+				$this->push($this->layers && !empty($this->allowChilds[$layer = end($this->layers)]) ? reset($this->allowChilds[$layer]) : $this->abreast);
+				$while = true;
 			}
 
 			// 直接是 内联元素 添加 element
