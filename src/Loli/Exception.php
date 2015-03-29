@@ -8,12 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-25 13:37:41
-/*	Updated: UTC 2015-02-25 13:37:49
+/*	Updated: UTC 2015-03-27 03:49:50
 /*
 /* ************************************************************************** */
 namespace Loli;
 class Exception extends \Exception{
-
 
 
 

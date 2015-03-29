@@ -8,10 +8,10 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-03-24 11:06:22
-/*	Updated: UTC 2015-02-20 02:38:29
+/*	Updated: UTC 2015-03-27 08:14:54
 /*
 /* ************************************************************************** */
-namespace Loli;
+namespace Loli\HTML;
 class Form{
 
 	private static $_tags = ['span', 'div', 'p', 'a', 'code'];

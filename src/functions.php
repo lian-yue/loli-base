@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-25 12:21:39
+/*	Updated: UTC 2015-03-27 07:54:57
 /*
 /* ************************************************************************** */
 
@@ -254,60 +254,6 @@ function nl2p($string) {
  return str_replace('<p></p>', '', '<p>' . preg_replace('/\n|\r/', '</p>$0<p>', $string) . '</p>');
 }
 
-
-/**
- * 读取 get or post 的 value
- * @param  string
- * @param  string
- * @return 如果不是 NULL 那就返回默认值的类型
- */
-function r($name, $defaultValue = '') {
-	return isset($_REQUEST[$name]) ? ($defaultValue === NULL ? $_REQUEST[$name] : settype($_REQUEST[$name], gettype($defaultValue))) : $defaultValue;
-}
-
-/**
- * 读取 get 的 value
- * @param  string 字段key
- * @param  string 默认值
- * @return 如果不是 NULL 那就返回默认值的类型
- */
-function g($name, $defaultValue = '') {
-	return isset($_GET[$name]) ? ($defaultValue === NULL ? $_GET[$name] : settype($_GET[$name], gettype($defaultValue))) : $defaultValue;
-}
-
-/**
- * 读取 post 的 value
- * @param  string
- * @param  string
- * @return 如果不是 NULL 那就返回默认值的类型
- */
-function p($name, $defaultValue = '') {
-	return isset($_POST[$name]) ? ($defaultValue === NULL ? $_POST[$name] : settype($_POST[$name], gettype($defaultValue))) : $defaultValue;
-}
-
-/**
- * 读取 COOKIE 的 value
- * @param  [type] $name        [description]
- * @param  string $defaultValue [description]
- * @return 如果不是 NULL 那就返回默认值的类型
- */
-function c($name, $defaultValue = '') {
-	return isset($_COOKIE[$name]) ? ($defaultValue === NULL ? $_COOKIE[$name] : settype($_COOKIE[$name], gettype($defaultValue))) : $defaultValue;
-}
-
-
-/**
- * 读取 header 的 value
- * @param  [type] $name        [description]
- * @param  string $defaultValue [description]
- * @return [type]              [description]
- */
-function h($name, $defaultValue = '') {
-	$name = 'HTTP_'. strtoupper(strtr($name, '-', '_'));
-	return isset($_SERVER[$name]) ? (string) $_SERVER[$name] : $defaultValue;
-}
-
-
 /**
 *	二维数组 自定义优先级排序
 *
@@ -362,6 +308,16 @@ function mb_rand($length, $string = false) {
 
 
 
+
+
+
+
+
+
+
+
+
+/*
 function get_redirect($redirects = [], $defaults = []) {
 	$redirects = (array) $redirects;
 	$defaults = $defaults ? (array) $defaults : [];
@@ -398,4 +354,4 @@ function get_redirect($redirects = [], $defaults = []) {
 		}
 	}
 	return reset($defaults);
-}
+}*/

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-24 14:13:03
-/*	Updated: UTC 2015-03-26 09:07:16
+/*	Updated: UTC 2015-03-27 05:52:35
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -23,14 +23,17 @@ class Request{
 
 	const AJAX_PARAM = 'ajax';
 
+	const PJAX_HEADER = 'X-Pjax';
+
 	private static $_schemes = ['http', 'https'];
 	private static $_methods = ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 	private static $_defaultHost = 'localhost';
-	private static $_newToken = false;
-	private static $_token = NULL;
 	private static $_postLength = 2097152;
 	private static $_content = 'php://input';
-
+	private static $_newToken = false;
+	private static $_token = NULL;
+	private static $_ajax = NULL;
+	private static $_pjax = NULL;
 
 
 	public static function init() {
@@ -108,14 +111,27 @@ class Request{
 			$posts = $_POST;
 		} elseif (!empty($_SERVER['CONTENT_LENGTH']) && !empty($_SERVER['REQUEST_METHOD']) && !empty($_SERVER['CONTENT_TYPE']) && $_SERVER['CONTENT_LENGTH'] > 1 && $_SERVER['CONTENT_LENGTH'] > self::$_postLength && in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'PATCH', 'DELETE']) && (stripos($_SERVER['CONTENT_TYPE'], 'application/json') !== false || stripos($_SERVER['CONTENT_TYPE'], 'text/json') !== false)) {
 			$posts = ($jsons = json_decode(trim(file_get_contents('php://input', 'rb')), true)) ? $jsons : [];
+		} else {
+			$posts = [];
 		}
 
 
 
 
 
+		$IP = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1';
+		if (empty($_SERVER['LOLI']['IP'])) {
 
-
+		} elseif (isset($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP)) {
+			$IP = $_SERVER['HTTP_CLIENT_IP'];
+		} elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+			foreach (explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']) as $value) {
+				if (filter_var($value = trim($value), FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) && (empty($_SERVER['SERVER_ADDR']) || $_SERVER['SERVER_ADDR'] != $value)) {
+					$IP = $value;
+					break;
+				}
+			}
+		}
 
 
 		unset($_SERVER['UNENCODED_URL'], $_SERVER['HTTP_X_ORIGINAL_URL'], $_SERVER['PATH_INFO'], $_SERVER['ORIG_PATH_INFO'], $_SERVER['QUERY_STRING'], $_SERVER['REDIRECT_QUERY_STRING'], $_SERVER['REDIRECT_URL'], $_SERVER['SERVER_PORT_SECURE']);
@@ -127,8 +143,9 @@ class Request{
 		self::setURI($URI);
 		self::setHeaders($headers);
 		self::setPosts($posts);
-		self::setParam(array_merge($_GET, $posts));
+		self::setParams(array_merge($_GET, $posts));
 		self::setContent('php://input');
+		self::setIP($IP);
 	}
 
 
@@ -151,7 +168,7 @@ class Request{
 	}
 
 
-	public static function setVersion() {
+	public static function getVersion() {
 		return substr($_SERVER['SERVER_PROTOCOL'], 5);
 	}
 
@@ -181,29 +198,29 @@ class Request{
 	public static function setURI($URI) {
 		$URI = ltrim(trim($URI), '/');
 		list($path, $queryString) = explode('?', $URI, 2) + [1 => ''];
-		$_SERVER['REQUEST_URI'] = $URI;
+		$_SERVER['REQUEST_URI'] = '/'.$URI;
 		$_SERVER['QUERY_STRING'] = $queryString;
 		$_GET = $queryString ? parse_string($queryString) : [];
 		return true;
 	}
 
 
-	public function getQuerys() {
+	public static function getQuerys() {
 		return $_GET;
 	}
 
-	public function getQuery($name, $defaultValue = NULL) {
+	public static function getQuery($name, $defaultValue = NULL) {
 		return isset($_GET[$name]) ? ($defaultValue === NULL ? $_GET[$name] : settype($_GET[$name], gettype($defaultValue))) : $defaultValue;
 	}
 
-	public function setQuerys(array $querys) {
+	public static function setQuerys(array $querys) {
 		$_GET = parse_string($queryString = merge_string($querys));
 		$_SERVER['REQUEST_URI'] = implode('?', array_filter([1=> $queryString] + explode('?', $_SERVER['REQUEST_URI'], 2)));
 		$_SERVER['QUERY_STRING'] = $queryString;
 		return true;
 	}
 
-	public function setQuery($name, $value) {
+	public static function setQuery($name, $value) {
 		if ($value === NULL || $value === false) {
 			isset($_GET[$name]) && self::setQuerys([$name=>NULL] + $_GET);
 		} else {
@@ -219,7 +236,7 @@ class Request{
 		$headers = [];
 		foreach ($_SERVER as $name => $value) {
 			if (substr($name, 0, 5) === 'HTTP_') {
-				$headers[substr($name, 5)] = $value;
+				$headers[strtr(ucwords(strtolower(strtr(substr($name, 5), '_', ' '))), ' ', '-')] = $value;
 			}
 		}
 		return $headers;
@@ -241,7 +258,7 @@ class Request{
 				unset($_SERVER[$name]);
 			}
 		}
-		self::setHeader('HOST', self::$_defaultHost);
+		self::setHeader('Host', self::$_defaultHost);
 		foreach($headers as $name => $value) {
 			self::setHeader($name, $value);
 		}
@@ -432,13 +449,43 @@ class Request{
 	}
 
 
+	public static function getIP() {
+		return $_SERVER['REMOTE_ADDR'];
+	}
+	public static function setIP($IP) {
+		if(!$IP = inet_pton($IP)){
+			throw new Exception('IP is not legitimate');
+		}
+		$IP = inet_ntop($IP);
+		// 兼容请求地址
+		if (preg_match('/\:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/', $IP, $matches)) {
+			$IP = $matches[1];
+		}
+		$_SERVER['REMOTE_ADDR'] = $IP;
+		return true;
+	}
+
+
 	public static function getUsername() {
 		return isset($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : false;
+	}
+
+	public static function setUsername($username) {
+		return self::setHeader('AUTHORIZATION', 'Basic ' . base64_encode($username .':' . self::getPassword()));
 	}
 
 
 	public static function getPassword() {
 		return isset($_SERVER['PHP_AUTH_PW']) ? $_SERVER['PHP_AUTH_PW'] : false;
+	}
+
+	public static function setPassword($password) {
+		return self::setHeader('AUTHORIZATION', 'Basic ' . base64_encode(self::getUsername() .':' . $password));
+	}
+
+
+	public static function getPath() {
+		return explode('?', self::getURI(), 2)[0];
 	}
 
 	public static function newToken() {
@@ -464,32 +511,81 @@ class Request{
 	}
 
 	public static function setToken($token, $newToken = false) {
-		if (!is_string($token) || strlen($token) != 32 || Code::key(__CLASS__ . self::TOKEN_HEADER . substr($token, 0, 16), 16) !== substr($token, 16)) {
-			throw new Exception('Access token is invalid');
+		if ($token === NULL || $token === false) {
+			self::$_token = NULL;
+		} else {
+			if (!is_string($token) || strlen($token) != 32 || Code::key(__CLASS__ . self::TOKEN_HEADER . substr($token, 0, 16), 16) !== substr($token, 16)) {
+				throw new Exception('Access token is invalid');
+			}
+			self::$_token = $token;
 		}
 		self::$_newToken = $newToken;
-		self::$_token = $token;
-		return true;
-	}
-
-	public static function deleteToken() {
-		self::$_newToken = NULL;
-		self::$_token = NULL;
 		return true;
 	}
 
 
-	public static function clear() {
+
+	public static function getAjax() {
+		if (self::$_ajax === NULL) {
+			if ($header = self::getHeader(self::AJAX_HEADER)) {
+				self::$_ajax = $header;
+			} elseif ($param = self::getParam(self::AJAX_PARAM, '')) {
+				self::$_ajax = $param;
+			} elseif (in_array($extension = strtolower(pathinfo(self::getPath(), PATHINFO_EXTENSION)), ['json', 'xml'])) {
+				self::$_ajax = $extension;
+			} elseif (($accept = self::getHeader('ACCEPT')) && ($mimeType = explode(',', $accept, 2)[0]) && in_array($extension = strtolower(trim(explode('/', $mimeType, 2)[0])), ['json', 'xml'])) {
+				self::$_ajax = $extension;
+			} elseif (strtolower(self::getHeader('X_REQUESTED_WITH')) === 'xmlhttprequest') {
+				self::$_ajax = 'json';
+			} else {
+				self::$_ajax = '';
+			}
+		}
+		return self::$_ajax;
+	}
+
+	public static function setAjax($ajax) {
+		self::$_ajax = $ajax === NULL ? NULL : (string) $ajax;
+		return true;
+	}
+
+
+	public static function isPjax() {
+		return self::getHeader(PJAX_HEADER);
+	}
+
+
+	public static function getRanges() {
+		$ranges = [];
+		if (($range = self::getHeader('RANGE')) && preg_match('/bytes=\s*([0-9-,]+)/i', $range, $matches)) {
+			foreach (explode(',', $matches[1]) as $subject) {
+				if (preg_match('/(\-?\d+)(?:\-(\d+)?)?/', $subject, $matches)) {
+					$offset = intval($matches[1]);
+					$length = isset($matches[2]) ? $matches[2] - $offset + 1 : false;
+					if ($length === false || $length > 0) {
+						$ranges[] = ['offset' => $offset, 'length' => $length];
+					}
+				}
+			}
+		}
+		return $ranges;
+	}
+
+
+
+	public static function flush() {
 		self::setScheme('http');
 		self::setVersion(1.1);
 		self::setMethod('GET');
 		self::setURI('/');
-		self::setHeaders(['HOST' => self::$_defaultHost]);
+		self::setHeaders(['Host' => self::$_defaultHost]);
 		self::setPosts([]);
 		self::setParams([]);
 		self::setFiles([]);
-		self::deleteToken();
+		self::setContent('php://input');
+		self::setIP('127.0.0.1');
+		self::setToken(NULL);
+		self::setAjax(NULL);
 	}
-
 }
 Request::init();
