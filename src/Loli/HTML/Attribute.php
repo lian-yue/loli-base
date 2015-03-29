@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-27 08:14:37
-/*	Updated: UTC 2015-03-29 02:28:29
+/*	Updated: UTC 2015-03-29 02:40:14
 /*
 /* ************************************************************************** */
 namespace Loli\HTML;
@@ -230,6 +230,26 @@ class Attribute{
 
 
 	/**
+	 * getOn 获得是否允许支持js 属性
+	 * @return boolean
+	 */
+	public function getOn() {
+		return $this->on;
+	}
+
+
+	/**
+	 * 设置是否允许js属性
+	 * @param boolean $on 是否允许
+	 * @return this
+	 */
+	public function setOn($on) {
+		$this->on = $on;
+		return $this;
+	}
+
+
+	/**
 	 * get 过滤属性
 	 * @param  array  $attributes 属性数组
 	 * @param  string $tag        标签名
@@ -263,7 +283,6 @@ class Attribute{
 	protected function one() {
 		return '1';
 	}
-
 
 
 	protected function value($value) {
