@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-29 02:13:33
+/*	Updated: UTC 2015-03-29 02:36:21
 /*
 /* ************************************************************************** */
 namespace Loli\HTML;
@@ -209,7 +209,7 @@ class Format{
 	 * @param callable|integer $attribute 属性过滤回调
 	 * @param Style|null       $style     样式过滤对象
 	 */
-	public function __construct(callable $attribute = 0, Style $style = NULL) {
+	public function __construct(callable $attribute = NULL, Style $style = NULL) {
 		// 没样式表自动添加
 		if (!$style) {
 			$this->style = new Style;
