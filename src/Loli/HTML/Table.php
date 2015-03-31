@@ -8,10 +8,10 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-12 06:47:03
-/*	Updated: UTC 2015-02-25 07:03:55
+/*	Updated: UTC 2015-03-31 10:15:28
 /*
 /* ************************************************************************** */
-namespace Loli;
+namespace Loli\HTML;
 class Table{
 
 	/**

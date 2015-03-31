@@ -8,11 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-29 06:59:55
+/*	Updated: UTC 2015-03-31 14:30:22
 /*
 /* ************************************************************************** */
 namespace Loli\HTML;
-class Format{
+class Filter{
 
 
 	// 所有允许的标签
@@ -115,6 +115,7 @@ class Format{
 
 	// 快元素和内联元素 并列的时候自动添加的标签
 	protected $abreast = 'p';
+
 
 	// 当前标签允许的父级
 	protected $allowParents = [
@@ -312,7 +313,7 @@ class Format{
 
 		// 没有标签
 		if (!$html || !strstr($html, '<') || !($splits = preg_split("/\<(\s*\/\s*)?([a-z0-9]+)((?:\s+(?:\s*(?:[0-9a-z_:-]+)\s*(?:\=\s*(?:\"[^\"]*\"|'[^']*'|[^'\"<> \t\n\r\x0B]*))?)*|))((?(1)|\s*\/?\s*))\>/is", $html, -1, PREG_SPLIT_DELIM_CAPTURE))) {
-			$this->element && $this->push($this->element);
+			$this->element && $this->push($this->element, [], true);
 			$this->html($this->text($html));
 			$this->pop();
 			return trim($this->html);
@@ -352,16 +353,14 @@ class Format{
 					// 单标签
 					if ($tags[$tag]) {
 
-						// 限制子级
-						$this->child($tag);
-
-						// 限制父级
-						if (!$this->parent($tag)) {
+						// tag 前执行
+						if (!$this->before($tag)) {
 							break;
 						}
 
 						// 插入单标签
 						$this->html($this->single($tag, $attribute));
+
 						break;
 					}
 
@@ -375,16 +374,14 @@ class Format{
 						}
 					}
 
-					// 限制子级
-					$this->child($tag);
-
-
 					// 限制父级
-					if (!$this->parent($tag)) {
+					if (!$this->before($tag)) {
 						break;
 					}
 
+					// 入栈
 					$this->push($tag, $attribute);
+
 
 					switch ($tag) {
 						case 'script':
@@ -404,10 +401,17 @@ class Format{
 					// 丢弃属性和结尾斜杠
 					$continue = 2;
 
+					// 标签
 					$tag = strtolower($value);
-					if (!isset($tags[$tag]) || !$tags[$tag]) {
-						 $this->pop($tag);
+
+					// 不允许的标签
+					if (!isset($tags[$tag]) || $tags[$tag]) {
+						break;
 					}
+
+					// 闭合标签
+					$this->pop($tag);
+
 					break;
 				case 3:
 
@@ -419,7 +423,7 @@ class Format{
 					if ($value) {
 						// 需要插入默认标签的
 						if (!$this->layers && $this->element && trim($value)) {
-							$this->push($this->element);
+							$this->push($this->element, [], true);
 						}
 						$this->html($this->text($value));
 					}
@@ -477,20 +481,65 @@ class Format{
 
 
 	/**
-	 * parent 判断父级是否允许该标签
+	 * before 插入前执行
 	 * @param  string $tag 标签名
-	 * @return boolean
 	 */
-	protected function parent($tag) {
-
+	protected function before($tag) {
 		// 当前标签允许的父级
-		if (!empty($this->allowParents[$tag]) && (!$this->layers || !in_array(end($this->layers), $this->allowParents[$tag]))) {
+		if (!empty($this->allowParents[$tag]) && (!$this->layers || !in_array(current($this->layers), $this->allowParents[$tag]))) {
 			return false;
 		}
 
 		// 父级允许的当前标签
-		if ($this->layers && isset($this->allowChilds[$layer = end($this->layers)]) && !in_array($tag, $this->allowChilds[$layer])) {
+		if ($this->layers && isset($this->allowChilds[$layer = current($this->layers)]) && !in_array($tag, $this->allowChilds[$layer])) {
 			return false;
+		}
+
+
+		$i = 0;
+		$while = true;
+		while($this->layers && $while && $i < 3) {
+
+			// 是否再次执行
+			$while = false;
+
+			// 不允许 快元素 的标签
+			if ((in_array($layer = current($this->layers), $this->inlines) || in_array($layer, $this->blockNotNesteds)) && !in_array($tag, $this->inlines) && !in_array($tag, $this->inlinesBlock)) {
+				$this->pop();
+			}
+
+			// 不允许的子级 多层的
+			$count = 0;
+			foreach ($this->layers as $layer) {
+				if ($count) {
+					++$count;
+				} elseif (isset($this->multisLevel[$layer]) && in_array($tag, $this->multisLevel[$layer])) {
+					++$count;
+				}
+			}
+			while ($count) {
+				$this->pop();
+				$count--;
+			}
+
+			// 不允许嵌套的单层次
+			if ($this->layers && isset($this->singlesLevel[$layer = current($this->layers)]) && in_array($tag, $this->singlesLevel[$layer])) {
+				$while = true;
+				$this->pop();
+			}
+			++$i;
+		}
+
+
+		// 直接是 内联元素 添加 element
+		if ($this->element  && !$this->layers && in_array($tag, $this->inlines)) {
+			$this->push($this->element, [], true);
+		}
+
+
+		// 块级元素 内联元素 出现并列
+		if ($this->abreast && $this->above && !in_array($this->above, $this->inlines) && !in_array($this->above, $this->inlinesBlock) && in_array($tag, $this->inlines)) {
+			$this->push($this->layers && !empty($this->allowChilds[$layer = current($this->layers)]) ? reset($this->allowChilds[$layer]) : $this->abreast, [], true);
 		}
 
 		return true;
@@ -498,70 +547,13 @@ class Format{
 
 
 	/**
-	 * child 闭合不允许的标签
-	 * @param  string $tag 标签名
-	 */
-	protected function child($tag) {
-		$i = 0;
-		do {
-
-			// 是否再次执行
-			$while = false;
-
-			// 内联 特殊快元素 可变 拒绝 允许 标签
-			if ($this->layers) {
-				// 不允许 快元素 的标签
-				while ((in_array($layer = end($this->layers), $this->inlines) || in_array($layer, $this->blockNotNesteds)) && !in_array($tag, $this->inlines) && !in_array($tag, $this->inlinesBlock)) {
-					$this->pop();
-				}
-				// 不允许的子级 多层的
-				$count = 0;
-				foreach ($this->layers as $layer) {
-					if ($count) {
-						++$count;
-					} elseif (isset($this->multisLevel[$layer]) && in_array($tag, $this->multisLevel[$layer])) {
-						++$count;
-					}
-				}
-				while ($count) {
-					$this->pop();
-					$count--;
-				}
-
-
-
-				if ($this->layers && isset($this->singlesLevel[$layer = end($this->layers)]) && in_array($tag, $this->singlesLevel[$layer])) {
-					$while = true;
-					$this->pop();
-				}
-			}
-
-
-			// 块级元素 内联元素 出现并列
-			if ($this->abreast && $this->above && !in_array($this->above, $this->inlines) && !in_array($this->above, $this->inlinesBlock) && in_array($tag, $this->inlines)) {
-				$this->push($this->layers && !empty($this->allowChilds[$layer = end($this->layers)]) ? reset($this->allowChilds[$layer]) : $this->abreast);
-				$while = true;
-			}
-
-			// 直接是 内联元素 添加 element
-			if ($this->element  && !$this->layers && in_array($tag, $this->inlines)) {
-				$this->push($this->element);
-				$while = true;
-			}
-			++$i;
-		} while($while && $i < 3);
-	}
-
-
-
-
-	/**
 	 * push 推送一个标签   (入栈)
 	 * @param  string  $tag       推送的标签名称
 	 * @param  string  $attribute 推送的标签属性
+	 * @param  boolean $auto 	  是否自动弹出标签
 	 * @return boolean
 	 */
-	protected function push($tag, $attribute = '') {
+	protected function push($tag, $attribute = '', $auto = false) {
 		if (empty($this->counts[$tag])) {
 			$this->counts[$tag] = 0;
 		}
@@ -570,8 +562,12 @@ class Format{
 		}
 		++$this->counts[$tag];
 		$this->above = '';
-		$this->stacks[] = [$tag, $attribute ? $this->parseAttribute($attribute) : [], false, ''];
+		$this->stacks[] = [$tag, $attribute ? $this->parseAttribute($attribute) : [], false, '', $auto];
 		$this->layers[] = $tag;
+
+		// 移动指针
+		end($this->stacks);
+		end($this->layers);
 		return true;
 	}
 
@@ -580,21 +576,29 @@ class Format{
 
 	/**
 	 * pop 弹出一个标签  (出栈)
-	 * @param  string $tag 如果传入参数 需要判断标签对没再出栈
+	 * @param  string $tag 如果传入参数 需要判断标签对没再出栈 如果为空只弹出该个不判断是否自动弹出
 	 * @return boolean
 	 */
 	protected function pop($tag = '') {
 		if (!$this->layers) {
 			return false;
 		}
-		$params = end($this->stacks);
-		if ($tag && $tag !== $params[0]) {
-			return false;
-		}
-		array_pop($this->stacks);
-		$this->above = array_pop($this->layers);
-		$this->html(call_user_func_array([$this, 'call'], $params));
-		return $this->above;
+		$i = 0;
+		do {
+			++$i;
+			$params = current($this->stacks);
+			if ($tag && $tag !== $params[0] && !$params[4]) {
+				return false;
+			}
+			array_pop($this->stacks);
+			$this->above = array_pop($this->layers);
+
+			// 移动指针
+			end($this->stacks);
+			end($this->layers);
+			$this->html(call_user_func_array([$this, 'call'], $params));
+		} while($tag && $params[4] && $this->layers);
+		return true;
 	}
 
 
@@ -631,14 +635,12 @@ class Format{
 
 
 
-
 	/**
 	 * html 在末尾插入html代码
 	 * @param  string $html 代码
 	 */
 	protected function html($html) {
 		if ($this->stacks) {
-			end($this->stacks);
 			$this->stacks[key($this->stacks)][3] .= $html;
 		} else {
 			$this->html .= $html;

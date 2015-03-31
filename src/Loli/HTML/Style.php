@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-28 02:20:01
-/*	Updated: UTC 2015-03-29 09:24:09
+/*	Updated: UTC 2015-03-29 15:35:51
 /*
 /* ************************************************************************** */
 namespace Loli\HTML;
@@ -93,17 +93,69 @@ class Style{
 
 
 
-		$splits = preg_split('/(@media(\s[^{}]*)?\{)?((?(1)|(?<=\})\s*\}))/is', $contents, -1, PREG_SPLIT_DELIM_CAPTURE);
-		print_r($splits);
-		//if (preg_match_all('/@media(\s[^{}]*)?\s*\{((?:(?!\}\s*\}|@media).)*)/is', $contents, $matches)) {
-
-		//}
-		//print_r($matches);
-
-		//$splits = preg_split('/(?:@media(\s[^{}]*?)?\{|\s*(?=\}\s*\}|\}\s*$))/is', $contents, -1, PREG_SPLIT_DELIM_CAPTURE);
-
+		$splits = preg_split('/(@media(?:\s[^{}]*)?\{)?((?(1)|(?<=\})\s*\}))/is', $contents, -1, PREG_SPLIT_DELIM_CAPTURE);
 		//print_r($splits);
-		//echo $contents;
+		//echo "\n\n\n\n";
+		$type = 3;
+		$mediaCounts = $continue = 0;
+		$result = '';
+		$subject = '/^' .  ($this->prefix ? '[#.]' . preg_quote($this->prefix, '/') : '') . '[a-z0-9\[\]() #.>+=~|:^$*-]+$/i';
+		foreach ($splits as $key => $value) {
+			if ($continue) {
+				--$continue;
+				continue;
+			}
+			switch ($type) {
+				case 1:
+					// 开始 media
+					$result .= "\n" . str_pad('', $mediaCounts, "\t") . '@media ' . $this->media(substr($value, 7)) .' {';
+
+					$type = 3;
+					++$continue;
+					++$mediaCounts;
+					break;
+				case 2:
+					// 结束 media
+					$type = 3;
+					++$continue;
+					--$mediaCounts;
+
+					$result .= "\n" . str_pad('', $mediaCounts, "\t") . '}';
+					break;
+				default:
+					// 内容属性
+					$type = empty($splits[$key + 1]) ? 2 : 1;
+					if (!$value = trim($value)) {
+						break;
+					}
+					$styles = [];
+					$t = "\n" . str_pad('', $mediaCounts, "\t");
+					foreach(explode('}', $value) as $values) {
+						if (count($values = explode('{', $values, 2)) !== 2 || !$values[0] || !$values[1]) {
+							continue;
+						}
+						$selects = [];
+						foreach(explode(',', $values[0]) as $select) {
+							if (!($select = trim($select)) || !preg_match($subject, $select)) {
+								continue;
+							}
+							$selects[] = $select;
+						}
+
+						if ($selects && ($values = $this->values($values[1]))) {
+							$result .= $t . implode(', ', $selects) .'{'. $values .'}';
+						}
+
+					}
+
+			}
+		}
+
+		while ($mediaCounts > 0) {
+			--$mediaCounts;
+			$result .= "\n" . str_pad('', $mediaCounts, "\t") . '}';
+		}
+		return trim($result);
 	}
 
 	/**
@@ -114,7 +166,7 @@ class Style{
 	 */
 	public function values($values, $isArray = false) {
 		$styles = [];
-		foreach (explode(';', preg_replace('/\s+/is', ' ',preg_replace('/\/\*.*?(\*\/|$)|&quot;|&#039;|&lt;|&gt;|&|\\\\|"|\'|\>|</is', '', $values))) as $value) {
+		foreach (explode(';', preg_replace('/\s+/is', ' ',preg_replace('/\/\*.*?(\*\/|$)|&quot;|&#039;|&lt;|&gt;|&|\\\\|"|\'|\>|<|\{|\}/is', '', $values))) as $value) {
 			// 没有 : 的
 			if (count($value = explode(':', $value, 2)) !== 2) {
 				continue;
@@ -135,7 +187,6 @@ class Style{
 	 * @return boolean
 	 */
 	public function value($name, $value) {
-		return false;
 		if (!($name = strtolower(trim($name))) || !($value = trim($value))) {
 			return false;
 		}
@@ -199,7 +250,7 @@ class Style{
 				$result .= ' ('. trim($rule, ';') .')';
 			}
 		}
-		return $result ? $result : 'all';
+		return trim($result) ? $result : 'all';
 	}
 
 

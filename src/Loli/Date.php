@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-19 02:24:38
+/*	Updated: UTC 2015-03-31 12:22:35
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -91,7 +91,7 @@ class Date{
 			}
 		}
 
-		//self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
+		self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
 
 		if (self::$name) {
 			empty($_COOKIE[self::$name]) || is_array($_COOKIE[self::$name]) || self::setTimezone($_COOKIE[self::$name]);
@@ -109,6 +109,7 @@ class Date{
 	*	返回值 译文
 	**/
 	public static function lang($d, $original = true) {
+		// 翻译文件
 		return Lang::get($d, ['date'], $original);
 	}
 
