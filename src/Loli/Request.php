@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-24 14:13:03
-/*	Updated: UTC 2015-03-27 05:52:35
+/*	Updated: UTC 2015-04-01 14:00:41
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -50,7 +50,20 @@ class Request{
 		}
 
 		if (!empty($_SERVER['UNENCODED_URL'])) {
-			$URI = $_SERVER['UNENCODED_URL'];
+			$public static function defaultScheme() {
+		if (!empty($_SERVER['REQUEST_SCHEME'])) {
+			$scheme = $_SERVER['REQUEST_SCHEME'];
+		} elseif (isset($_SERVER['HTTPS']) && ('on' === strtolower($_SERVER['HTTPS']) || '1' === $_SERVER['HTTPS'])) {
+			$scheme = 'https';
+		} elseif (isset($_SERVER['SERVER_PORT']) && '443' === $_SERVER['SERVER_PORT']) {
+			$scheme = 'https';
+		} elseif (isset($_SERVER['SERVER_PORT_SECURE']) && '1' === $_SERVER['SERVER_PORT_SECURE']) {
+			$scheme = 'https';
+		} else {
+			$scheme = 'http';
+		}
+		return $scheme;
+	} = $_SERVER['UNENCODED_URL'];
 		} elseif (!empty($_SERVER['HTTP_X_ORIGINAL_URL'])) {
 			$URI= $_SERVER['HTTP_X_ORIGINAL_URL'];
 		} elseif (!empty($_SERVER['REQUEST_URI'])) {

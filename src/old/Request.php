@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-06 14:16:56
-/*	Updated: UTC 2015-03-26 13:32:48
+/*	Updated: UTC 2015-04-02 02:27:00
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -75,13 +75,13 @@ class Request{
 
 
 	public static function defaultScheme() {
-		if (isset(self::$_g['_SERVER']['REQUEST_SCHEME'])) {
-			$scheme = strtolower(self::$_g['_SERVER']['REQUEST_SCHEME']);
-		} elseif (isset(self::$_g['_SERVER']['HTTPS']) && ('on' == strtolower(self::$_g['_SERVER']['HTTPS']) || '1' == self::$_g['_SERVER']['HTTPS'])) {
+		if (!empty($_SERVER['REQUEST_SCHEME'])) {
+			$scheme = $_SERVER['REQUEST_SCHEME'];
+		} elseif (isset($_SERVER['HTTPS']) && ('on' === strtolower($_SERVER['HTTPS']) || '1' === $_SERVER['HTTPS'])) {
 			$scheme = 'https';
-		} elseif (isset(self::$_g['_SERVER']['SERVER_PORT']) && '443' == self::$_g['_SERVER']['SERVER_PORT']) {
+		} elseif (isset($_SERVER['SERVER_PORT']) && '443' === $_SERVER['SERVER_PORT']) {
 			$scheme = 'https';
-		} elseif (isset(self::$_g['_SERVER']['SERVER_PORT_SECURE']) && '1' == self::$_g['_SERVER']['SERVER_PORT_SECURE']) {
+		} elseif (isset($_SERVER['SERVER_PORT_SECURE']) && '1' === $_SERVER['SERVER_PORT_SECURE']) {
 			$scheme = 'https';
 		} else {
 			$scheme = 'http';

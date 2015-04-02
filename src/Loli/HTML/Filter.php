@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-31 14:30:22
+/*	Updated: UTC 2015-04-02 08:58:42
 /*
 /* ************************************************************************** */
 namespace Loli\HTML;
@@ -309,8 +309,6 @@ class Filter{
 			return $this->text(strip_tags($html));
 		}
 
-
-
 		// 没有标签
 		if (!$html || !strstr($html, '<') || !($splits = preg_split("/\<(\s*\/\s*)?([a-z0-9]+)((?:\s+(?:\s*(?:[0-9a-z_:-]+)\s*(?:\=\s*(?:\"[^\"]*\"|'[^']*'|[^'\"<> \t\n\r\x0B]*))?)*|))((?(1)|\s*\/?\s*))\>/is", $html, -1, PREG_SPLIT_DELIM_CAPTURE))) {
 			$this->element && $this->push($this->element, [], true);
@@ -436,7 +434,7 @@ class Filter{
 					while (isset($splits[$key + $continue + 1])) {
 						// 跳过开始斜杠
 						++$continue;
-						if (strtolower($splits[$key + $continue + 1]) === $tag) {
+						if ($splits[$key + $continue] && strtolower($splits[$key + $continue + 1]) === $tag) {
 							$type = 2;
 							break;
 						}

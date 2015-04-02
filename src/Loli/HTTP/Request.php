@@ -8,12 +8,14 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-06 14:16:56
-/*	Updated: UTC 2015-04-01 04:45:36
+/*	Updated: UTC 2015-04-02 13:48:51
 /*
 /* ************************************************************************** */
 namespace Loli\HTTP;
 use Loli\Code;
 class Request{
+	const POST_LENGTH = 2097152;
+
 	const TOKEN_HEADER = 'X-Token';
 
 	const TOKEN_COOKIE = 'token';
@@ -24,28 +26,313 @@ class Request{
 
 	const PJAX_HEADER = 'X-Pjax';
 
-	private $_schemes = ['http', 'https'];
-	private $_methods = ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+	protected $schemesList = ['http', 'https'];
+
+	protected $methodsList = ['OPTIONS', 'HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+
+	protected $defaultHost = 'localhost';
 
 
-	private $_defaultHost = 'localhost';
-	private $_postLength = 2097152;
-	private $_content = 'php://input';
-	private $_newToken = false;
-	private $_token = NULL;
-	private $_ajax = NULL;
-	private $_pjax = NULL;
+
+	protected $addr = false;
+
+	protected $port = 0;
+
+
+	protected $IP = '127.0.0.1';
+
+
+
+
+	protected $scheme = 'http';
+
+	protected $version = 1.1;
+
+	protected $method = 'GET';
+
+	protected $URI = '/';
+
+	protected $querys = [];
+
+	protected $headers = [];
+
+	protected $cookies = [];
+
+	protected $username = false;
+
+	protected $password = false;
+
+	protected $posts = [];
+
+	protected $files = [];
+
+	protected $content = 'php://input';
+
+
+	protected $newToken = false;
+
+	protected $token = NULL;
+
+	protected $ajax = NULL;
+
+
+	public function __construct($method = NULL, $URI = NULL, array $headers = NULL, array $posts = NULL, array $files = NULL) {
+
+
+		// addr
+		$addr = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 0;
+
+		// port
+		$port = isset($_SERVER['REMOTE_PORT']) ? $_SERVER['REMOTE_PORT'] : 0;
+
+		// IP
+		$IP = self::defaultIP();
+
+		// 协议
+		$scheme = self::defaultScheme();
+
+		// 方法
+		$method = $method === NULL ? (isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET') : $method;
+
+		// URI
+		$URI = $URI === NULL ? self::defaultURI() : $URI;
+
+		// 版本
+		$version = !empty($_SERVER['SERVER_PROTOCOL']) && $_SERVER['SERVER_PROTOCOL'] == 'HTTP/1.0' ? 1.0 : 1.1;
+
+		// headers
+		$headers = $headers === NULL ? self::defaultHeaders() : $headers;
+
+		// 表单
+		$posts = $posts === NULL ? self::defaultPosts() : $posts;
+
+		// 文件
+		$files = $files === NULL ? $_FILES : $files;
+
+
+		//  地址
+		$this->setAddr($addr);
+
+		// 端口
+		$this->setPort($port);
+
+		// ip
+		$this->setIP($IP);
+
+		// 方法
+		$this->setMethod($method);
+
+		// URI
+		$this->setURI($URI);
+
+		// 版本
+		$this->setversion($version);
+
+		// headers
+		$this->setHeaders($headers);
+
+		// 表单
+		$this->setPosts($posts);
+
+		// 文件
+		$this->setFiles($files);
+
+		// 设置 param
+		$this->setParams(array_merge($this->querys(), $this->posts()));
+	}
+
+
+	public static function defaultIP() {
+		$IP = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1';
+		if (empty($_SERVER['LOLI']['IP'])) {
+
+		} elseif (isset($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP)) {
+			$IP = $_SERVER['HTTP_CLIENT_IP'];
+		} elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+			foreach (explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']) as $value) {
+				if (filter_var($value = trim($value), FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) && (empty($_SERVER['SERVER_ADDR']) || $_SERVER['SERVER_ADDR'] != $value)) {
+					$IP = $value;
+					break;
+				}
+			}
+		}
+		return $IP;
+	}
+
+	public static function defaultScheme() {
+		if (!empty($_SERVER['REQUEST_SCHEME'])) {
+			$scheme = $_SERVER['REQUEST_SCHEME'];
+		} elseif (isset($_SERVER['HTTPS']) && ('on' === strtolower($_SERVER['HTTPS']) || '1' === $_SERVER['HTTPS'])) {
+			$scheme = 'https';
+		} elseif (isset($_SERVER['SERVER_PORT']) && '443' === $_SERVER['SERVER_PORT']) {
+			$scheme = 'https';
+		} elseif (isset($_SERVER['SERVER_PORT_SECURE']) && '1' === $_SERVER['SERVER_PORT_SECURE']) {
+			$scheme = 'https';
+		} else {
+			$scheme = 'http';
+		}
+		return $scheme;
+	}
+
+
+	public static function defaultURI() {
+		if (!empty($_SERVER['UNENCODED_URL'])) {
+			$URI = $_SERVER['UNENCODED_URL'];
+		} elseif (!empty($_SERVER['HTTP_X_ORIGINAL_URL'])) {
+			$URI= $_SERVER['HTTP_X_ORIGINAL_URL'];
+		} elseif (!empty($_SERVER['REQUEST_URI'])) {
+			$URI= $_SERVER['REQUEST_URI'];
+		} elseif (isset($_SERVER['PATH_INFO']) && isset($_SERVER['SCRIPT_NAME'])) {
+			if ($_SERVER['PATH_INFO'] === $_SERVER['SCRIPT_NAME']) {
+				$URI = $_SERVER['PATH_INFO'];
+			} else {
+				$URI = $_SERVER['SCRIPT_NAME'] . $_SERVER['PATH_INFO'];
+			}
+		} else {
+			$URI = '/';
+		}
+		return $URI;
+	}
+
+	public static function defaultHeaders() {
+		if (function_exists('getallheaders')) {
+			$headers = getallheaders();
+		} elseif (function_exists('http_get_request_headers')) {
+			$headers = http_get_request_headers();
+		} else {
+			$headers = [];
+			foreach ($_SERVER as $name => $value) {
+				if (substr($name, 0, 5) === 'HTTP_') {
+					$headers[strtr(ucwords(strtolower(strtr(substr($name, 5), '_', ' '))), ' ', '-')] = $value;
+				}
+			}
+			if (isset($_SERVER['CONTENT_TYPE'])) {
+				$headers['Content-Type'] = $_SERVER['CONTENT_TYPE'];
+			}
+			if (isset($_SERVER['CONTENT_LENGTH'])) {
+				$headers['Content-Length'] = $_SERVER['CONTENT_LENGTH'];
+			}
+		}
+		if (empty($headers['Host'])) {
+			if (isset($_SERVER['HTTP_HOST'])) {
+				$headers['Host'] = $_SERVER['HTTP_HOST'];
+			}  elseif (isset($_SERVER['SERVER_NAME'])) {
+				$_SERVER['Host'] = $_SERVER['SERVER_NAME'];
+				if (isset($_SERVER['SERVER_PORT']) && !in_array($_SERVER['SERVER_PORT'], ['80', '443'])) {
+					$_SERVER['Host'] .= ':' . $_SERVER['SERVER_PORT'];
+				}
+			} else {
+				$headers['Host'] = self::$_defaultHost;
+			}
+		}
+
+
+		unset($headers['X-Original-Url']);
+		return $headers;
+	}
+
+
+
+
+
+
+
+	// 默认内容数据
+	public static function defaultPosts() {
+		static $posts;
+		if (isset($posts)) {
+		} elseif ($_POST || empty($_SERVER['CONTENT_TYPE']) || empty($_SERVER['CONTENT_LENGTH']) || $_SERVER['CONTENT_LENGTH'] < 1 || $_SERVER['CONTENT_LENGTH'] > self::POST_LENGTH) {
+			$posts = $_POST;
+		} elseif (in_array($_SERVER['CONTENT_TYPE'], ['application/json', 'text/json'])) {
+			$posts = ($jsons = json_decode(trim(file_get_contents('php://input', 'rb')), true)) ? $jsons : [];
+		} else {
+			$posts = [];
+		}
+		return $posts;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	public function getIP() {
+		return $this->IP;
+	}
+
+
+
+	public function setIP($IP) {
+		if(!$IP = inet_pton($IP)) {
+			throw new Exception('IP is not legitimate');
+		}
+		$IP = inet_ntop($IP);
+
+		// 兼容请求地址
+		if (preg_match('/\:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/', $IP, $matches)) {
+			$IP = $matches[1];
+		}
+		$this->IP = $IP;
+		return $this;
+	}
+
+
+
+
+
+	public function getAddr($port = false) {
+		return $this->addr;
+	}
+
+
+	public function setAddr($addr) {
+		if ($addr) {
+			if(!$addr = inet_pton($addr)) {
+				throw new Exception('Addr is not legitimate');
+			}
+			$addr = inet_ntop($addr);
+		} else {
+			$addr = false;
+		}
+		$this->addr = $addr;
+		return $this;
+	}
+
+
+	public function getPort() {
+		return $this->port;
+	}
+
+	public function setPort($port) {
+		if($port > 65535 || $port < 0){
+			throw new Exception('Port is not legitimate');
+		}
+		$this->port = (int) $port;
+		return $this;
+	}
+
+
+
+
 
 
 	public function getScheme() {
-		return $this->_scheme;
+		return $this->scheme;
 	}
 
 	public function setScheme($scheme) {
-		if (!in_array($scheme, $this->_schemes, true)) {
+		if (!in_array($scheme, $this->schemesList, true)) {
 			throw new Exception('The scheme does not allow');
 		}
-		$this->_scheme = $scheme;
+		$this->scheme = $scheme;
 		return $this;
 	}
 
@@ -55,11 +342,11 @@ class Request{
 
 
 	public function getVersion() {
-		return $this->_version;
+		return $this->version;
 	}
 
 	public function setVersion($version) {
-		$this->_version = $version == 1.0 ? 1.0 : 1.1;
+		$this->version = $version == 1.0 ? 1.0 : 1.1;
 		return $this;
 	}
 
@@ -73,16 +360,16 @@ class Request{
 
 
 	public function getMethod() {
-		return $this->_method;
+		return $this->method;
 	}
 
 
 
 	public function setMethod($method) {
-		if (!in_array($method = strtoupper($method), $this->_methods)) {
+		if (!in_array($method = strtoupper($method), $this->methodsList)) {
 			throw new Exception('The method does not allow');
 		}
-		$this->_method = $method;
+		$this->method = $method;
 		return $this;
 	}
 
@@ -99,14 +386,14 @@ class Request{
 
 
 	public function getURI() {
-		return $this->_URI;
+		return $this->URI;
 	}
 
 	public function setURI($URI) {
 		$URI = ltrim(trim($URI), '/');
 		list($path, $queryString) = explode('?', $URI, 2) + [1 => ''];
-		$this->_URI = '/'. $URI;
-		$this->_querys = parse_string($queryString);
+		$this->URI = '/'. $URI;
+		$this->querys = parse_string($queryString);
 		return $this;
 	}
 
@@ -119,25 +406,25 @@ class Request{
 
 
 	public function getQuerys() {
-		return $this->_querys;
+		return $this->querys;
 	}
 
 	public function getQuery($name, $defaultValue = NULL) {
-		return isset($this->_querys[$name]) ? ($defaultValue === NULL ? $this->_querys[$name] : settype($this->_querys[$name], gettype($defaultValue))) : $defaultValue;
+		return isset($this->querys[$name]) ? ($defaultValue === NULL ? $this->querys[$name] : settype($this->querys[$name], gettype($defaultValue))) : $defaultValue;
 	}
 
 	public function setQuerys(array $querys) {
-		$this->_querys = parse_string($queryString = merge_string($querys));
-		implode('?', array_filter([1=> $queryString] + explode('?', $this->_URI, 2)));
+		$this->querys = parse_string($queryString = merge_string($querys));
+		implode('?', array_filter([1=> $queryString] + explode('?', $this->URI, 2)));
 		return $this;
 	}
 
 	public function setQuery($name, $value) {
 		if ($value === NULL || $value === false) {
-			isset($this->_querys[$name]) && $this->setQuerys([$name=>NULL] + $this->_querys);
+			isset($this->querys[$name]) && $this->setQuerys([$name=>NULL] + $this->querys);
 		} else {
-			$this->_querys[$name] = is_array($value) || is_object($value) ? parse_string(merge_string($value)) : (string) $value;
-			$this->_URI .= (strpos($this->_URI, '?') === false ? '?' : '&') . merge_string([$name=>$value]);
+			$this->querys[$name] = is_array($value) || is_object($value) ? parse_string(merge_string($value)) : (string) $value;
+			$this->URI .= (strpos($this->URI, '?') === false ? '?' : '&') . merge_string([$name=>$value]);
 		}
 		return $this;
 	}
@@ -158,9 +445,9 @@ class Request{
 	}
 
 	public function setHeaders(array $headers) {
-		$this->_cookies = [];
-		$this->_username = $this->_password = false;
-		$this->setHeader('Host', $this->_defaultHost);
+		$this->cookies = [];
+		$this->username = $this->password = false;
+		$this->setHeader('Host', $this->defaultHost);
 		foreach($headers as $name => $value) {
 			$this->setHeader($name, $value);
 		}
@@ -169,43 +456,42 @@ class Request{
 
 
 	public function setHeader($name, $value) {
-		$name = strtoupper(strtr($name, '-', '_'));
 		if ($value === NULL || $value === false) {
 			switch ($name) {
 				case 'Host':
 					throw new Exception('You can not remove host');
 					break;
 				case 'Cookie':
-					$this->_cookies = [];
+					$this->cookies = [];
 					break;
 				case 'Authorization':
-					$this->_username = $this->_password = false;
+					$this->username = $this->password = false;
 					break;
 			}
-			unset($this->_headers[$name]);
+			unset($this->headers[$name]);
 		} else {
 			$value = rtrim(trim((string)$value), ';');
 			switch ($name) {
 				case 'Host':
-					$value = $value ? strtolower($value) : $this->_defaultHost;
+					$value = $value ? strtolower($value) : $this->defaultHost;
 					break;
 				case 'Content-Length':
 					$value = (string) abs((int) $value);
 					break;
 				case 'Cookie':
-					$this->_cookies = parse_string(preg_replace('/;\s*/', '&', $value));
-					$value = http_build_query($this->_cookies, NULL, '; ');
+					$this->cookies = parse_string(preg_replace('/;\s*/', '&', $value));
+					$value = http_build_query($this->cookies, NULL, '; ');
 					break;
 				case 'Authorization':
-					$this->_username = $this->_password = false;
+					$this->username = $this->password = false;
 					if (count($auth = explode(' ', $value, 2)) === 2 && $auth[1] && ($auth = base64_decode(trim($auth[1])))) {
 						$auth = explode(':', $auth, 2);
-						$this->_username = $auth[0];
-						$this->_password = isset($auth[1]) ? $auth[1] : '';
+						$this->username = $auth[0];
+						$this->password = isset($auth[1]) ? $auth[1] : '';
 					}
 					break;
 			}
-			$this->_headers[$name] = $value;
+			$this->headers[$name] = $value;
 		}
 		return $this;
 	}
@@ -221,29 +507,51 @@ class Request{
 
 
 	public function getCookies() {
-		return $this->_cookies;
+		return $this->cookies;
 	}
 
 	public function getCookie($name, $defaultValue = NULL) {
-		return isset($this->_cookies[$name]) ? ($defaultValue === NULL ? $this->_cookies[$name] : settype($this->_cookies[$name], gettype($defaultValue))) : $defaultValue;
+		return isset($this->cookies[$name]) ? ($defaultValue === NULL ? $this->cookies[$name] : settype($this->cookies[$name], gettype($defaultValue))) : $defaultValue;
 	}
 
 
 	public function setCookies(array $cookies) {
 		//=,; \t\r\n\013\014
-		$this->_cookies = parse_string(merge_string($cookies));
-		$this->_headers['Cookie'] = http_build_query($this->_cookies, NULL, '; ');
+		$this->cookies = parse_string(merge_string($cookies));
+		$this->headers['Cookie'] = http_build_query($this->cookies, NULL, '; ');
 		return $this;
 	}
 
+
 	public function setCookie($name, $value) {
 		if ($value === NULL || $value === false) {
-			isset($this->_cookies[$name]) && $this->setCookies([$name=>NULL] + $this->_cookies);
+			isset($this->cookies[$name]) && $this->setCookies([$name=>NULL] + $this->cookies);
 		} else {
-			$this->_cookies[$name] = is_array($value) || is_object($value) ? parse_string(merge_string($value)) : (string) $value;
-			$this->_headers['Cookie'] = $this->_headers['Cookie'] . (empty($this->_headers['Cookie']) ? '; ' : '') . merge_string([$name=>$value]);
+			$this->cookies[$name] = is_array($value) || is_object($value) ? parse_string(merge_string($value)) : (string) $value;
+			$this->headers['Cookie'] = $this->headers['Cookie'] . (empty($this->headers['Cookie']) ? '; ' : '') . merge_string([$name=>$value]);
 		}
 		return $this;
+	}
+
+
+
+
+
+	public function getUsername() {
+		return $this->username;
+	}
+
+
+	public function setUsername($username) {
+		return $this->setHeader('Authorization', 'Basic ' . base64_encode($username .':' . $this->getPassword()));
+	}
+
+	public function getPassword() {
+		return $this->password;
+	}
+
+	public function setPassword($password) {
+		return $this->setHeader('Authorization', 'Basic ' . base64_encode($this->getUsername() .':' . $password));
 	}
 
 
@@ -254,23 +562,23 @@ class Request{
 
 
 	public function getPosts() {
-		return $this->_posts;
+		return $this->posts;
 	}
 
 	public function getPost($name, $defaultValue = NULL) {
-		return isset($this->_posts[$name]) ? ($defaultValue === NULL ? $this->_posts[$name] : settype($this->_posts[$name], gettype($defaultValue))) : $defaultValue;
+		return isset($this->posts[$name]) ? ($defaultValue === NULL ? $this->posts[$name] : settype($this->posts[$name], gettype($defaultValue))) : $defaultValue;
 	}
 
 	public function setPosts(array $requests) {
-		$this->_posts = parse_string(merge_string($requests));
+		$this->posts = parse_string(merge_string($requests));
 		return true;
 	}
 
 	public function setPost($name, $value) {
 		if ($value === NULL || $value === false) {
-			unset($this->_posts[$name]);
+			unset($this->posts[$name]);
 		} else {
-			$this->_posts[$name] = is_array($value) || is_object($value) ? parse_string(merge_string($value)) : (string) $value;
+			$this->posts[$name] = is_array($value) || is_object($value) ? parse_string(merge_string($value)) : (string) $value;
 		}
 		return true;
 	}
@@ -283,49 +591,68 @@ class Request{
 
 
 	public function setParams(array $params) {
-		$this->_params = parse_string(merge_string($params));
+		$this->params = parse_string(merge_string($params));
 		return $this;
 	}
 
 	public function setParam($name, $defaultValue = NULL) {
 		if ($value === NULL || $value === false) {
-			unset($this->_params[$name]);
+			unset($this->params[$name]);
 		} else {
-			$this->_params[$name] = is_array($value) || is_object($value) ? parse_string(merge_string($value)) : (string) $value;
+			$this->params[$name] = is_array($value) || is_object($value) ? parse_string(merge_string($value)) : (string) $value;
 		}
 		return true;
 	}
 
 
 	public function getParams() {
-		return $this->_params;
+		return $this->params;
 	}
 
 
 	public function getParam($name, $defaultValue = NULL) {
-		return isset($this->_params[$name]) ? ($defaultValue === NULL ? $this->_params[$name] : settype($this->_params[$name], gettype($defaultValue))) : $defaultValue;
+		return isset($this->params[$name]) ? ($defaultValue === NULL ? $this->params[$name] : settype($this->params[$name], gettype($defaultValue))) : $defaultValue;
 	}
 
 
 
+	public function getFiles() {
+		return $this->files;
+	}
+
+
+	public function getFile($name) {
+
+	}
+	public function setFiles(array $files) {
+
+	}
+
+	public function setFile(array $files) {
+
+	}
+
+	public function addFile(array $files) {
+
+	}
 
 
 
 
 
 	public function getContent() {
-		if (!$this->_content) {
+		if (!$this->content) {
 			return false;
 		}
-		if (!is_resource($this->_content)) {
-			$this->_content = fopen($this->_content, 'rb');
+		if (!is_resource($this->content)) {
+			$this->content = fopen($this->content, 'rb');
 		}
-		return $this->_content;
+		return $this->content;
 	}
 
 
 	public function setContent($content) {
-		$this->_content = $content;
+		$this->content = $content;
 		return $this;
 	}
 
@@ -340,32 +667,22 @@ class Request{
 
 
 
-
-
-	public function getUsername() {
-		return $this->_username;
+	public function getQueryString() {
+		return merge_string($this->querys);
 	}
-
-
-	public function setUsername($username) {
-		return $this->setHeader('Authorization', 'Basic ' . base64_encode($username .':' . $this->getPassword()));
-	}
-
-	public function getPassword() {
-		return $this->_password;
-	}
-
-	public function setPassword($password) {
-		return $this->setHeader('Authorization', 'Basic ' . base64_encode($this->getUsername() .':' . $password));
-	}
-
-
-
 
 
 	public function getPath() {
 		return explode('?', $this->getURI(), 2)[0];
 	}
+
+	public function getURL() {
+		return $this->scheme . '://' . $this->getHeader('Host') . $this->URI;
+	}
+
+
+
+
 
 	public function newToken() {
 		$token = uniqid();
@@ -374,63 +691,68 @@ class Request{
 		return $token;
 	}
 	public function hasNewToken() {
-		return $this->_newToken;
+		return $this->newToken;
 	}
 
+
+
 	public function getToken($isKey = false) {
-		if ($this->_token === NULL) {
+		if ($this->token === NULL) {
 			($token = $this->getHeader(self::TOKEN_HEADER)) || ($token = $this->getCookie(self::TOKEN_COOKIE));
 			try {
-				$this->setToken($this->_token);
+				$this->setToken($this->token);
 			} catch (Exception $e) {
 				$this->setToken($this->newToken(), true);
 			}
 		}
-		return $isKey ? $this->_token : substr($this->_token, 0, 16);
+		return $isKey ? $this->token : substr($this->token, 0, 16);
 	}
 
 	public function setToken($token, $newToken = false) {
 		if ($token === NULL || $token === false) {
-			$this->_token = NULL;
+			$this->token = NULL;
 		} else {
 			if (!is_string($token) || strlen($token) != 32 || Code::key(__CLASS__ . self::TOKEN_HEADER . substr($token, 0, 16), 16) !== substr($token, 16)) {
 				throw new Exception('Access token is invalid');
 			}
-			$this->_token = $token;
+			$this->token = $token;
 		}
-		$this->_newToken = $newToken;
+		$this->newToken = $newToken;
 		return true;
 	}
 
 
 
-	public static function getAjax() {
-		if ($this->_ajax === NULL) {
-			if ($header = self::getHeader(self::AJAX_HEADER)) {
-				$this->_ajax = $header;
-			} elseif ($param = self::getParam(self::AJAX_PARAM, '')) {
-				$this->_ajax = $param;
-			} elseif (in_array($extension = strtolower(pathinfo(self::getPath(), PATHINFO_EXTENSION)), ['json', 'xml'])) {
-				$this->_ajax = $extension;
-			} elseif (($accept = self::getHeader('ACCEPT')) && ($mimeType = explode(',', $accept, 2)[0]) && in_array($extension = strtolower(trim(explode('/', $mimeType, 2)[0])), ['json', 'xml'])) {
-				$this->_ajax = $extension;
-			} elseif (strtolower(self::getHeader('X_REQUESTED_WITH')) === 'xmlhttprequest') {
-				$this->_ajax = 'json';
+
+
+
+	public function getAjax() {
+		if ($this->ajax === NULL) {
+			if ($header = $this->getHeader(self::AJAX_HEADER)) {
+				$this->ajax = $header;
+			} elseif ($param = $this->getParam(self::AJAX_PARAM, '')) {
+				$this->ajax = $param;
+			} elseif (in_array($extension = strtolower(pathinfo($this->getPath(), PATHINFO_EXTENSION)), ['json', 'xml'])) {
+				$this->ajax = $extension;
+			} elseif (($accepts = $this->getAccepts()) && in_array($extension = trim(explode('/', reset($accepts), 2)[0]), ['json', 'xml'])) {
+				$this->ajax = $extension;
+			} elseif (strtolower($this->getHeader('X-Requested-With')) === 'xmlhttprequest') {
+				$this->ajax = 'json';
 			} else {
-				$this->_ajax = '';
+				$this->ajax = '';
 			}
 		}
-		return $this->_ajax;
+		return $this->ajax;
 	}
 
-	public static function setAjax($ajax) {
-		$this->_ajax = $ajax === NULL ? NULL : (string) $ajax;
+	public function setAjax($ajax) {
+		$this->ajax = $ajax === NULL ? NULL : (string) $ajax;
 		return true;
 	}
 
 
-	public static function isPjax() {
-		return self::getHeader(PJAX_HEADER);
+	public function isPjax() {
+		return $this->getHeader(self::PJAX_HEADER);
 	}
 
 
@@ -451,28 +773,74 @@ class Request{
 	}
 
 
-
-	/*public function flush() {
-		$this->setScheme('http');
-		$this->setVersion(1.1);
-		$this->setMethod('GET');
-		$this->setURI('/');
-		$this->setHeaders(['Host' => $this->_defaultHost]);
-		$this->setPosts([]);
-		$this->setParams([]);
-		$this->setFiles([]);
-		$this->setContent('php://input');
-		$this->setIP('127.0.0.1');
-		$this->setToken(NULL);
-		$this->setAjax(NULL);
+	public function getAccepts() {
+		return $this->parseAccept('Access', '/([a-z]+|*)\/([0-9a-z._+-]+|*)^$/', 'strtolower');
 	}
 
 
-	//public function getPath() {
-		//return explode('?', self::getURI(), 2)[0];
-	//}
+	public function getAcceptLanguages() {
+		$this->parseAccept('Access-Language', '/^([a-z]{2})(?:[_-]([a-z]{3-4}))?(?:[_-]([a-z]{2}))?$/', function($arg1, $arg2, $arg3, $arg4) {
+			$array[] = strtolower($arg2);
+			if ($arg3) {
+				$array[] = ucwords($arg3);
+			}
+			if ($arg4) {
+				$array[] = strtoupper($arg4);
+			}
+			return implode('-', $array);
+		});
+	}
+
+	protected function parseAccept($name, $pattern, callback $callback = NULL) {
+		$arrays = [];
+		foreach (explode(',', $this->getHeader($name)) as $value) {
+			if (!$value) {
+				continue;
+			}
+			$value = explode(';', $value);
+			if (!preg_match($pattern, $value[0], $matches)) {
+				continue;
+			}
+			if (empty($value[1])) {
+				$q = 1;
+			} else {
+				$value[1] = explode('q=', $value[1], 2) + [1 => 1];
+				$q = (float) $value[1][1];
+			}
+
+			$accept = $callback ? call_user_func_array($callback, $matches) : $matches[0];
+			if ($accept) {
+				$arrays[$q][] = $accept;
+			}
+		}
+		krsort($arrays);
+		$accepts = [];
+		foreach ($arrays as $value) {
+			$accepts = array_merge($accepts, $value);
+		}
+		return $accepts;
+	}
+
+
+	public function flush() {
+		$this->addr = false;
+		$this->port = 0;
+		$this->IP = '127.0.0.1';
+		$this->scheme = 'http';
+		$this->version = 1.1;
+		$this->method = 'GET';
+		$this->URI = '/';
+		$this->querys = [];
+		$this->headers = [];
+		$this->cookies = [];
+		$this->username = false;
+		$this->password = false;
+		$this->posts = [];
+		$this->files = [];
+		$this->content = 'php://input';
+		$this->newToken = false;
+		$this->token = NULL;
+		$this->ajax = NULL;
+		return $this;
+	}
 }
-
-
-
-
