@@ -8,17 +8,17 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-07 05:34:04
-/*	Updated: UTC 2015-02-24 12:39:05
+/*	Updated: UTC 2015-04-03 06:35:38
 /*
 /* ************************************************************************** */
-namespace Loli;
+namespace Loli\HTML;
 class Response{
 
-	private $_status = 200;
+	protected $status = 200;
 
-	private $_headers = [], $_caches = [], $_cookies = [];
+	protected $headers = [], $caches = [], $cookies = [];
 
-	private $_content;
+	protected $content;
 
 	protected $request;
 
@@ -40,20 +40,24 @@ class Response{
 	}
 
 	public function getStatus() {
-		return $this->_status;
+		return $this->status;
 	}
 
 	public function setStatus($status) {
-		$this->_status = $status ? (int) $status : 200;
+		$this->status = $status ? (int) $status : 200;
 		return $this;
 	}
 
     public function getCookies() {
-    	return $this->_cookies;
+    	return $this->cookies;
+	}
+
+	public function getCookie($name) {
+		return isset($this->cookies[$name]) ? $this->cookies[$name] : false;
 	}
 
 	public function setCookies(array $cookies) {
-		$this->_cookies = [];
+		$this->cookies = [];
 		foreach ($cookies as $name => $cookie) {
 			$cookie += ['value' => NULL, 'ttl' => 0, 'httponly' => NULL, $secure => NULL, 'path' => NULL, 'domain' => NULL];
 			$this->setCookie($name, $cookie['value'], $cookie['ttl'], $cookie['httponly'], $cookie['secure'], $cookie['path'], $cookie['domain']);
@@ -61,25 +65,21 @@ class Response{
 		return $this;
 	}
 
-	public function getCookie($name, $defaultValue = NULL) {
-		return isset($this->_cookies[$name]) ? $this->_cookies[$name] : $defaultValue;
+	public function setCookie($name, $value, $ttl = 0,  $httponly = NULL, $secure = NULL, $path = NULL, $domain = NULL) {
+		$this->cookies[$name] = ['value' => is_array($value) || is_object($value) ? parse_string($value) : $value, 'ttl' => $ttl, 'httponly' => $httponly, 'secure' => $secure, 'path' => $path, 'domain' => $domain];
+		return $this;
 	}
 
 	public function addCookie($name, $value, $ttl = 0,  $httponly = NULL, $secure = NULL, $path = NULL, $domain = NULL) {
-		if (empty($this->_cookies[$name])) {
+		if (empty($this->cookies[$name])) {
 			return call_user_func_array([$this, 'setCookie'], func_get_args());
 		}
 		return $this;
 	}
 
-	public function setCookie($name, $value, $ttl = 0,  $httponly = NULL, $secure = NULL, $path = NULL, $domain = NULL) {
-		$this->_cookies[$name] = ['value' => is_array($value) || is_object($value) ? parse_string($value) : $value, 'ttl' => $ttl, 'httponly' => $httponly, 'secure' => $secure, 'path' => $path, 'domain' => $domain];
-		return $this;
-	}
-
 
 	protected function sendCookies() {
-		foreach ($this->_cookies as $name => $cookie) {
+		foreach ($this->cookies as $name => $cookie) {
 			$this->_sendCookie($name, $cookie['value'], $cookie['ttl'], $cookie['httponly'], $cookie['secure'], $cookie['path'], $cookie['domain']);
 		}
 		return $this;
@@ -90,16 +90,16 @@ class Response{
 		$secure = $secure === NULL ? $this->cookieSecure : $secure;
 		$path = $path === NULL ? $this->cookiePath : $path;
 		$domain = $domain === NULL ? $this->cookieDomain : $domain;
-		if (is_array($value)) {
+		if (is_array($value) || is_object($value)) {
 			foreach ($value as $key => $_value) {
 				$this->_sendCookie($name . '['. rawurlencode($key) .']', $_value, $ttl,  $httponly, $secure, $path, $domain);
 			}
 		} else {
-			if ($value === NULL) {
+			if ($value === NULL || $ttl < -1) {
 				$value = 'deleted';
 				$ttl = 1;
 			} else {
-				$ttl = $ttl ? time() + $ttl : $ttl;
+				$ttl = $ttl ? time() + ($ttl == -1 ? 86400 * 365 * 20 : $ttl) : $ttl;
 			}
 			setcookie($name, $value, $ttl, $path, $domain, $secure, $httponly);
 		}
@@ -108,44 +108,45 @@ class Response{
 
 
 	public function getCaches() {
-		return $this->_caches;
+		return $this->caches;
 	}
+
+	public function getCache($name) {
+		return isset($this->caches[$name]) ? $this->caches[$name] : false;
+	}
+
 	public function setCaches(array $caches) {
-		$this->_caches = [];
+		$this->caches = [];
 		foreach ($caches as $name => $value) {
 			if ($value === NULL) {
 				continue;
 			}
-			$this->_caches[$name] = (string) $value;
+			$this->caches[$name] = (string) $value;
 		}
 		return $this;
 	}
 
-	public function getCache($name, $defaultValue = NULL) {
-		return isset($this->_caches[$name]) ? $this->_caches[$name] : NULL;
-	}
-
 	public function addCache($name, $value) {
-		if ($value === NULL || isset($this->_caches[$name])) {
+		if ($value === NULL || isset($this->caches[$name])) {
 			return $this;
 		}
-		$this->_caches[$name] = (string) $value;
+		$this->caches[$name] = (string) $value;
 		return $this;
 	}
 
 
 	public function setCache($name, $value) {
 		if ($value === NULL) {
-			unset($this->_caches[$name]);
+			unset($this->caches[$name]);
 		} else {
-			$this->_caches[$name] = (string) $value;
+			$this->caches[$name] = (string) $value;
 		}
 		return $this;
 	}
 
 	protected function sendCaches() {
 		$values = [];
-		foreach ($this->_caches as $name => $value) {
+		foreach ($this->caches as $name => $value) {
 			if (substr($name, 0, 3) == 'no-') {
 				// no-cache no-store
 				$values[] = $value ? $name . '=' . $value : $name;
@@ -165,10 +166,10 @@ class Response{
 	}
 
 
-	public function sendToken() {
+	protected function sendToken() {
 		$request = $this->request;
 		if ($request->isNewToken()) {
-			$this->setCookie($request::TOKEN_COOKIE, $request->getToken(true), 86400 * 365 * 10);
+			$this->setCookie($request::TOKEN_COOKIE, $request->getToken(true), -1);
 			$this->setHeader($request::TOKEN_HEADER, $request->getToken(true));
 		}
 		return $this;
@@ -176,40 +177,40 @@ class Response{
 
 
 	public function getHeaders() {
-		return $this->_headers;
+		return $this->headers;
 	}
 
 	public function setHeaders(array $headers) {
-		$this->_headers = [];
+		$this->headers = [];
 		foreach ($headers as $name => $values) {
 			if ($values === NULL) {
 				continue;
 			}
 			foreach ((array)$values as $value) {
-				$this->_headers[$name][] = (string) $value;
+				$this->headers[$name][] = (string) $value;
 			}
 		}
 		return $this;
 	}
 
 	public function getHeader($name) {
-		return isset($this->_headers[$name]) ? $this->_headers[$name] : [];
+		return isset($this->headers[$name]) ? $this->headers[$name] : [];
 	}
 
 	public function addHeader($name, $values, $exists = true) {
-		if ($exists || empty($this->_headers[$name])) {
+		if ($exists || empty($this->headers[$name])) {
 			foreach ((array)$values as $value) {
-				$this->_headers[$name][] = (string) $value;
+				$this->headers[$name][] = (string) $value;
 			}
 		}
 		return $this;
 	}
 
 	public function setHeader($name, $values) {
-		unset($this->_headers[$name]);
+		unset($this->headers[$name]);
 		if ($values !== NULL) {
 			foreach ((array)$values as $value) {
-				$this->_headers[$name][] = (string) $value;
+				$this->headers[$name][] = (string) $value;
 			}
 		}
 		return $this;
@@ -221,7 +222,10 @@ class Response{
 			return $this;
 		}
 		$this->addHeader('Content-Type', 'text/html', false);
-		http_response_code($this->_status);
+
+
+		http_response_code($this->status);
+
 		$this->sendToken();
 		$this->sendCaches();
 		foreach ($this->getHeaders() as $name => $values) {
@@ -261,37 +265,39 @@ class Response{
 
 
 
-	public function getContent($content) {
-		return $this->_content;
+	public function getContent() {
+		return $this->content;
 	}
 
+	public function setContent(callback $content = NULL) {
+		$this->content = $content;
+		return $this;
+	}
 
-	public function addContent($content) {
-		if ($this->_content === NULL) {
-			$this->_content = $content;
+	public function addContent(callback $content) {
+		if ($this->content === NULL) {
+			$this->content = $content;
 		}
 		return $this;
 	}
 
-	public function setContent($content) {
-		$this->_content = $content;
-		return $this;
-	}
+	protected function sendContent() {
+		// < 200 204 205 304
+		if ($this->status < 200 || in_array($this->status, [204, 205, 304])) {
+			return $this;
+		}
+		// OPTIONS 方法
+		if ($this->request->getMethod() == 'OPTIONS') {
+			return $this;
+		}
 
-	public function sendContent() {
-		// 204 205 304 和 HEAD 不发送内容
-		if (in_array($this->_status, [204, 205, 304]) || $this->request->getMethod()  == 'OPTIONS' ||  ($this->request->getMethod() == 'HEAD' && $this->getHeader('Content-Length') !== NULL)) {
+		// HEAD 方法
+		if ($this->request->getMethod() == 'HEAD' && !$this->getHeader('Content-Length')) {
 			return $this;
 		}
-		// 小于200 的发送 空行
-		if ($this->_status < 200) {
-			return $this;
-		}
-		if (is_array($this->_content) || (is_object($this->_content) && !method_exists($this->_content, '__toString'))) {
-			echo call_user_func($this->_content);
-		} else {
-			echo $this->_content;
-		}
+
+		echo call_user_func($this->content);
+
 		return $this;
 	}
 
@@ -302,8 +308,8 @@ class Response{
 
 	// 缓存状态码  304  206 200 412
 	public function getCacheStatus() {
-		if ($this->_status < 200 || $this->_status >= 300) {
-			return $this->_status;
+		if ($this->status < 200 || $this->status >= 300) {
+			return $this->status;
 		}
 
 		$etag = $this->getHeader('Etag', '');
@@ -349,53 +355,16 @@ class Response{
 	}
 
 
-
-	public function setAjax($data) {
-		$this->setHeader('X-Ajax', 'true');
-		$type = strtolower($this->request->isAjax());
-
-		if ($type == 'query') {
-			$data = merge_string($data);
-		} elseif($type == 'xml') {
-			$function = function ($arrays) use(&$function) {
-				$ret = $attr = '';
-				 foreach ($arrays as $tag => $value) {
-				 	if (!preg_match('/^[a-z][0-9a-z_]*$/i', $tag)) {
-				 		$attr = ' k="' . htmlspecialchars($tag, ENT_QUOTES) . '"';
-						$tag  = 'item';
-				 	}
-			        $ret .=  '<' . $tag . $attr.'>' .((is_array($value) || is_object($value)) ? $function($value) :  htmlspecialchars($value, ENT_QUOTES)) . '</' . $tag . '>' ."\n";
-			    }
-			    return $ret;
-			};
-			$this->setHeader('Content-Type', 'application/xml');
-			$data = '<?xml version="1.0" encoding="UTF-8"?><root>'. $function($data) .'</root>';
-		} elseif ($this->ajaxJS && !in_array($type, ['true', 'false', 'null', 'json']) && !intval(substr($type, 0, 1)) && ($function = preg_replace('/[^0-9a-z_.-]/i', '', $this->_ajax))) {
-				$this->setHeader('Content-Type', 'application/x-javascript');
-				$data = $function . '(' . json_encode($data) . ')';
-		} else {
-			if ($this->request->getMethod() != 'POST'|| strtolower($this->request->getHeader('X-Requested-with')) == 'xmlhttprequest') {
-				$this->setHeader('Content-Type', 'application/json');
-			}
-			$data = json_encode($data);
-		}
-		return $this->setContent($data);
-	}
-
-
-
-
-
 	public function send() {
 		$this->sendHeaders();
 		$this->sendContent();
 		return $this;
 	}
 
-	public function clear() {
-		$this->_headers = $this->_caches = $this->_cookies = [];
-		$this->_status = 200;
-		$this->_content = NULL;
+	public function flush() {
+		$this->headers = $this->caches = $this->cookies = [];
+		$this->status = 200;
+		$this->content = NULL;
 		return $this;
 	}
 }

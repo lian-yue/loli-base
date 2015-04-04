@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-18 07:04:24
-/*	Updated: UTC 2015-02-26 04:45:00
+/*	Updated: UTC 2015-04-04 14:15:51
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -153,7 +153,7 @@ class Page{
 				$arr[] = ['name' => $this->lang($this->prev), 'class' => ['prev'], 'url' => strtr($url, [$value => max($offset - $limit, 0)])];
 			}
 
-			for ($i = 1; $i <= $maximum; $i++) {
+			for ($i = 1; $i <= $maximum; ++$i) {
 				if ($maximum == 1) {
 				} elseif ($i == $current) {
 					$arr[] = ['name' => $i, 'class' => ['current', 'page-' . $i], 'url' => strtr($url, [$value => max(($offset % $limit) + (($i - 2) * $limit), 0)])];

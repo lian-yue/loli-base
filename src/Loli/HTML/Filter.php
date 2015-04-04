@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-04-02 08:58:42
+/*	Updated: UTC 2015-04-03 02:58:45
 /*
 /* ************************************************************************** */
 namespace Loli\HTML;
@@ -107,6 +107,12 @@ class Filter{
 		'h6',
 		'p',
 		'dt',
+	];
+
+	// 不允许嵌套的标签   false = 就近闭合 不允许嵌套  true 递归闭合
+	protected $notContentTags = [
+		'style' => false,
+		'script' => false,
 	];
 
 
@@ -309,6 +315,7 @@ class Filter{
 			return $this->text(strip_tags($html));
 		}
 
+
 		// 没有标签
 		if (!$html || !strstr($html, '<') || !($splits = preg_split("/\<(\s*\/\s*)?([a-z0-9]+)((?:\s+(?:\s*(?:[0-9a-z_:-]+)\s*(?:\=\s*(?:\"[^\"]*\"|'[^']*'|[^'\"<> \t\n\r\x0B]*))?)*|))((?(1)|\s*\/?\s*))\>/is", $html, -1, PREG_SPLIT_DELIM_CAPTURE))) {
 			$this->element && $this->push($this->element, [], true);
@@ -342,6 +349,9 @@ class Filter{
 
 					// 无效标签
 					if (!isset($tags[$tag])) {
+						if (isset($this->notContentTags[$tag])) {
+							$type = 6;
+						}
 						break;
 					}
 
@@ -467,6 +477,34 @@ class Filter{
 						$continue += 4;
 
 					}
+				case 6:
+					$layers = [1];
+
+					// 过滤不保留的字段
+					while (isset($splits[$key + $continue + 1])) {
+
+						// 开始斜杠  标签  属性 结束斜杆
+						$continue += 4;
+
+						// 是相同的标签
+						if (strtolower($splits[$key + $continue - 2]) === $tag) {
+							if ($splits[$key + $continue - 3]) {
+								// 结束标签
+								array_pop($layers);
+								if (!$layers) {
+									$type = 3;
+									break;
+								}
+							} elseif ($this->notContentTags[$tag]) {
+								// 开始标签 and 允许嵌套
+								$layers[] = 1;
+							}
+						}
+
+						//  内容
+						++$continue;
+
+					}
 			}
 		}
 
@@ -476,6 +514,7 @@ class Filter{
 		}
 		return $this->html;
 	}
+
 
 
 	/**

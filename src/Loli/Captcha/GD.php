@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-25 10:10:38
+/*	Updated: UTC 2015-04-04 14:15:44
 /*
 /* ************************************************************************** */
 namespace Loli\Captcha;
@@ -78,7 +78,7 @@ class GD extends Base{
 
 		// for 循环写入字体
 		$len = mb_strlen($this->code);
-		for ($i = 0; $i < $len; $i++) {
+		for ($i = 0; $i < $len; ++$i) {
 			$size = $this->width / $len * $this->rand($this->size[0], $this->size[1]);
 			$angle = $this->angle ? $this->rand($this->angle[0], $this->angle[1]) : 0;
 			$x = isset($x) ? $x + $size * $this->rand($this->spacing[0], $this->spacing[1]) : $this->rand(0, $this->width /(($this->spacing[0]+ $this->spacing[1] + $this->size[0] + $this->size[1])/1.4));

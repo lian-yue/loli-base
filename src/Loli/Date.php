@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-31 12:22:35
+/*	Updated: UTC 2015-04-03 06:49:58
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -80,8 +80,6 @@ class Date{
 		'+14:00',
 	];
 
-	public static $name = 'timezone';
-
 	public static function init() {
 		if (!empty($_SERVER['LOLI']['DATE'])) {
 			foreach ($_SERVER['LOLI']['DATE'] as $k => $v) {
@@ -91,12 +89,8 @@ class Date{
 			}
 		}
 
-		self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
+//		self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
 
-		if (self::$name) {
-			empty($_COOKIE[self::$name]) || is_array($_COOKIE[self::$name]) || self::setTimezone($_COOKIE[self::$name]);
-			empty($_REQUEST[self::$name]) || is_array($_REQUEST[self::$name]) || self::setTimezone($_REQUEST[self::$name]);
-		}
 	}
 
 

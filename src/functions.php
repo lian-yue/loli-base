@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-27 07:54:57
+/*	Updated: UTC 2015-04-04 14:15:32
 /*
 /* ************************************************************************** */
 
@@ -300,7 +300,7 @@ function mb_rand($length, $string = false) {
 	$string = $string ? $string : '0123456789abcdefghijklmnopqrstuvwxyz';
 	$strlen = mb_strlen($string) - 1;
 	$r = '';
-	for ($i = 0; $i < $length; $i++) {
+	for ($i = 0; $i < $length; ++$i) {
 		$r .= mb_substr($string, mt_rand(0, $strlen), 1);
 	}
 	return $r;
