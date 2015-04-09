@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-17 08:46:33
-/*	Updated: UTC 2015-03-22 08:19:53
+/*	Updated: UTC 2015-04-07 14:31:59
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
@@ -57,16 +57,16 @@ class Memcache extends Base{
 	}
 
 
-	public function add($data, $key, $group = 'default', $ttl = 0) {
+	public function add($value, $key, $group = 'default', $ttl = 0) {
 		++$this->count['add'];
-		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1 || (!$ttl && $this->get($key, $group) !== false)) {
+		if ($value === NULL || $value === false || ($ttl = intval($ttl)) < -1 || (!$ttl && $this->get($key, $group) !== false)) {
 			return false;
 		}
-		if (is_object($data)) {
-			$data = clone $data;
+		if (is_object($value)) {
+			$value = clone $value;
 		}
-		if (!$ttl || ($this->_d ? $this->_mem($group)->add($k = $this->_key($key, $group), $data, $_ttl = $ttl == -1 ? 0 : $ttl) : $this->_mem($group)->add($k = $this->_key($key, $group), $data, MEMCACHE_COMPRESSED, $_ttl = $ttl == -1 ? 0 : $ttl))) {
-			$this->_data[$group][$key] = $data;
+		if (!$ttl || ($this->_d ? $this->_mem($group)->add($k = $this->_key($key, $group), $value, $_ttl = $ttl == -1 ? 0 : $ttl) : $this->_mem($group)->add($k = $this->_key($key, $group), $value, MEMCACHE_COMPRESSED, $_ttl = $ttl == -1 ? 0 : $ttl))) {
+			$this->_data[$group][$key] = $value;
 			if ($ttl) {
 				$this->_ttl[$group][$key] = $ttl = $ttl == -1 ? -1 : time() + $ttl;
 				$this->_d ? $this->_mem($group)->set('ttl.'.$k,  $ttl, $_ttl) : $this->_mem($group)->set('ttl.'.$k, $ttl, MEMCACHE_COMPRESSED, $_ttl);
@@ -79,16 +79,16 @@ class Memcache extends Base{
 	}
 
 
-	public function set($data, $key, $group = 'default', $ttl = 0) {
+	public function set($value, $key, $group = 'default', $ttl = 0) {
 		++$this->count['set'];
-		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1) {
+		if ($value === NULL || $value === false || ($ttl = intval($ttl)) < -1) {
 			return false;
 		}
-		if (is_object($data)) {
-			$data = clone $data;
+		if (is_object($value)) {
+			$value = clone $value;
 		}
-		if (!$ttl || ($this->_d ? $this->_mem($group)->set($k = $this->_key($key, $group), $data, $_ttl = $ttl == -1 ? 0 : $ttl) : $this->_mem($group)->set($k = $this->_key($key, $group), $data, MEMCACHE_COMPRESSED, $_ttl = $ttl == -1 ? 0 : $ttl))) {
-			$this->_data[$group][$key] = $data;
+		if (!$ttl || ($this->_d ? $this->_mem($group)->set($k = $this->_key($key, $group), $value, $_ttl = $ttl == -1 ? 0 : $ttl) : $this->_mem($group)->set($k = $this->_key($key, $group), $value, MEMCACHE_COMPRESSED, $_ttl = $ttl == -1 ? 0 : $ttl))) {
+			$this->_data[$group][$key] = $value;
 			if ($ttl) {
 				$this->_ttl[$group][$key] = $ttl = $ttl == -1 ? -1 : time() + $ttl;
 				$this->_d ? $this->_mem($group)->set('ttl.'.$k,  $ttl, $_ttl) : $this->_mem($group)->set('ttl.'.$k, $ttl, MEMCACHE_COMPRESSED, $_ttl);
@@ -139,11 +139,11 @@ class Memcache extends Base{
 		++$this->count['delete'];
 		if ($ttl > 0) {
 			$mem = $this->_mem($group);
-			if (($data = $mem->get($k = $this->_key($key, $group))) === false) {
+			if (($value = $mem->get($k = $this->_key($key, $group))) === false) {
 				return isset($this->_data[$group][$key]) && $this->_data[$group][$key] !== false;
 			}
 			if (($e = $this->_mem($group)->get('ttl.'. $this->_key($key, $group))) == -1 || $e === false || $e > (time() + $ttl)) {
-				if (!($this->_d ? $mem->set($k, $data, $ttl) : $mem->set($k, $data, MEMCACHE_COMPRESSED, $ttl))){
+				if (!($this->_d ? $mem->set($k, $value, $ttl) : $mem->set($k, $value, MEMCACHE_COMPRESSED, $ttl))){
 					return false;
 				}
 				$this->_d ? $mem->set('ttl.'. $k,  $ttl, time() + $ttl) : $mem->set('ttl.'. $k, $ttl, MEMCACHE_COMPRESSED, time() + $ttl);

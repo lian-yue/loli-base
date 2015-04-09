@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-04-03 06:49:58
+/*	Updated: UTC 2015-04-07 14:10:32
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -17,10 +17,10 @@ use  DateTime, DateTimeZone;
 class Date{
 
 	// 时区
-	public static $timezone = '+00:00';
+	protected static $timezone = '+00:00';
 
 	// 全部时区
-	public static $allTimezone = [
+	protected static $allTimezone = [
 		'-12:00',
 		'-11:30',
 		'-11:00',
@@ -80,58 +80,58 @@ class Date{
 		'+14:00',
 	];
 
+	/**
+	 *  init
+	 */
 	public static function init() {
 		if (!empty($_SERVER['LOLI']['DATE'])) {
-			foreach ($_SERVER['LOLI']['DATE'] as $k => $v) {
-				if (in_array($k, ['timezone', 'allTimezone', 'name'])) {
-					self::$$k = $v;
+			foreach ($_SERVER['LOLI']['DATE'] as $key => $value) {
+				if ($value !== NULL && isset(self::$$key)) {
+					self::$$key = $value;
 				}
 			}
 		}
-
-//		self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
-
+		//self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
 	}
 
 
 	/**
-	*	本地化语言包
-	*
-	*	1 参数原文
-	*	2 参数 未翻译是否输出原文默认true
-	*
-	*	返回值 译文
-	**/
-	public static function lang($d, $original = true) {
-		// 翻译文件
-		return Lang::get($d, ['date'], $original);
+	 * translate
+	 * @param  string  $text     需要翻译的语言
+	 * @param  boolean $original 是否输出原始语言
+	 * @return string
+	 */
+	public static function translate($text, $original = true) {
+		return Lang::translate($text, ['dates'], $original);
 	}
 
 
+
 	/**
-	*	全部时区
-	*
-	*
-	*
-	*
-	**/
+	 * allTimezone 全部时区
+	 * @return array
+	 */
 	public static function allTimezone() {
-		$r = [];
-		foreach (self::$allTimezone as $v) {
-			$r[$v] = self::lang($v);
+		$allTimezone = [];
+		foreach (self::$allTimezone as $timezone) {
+			$allTimezone[$timezone] = self::translate($timezone);
 		}
-		return $r;
+		return $allTimezone;
 	}
 
 	/**
-	*	写入时区
-	*
-	*	1 参数 时区
-	*	2 参数 是否写入cookie
-	*
-	*	返回值 false true
-	**/
-	public static function setTimezone($timezone, $cookie = false) {
+	 * getTimezone 获得当前时区
+	 * @return string
+	 */
+	public function getTimezone() {
+		return self::$timezone;
+	}
+
+	/**
+	 * setTimezone 设置时区
+	 * @param string $timezone 时区
+	 */
+	public static function setTimezone($timezone) {
 		if (is_numeric($timezone)) {
 			$arr = explode('.', $timezone);
 			$arr[0] = ($arr[0] < 0 ? '-' : '+'). str_pad(intval($arr[0]), 2, '0',STR_PAD_LEFT);
@@ -148,20 +148,18 @@ class Date{
 			return false;
 		}
 		self::$timezone = $timezone;
-		$cookie && self::$name && Cookie::set(self::$name, $timezone, 86400 * 365);
 		return true;
 	}
 
 	/**
-	*	格式化时间
-	*
-	*	1 参数 时间戳
-	*	2 参数 格式
-	*	3 参数 是否使用语言
-	*	4 参数 自定义时区
-	*
-	**/
-	public static function format($format, $time = false, $lang = true, $timezone = false) {
+	 * format 格式化时间
+	 * @param  string          $format    http://php.net/manual/function.date.php
+	 * @param  boolean|integer $time      time
+	 * @param  boolean         $translate 是否翻译
+	 * @param  boolean|string  $timezone  自定义时区
+	 * @return string
+	 */
+	public static function format($format, $time = 0, $translate = true, $timezone = false) {
 		static $date;
 		// 时区
 		if ($timezone && !in_array($timezone, self::$allTimezone)) {
@@ -192,12 +190,12 @@ class Date{
 		$date->setTimestamp($time);
 
 		// 无视语言包
-		if (!$lang || in_array($format, ['Z', 'c', 'r'])) {
+		if (!$translate || in_array($format, ['Z', 'c', 'r'])) {
 			return $date->format($format);
 		}
 
 		// 本地化格式
-		if ($tmep = self::lang('format_' . $format, false)) {
+		if ($tmep = self::translate('format_' . $format, false)) {
 			$format = $tmep;
 		}
 
@@ -207,7 +205,7 @@ class Date{
 		foreach($replace as $v) {
 			if (strpos($format, $v) !== false) {
 				$d = $date->format($v);
-				if ($tmep = self::lang($v == 'e'? $d : $v . '_' . $d, false)) {
+				if ($tmep = self::translate($v == 'e'? $d : $v . '_' . $d, false)) {
 					$d = $tmep;
 				}
 				$r = preg_replace('/([^\\\])'. $v .'/', '\\1' . preg_replace('/([a-z])/i', '\\\\\1', $d), $r);
@@ -217,86 +215,79 @@ class Date{
 		return $date->format(substr($r, 1));
 	}
 
-
 	/**
-	*	2个时间的差距
-	*
-	*	1 参数 时间戳
-	*	2 参数 格式
-	*	3 参数 是否显示差距时间
-	*
-	**/
+	 * human 返回2个时间的相差
+	 * @param  integer         $from 时间
+	 * @param  boolean|integer $to   当前时间
+	 * @return string
+	 */
 	public static function human($from, $to = false) {
 		$to = $to === false ? time() : $to;
 		$diff = max($to, $from) - min($to, $from);
 
 		// 刚刚
 		if ($diff == 0) {
-			return self::lang('Now');
+			return self::translate('Now');
 		}
 
 		if ($diff < 60) {
 			// 秒
-			$since = self::lang([$diff == 1 ? '$1 second'  : '$1 seconds', $diff]);
+			$since = self::translate([$diff == 1 ? '$1 second'  : '$1 seconds', $diff]);
 		} elseif ($diff <= 3600 && ($min = round($diff / 60)) < 60) {
 			// 钟
-			$since = self::lang([$min == 1 ? '$1 min'  : '$1 mins', $min]);
+			$since = self::translate([$min == 1 ? '$1 min'  : '$1 mins', $min]);
 		} elseif (($diff <= 86400) && ($hour = round($diff / 3600)) < 24) {
 			// 时
-			$since = self::lang([$hour == 1 ? '$1 hour'  : '$1 hours', $hour]);
+			$since = self::translate([$hour == 1 ? '$1 hour'  : '$1 hours', $hour]);
 		} elseif ($diff <= 2592000 && ($min = round($diff / 86400)) < 30) {
 			// 天
-			$since = self::lang([$min == 1 ? '$1 day'  : '$1 days', $min]);
+			$since = self::translate([$min == 1 ? '$1 day'  : '$1 days', $min]);
 		} elseif ($diff <= 31536000 && ($min = round($diff / 2592000)) < 12) {
 			// 月
-			$since = self::lang([$min == 1 ? '$1 month'  : '$1 months', $min]);
+			$since = self::translate([$min == 1 ? '$1 month'  : '$1 months', $min]);
 		} else {
 			// 年
 			$year = round($diff / 31536000);
-			$since = self::lang([ $year == 1 ? '$1 year'  : '$1 years', $year]);
+			$since = self::translate([ $year == 1 ? '$1 year'  : '$1 years', $year]);
 		}
-		return self::lang(['$1 ' . ($from > $to ? 'later' : 'ago'), $since]);
+		return self::translate(['$1 ' . ($from > $to ? 'later' : 'ago'), $since]);
 	}
 
 
 	/**
-	*	计算时间的长度
-	*
-	*	1 参数 长度
-	*	2 参数 最高位数
-	*	3 参数 最低多少填补
-	*
-	*	返回值  00:01  这样的
-	**/
+	 * length 返回时间的长度
+	 * @param  integer $time 时间戳
+	 * @param  integer $n    最大组
+	 * @param  integer $i    最小组
+	 * @return string
+	 */
 	public static function length($time, $n = 3, $i = 2) {
+		static $lengths = [60, 60, 24, 30, 12, 0], $splits = [':', ':', ' ', '-', '-', '-'];
 
 		// 转换成数组
-		$a = [60, 60, 24, 30, 12, 0];
 		$ii = $floor = 0;
-		foreach ($a as $k => $v) {
+		foreach ($lengths as $length) {
 			++$ii;
-			$vv = $floor ? floor($time / $floor) : $time;
-			$floor = $floor ? $v * $floor : $v;
-			$arr[] = $v && $ii < $n ? $vv % $v : $vv;
+			$value = $floor ? floor($time / $floor) : $time;
+			$floor = $floor ? $length * $floor : $length;
+			$array[] = $length && $ii < $n ? $value % $length : $value;
 			if ($ii >= $n) {
 				break;
 			}
 		}
 		// 填补
 		for ($ii = 0; $ii < $i; ++$ii) {
-			$arr[$ii] = sprintf("%02d", $arr[$ii]);
+			$array[$ii] = sprintf("%02d", $array[$ii]);
 		}
 
 		// 格式化
-		$a = [':', ':', ' ', '-', '-', '-'];
-		$r = '';
-		foreach (array_reverse($arr, true) as $k => $v) {
-			if ($v || $r) {
-				$r  .= $a[$k] . $v;
+		$result = '';
+		foreach (array_reverse($array, true) as $key => $value) {
+			if ($value || $result) {
+				$result  .= $splits[$key] . $value;
 			}
 		}
-		return ltrim($r ,' :-');
+		return ltrim($result ,' :-');
 	}
 }
-
 Date::init();

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-01-07 05:50:20
-/*	Updated: UTC 2015-03-25 10:10:44
+/*	Updated: UTC 2015-04-07 15:05:50
 /*
 /* ************************************************************************** */
 namespace Loli\Captcha;
@@ -16,77 +16,97 @@ namespace Loli\Captcha;
 abstract class Base {
 
 	// 验证码值
-	public $code = '1234';
+	protected $code = '1234';
 
 	// 图片宽度
-	public $width = 150;
+	protected $width = 150;
 
 	// 图片高度
-	public $height	= 50;
+	protected $height	= 50;
 
 	// 文字颜色
-	public $color = [];
+	protected $color = [];
 
 	// 文字角度
-	public $angle 	= [-20, 20];
+	protected $angle 	= [-20, 20];
 
 	// 文字间隔
-	public $spacing = [0.6, 0.8];
+	protected $spacing = [0.6, 0.8];
 
 	// 文字大小
-	public $size = [0.6, 0.8];
+	protected $size = [0.6, 0.8];
 
 	// 文字字体目录
-	public $font = '';
+	protected $font = '';
 
 	// 线条
-	public $line = true;
+	protected $line = true;
 
 	// 背景颜色
-	public $background	= [];
+	protected $background	= [];
 
 	// 背景目录
-	public $dirBackground = '';
+	protected $dirBackground = '';
 
 	// 背景透明度
-	public $pctBackground = 100;
+	protected $pctBackground = 100;
 
 	// 储存图片
 	protected $im;
-
+	/**
+	 * __construct
+	 * @param boolean $code
+	 */
 	public function __construct($code = false) {
 		if ($code) {
 			$this->code = $code;
 		}
 	}
 
+	/**
+	 * display
+	 * @return boolean
+	 */
 	abstract public function display();
 
 
-	// 字体文件 1参数默认地址
+	/**
+	 * _files
+	 * @param  string $dir
+	 * @param  array  $extensions
+	 * @return array
+	 */
 	private function _files($dir, array $extensions = []) {
 		$extensions = array_map('strtolower', $extensions);
-		$r = [];
+		$files = [];
 		if (is_dir($dir)) {
 			$open = opendir($dir);
 			while ($read = readdir($open)) {
 				if (in_array($read, ['.', '..']) || !is_file($path = $dir .'/'. $read) || ($extensions && (!($extension = strtolower(pathinfo($read, PATHINFO_EXTENSION))) || !in_array($extension, $extensions)))) {
 					continue;
 				}
-				$r[] = $path;
+				$files[] = $path;
 			}
 			closedir($open);
 		}
-		return $r;
+		return $files;
 	}
 
-	// 随机小数
-	protected function rand($min = 0, $max = 1) {
+	/**
+	 * rand float
+	 * @param  float|integer $min
+	 * @param  float|integer $max
+	 * @return float
+	 */
+	protected function rand($min = 1, $max = 1) {
 		return $min + mt_rand() / mt_getrandmax() * ($max - $min);
 	}
 
 
-	// 字体
+	/**
+	 * font    Font file
+	 * @return string
+	 */
 	protected function font() {
 		$fontFile = __DIR__ .'/Fonts/Default.ttf';
 		if ($this->font) {
@@ -100,7 +120,10 @@ abstract class Base {
 	}
 
 
-	// 线条
+	/**
+	 * line   Line file
+	 * @return string|boolean
+	 */
 	protected function line() {
 		if (!$this->line) {
 			return false;
@@ -116,7 +139,10 @@ abstract class Base {
 		return $lineFile;
 	}
 
-	// 背景
+	/**
+	 * background
+	 * @return string|boolean
+	 */
 	protected function background() {
 		if (!$this->dirBackground || !($backgrounds = $this->_files($this->dirBackground, ['jpg', 'jpeg', 'png', 'gif', 'webp']))) {
 			return false;
@@ -127,12 +153,10 @@ abstract class Base {
 
 
 	/**
-	*	rgb 颜色
-	*
-	*	1 参数 rgb
-	*
-	*	返回值 array or false
-	**/
+	 * rgb
+	 * @param  $rgb
+	 * @return array|boolean
+	 */
 	protected function rgb($rgb) {
 		if ($rgb && is_array($rgb)) {
 			foreach (['red', 'green', 'blue'] as $v) {

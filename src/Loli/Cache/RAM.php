@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-17 05:59:42
-/*	Updated: UTC 2015-03-22 08:17:46
+/*	Updated: UTC 2015-04-07 14:30:26
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
@@ -29,21 +29,21 @@ class RAM extends Base {
 		return $this->_data[$group][$key];
 	}
 
-	public function add($data, $key, $group = 'default', $ttl = 0) {
+	public function add($value, $key, $group = 'default', $ttl = 0) {
 		++$this->count['add'];
-		if ($data === NULL || $data === false || $this->get($key, $group) !== false) {
+		if ($value === NULL || $value === false || $this->get($key, $group) !== false) {
 			return false;
 		}
-		$this->_data[$group][$key] = $data;
+		$this->_data[$group][$key] = $value;
 		return true;
 	}
 
-	public function set($data, $key, $group = 'default', $ttl = 0) {
+	public function set($value, $key, $group = 'default', $ttl = 0) {
 		++$this->count['set'];
-		if ($data === NULL || $data === false) {
+		if ($value === NULL || $value === false) {
 			return false;
 		}
-		$this->_data[$group][$key] = $data;
+		$this->_data[$group][$key] = $value;
 		return true;
 	}
 

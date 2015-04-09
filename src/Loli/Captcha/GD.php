@@ -8,10 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-04-04 14:15:44
+/*	Updated: UTC 2015-04-07 15:12:23
 /*
 /* ************************************************************************** */
 namespace Loli\Captcha;
+use Loli\Exception;
 class_exists('Loli\Captcha\Base') || exit;
 
 class GD extends Base{
@@ -32,12 +33,8 @@ class GD extends Base{
 
 
 	/**
-	*	创建背景
-	*
-	*	1 参数 code
-	*
-	*	五返回值
-	**/
+	 * _background
+	 */
 	private function _background() {
 
 		// 创建图片
@@ -63,8 +60,14 @@ class GD extends Base{
 	}
 
 
-
+	/**
+	 * _ttftext
+	 */
 	private function _ttftext() {
+
+		if (!function_exists('imagettftext')) {
+			throw new Exception('Freetype is not supported');
+		}
 
 		// 创建文字颜色
 		if (!$color = $this->rgb($this->color)) {

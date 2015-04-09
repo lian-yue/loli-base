@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-25 13:38:31
-/*	Updated: UTC 2015-02-25 13:38:40
+/*	Updated: UTC 2015-04-07 12:41:47
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -43,7 +43,7 @@ class Filter{
 		return true;
 	}
 
-	public static function run($name, array $params) {
+	public static function run($name, array $params = []) {
 		if (empty(self::$_counts[$name])) {
 			self::$_counts[$name] = 0;
 		}
@@ -65,7 +65,7 @@ class Filter{
 	}
 
 
-	public static function get($name, array $params) {
+	public static function get($name, array $params = []) {
 		if (empty(self::$_counts[$name])) {
 			self::$_counts[$name] = 0;
 		}

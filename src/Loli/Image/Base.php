@@ -8,11 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-02-26 05:14:49
+/*	Updated: UTC 2015-04-09 01:43:29
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
 abstract class Base {
+
 
 	const FLIP_HORIZONTAL = 1;
 
@@ -37,130 +38,142 @@ abstract class Base {
 
 
 
-	// 处理 图片 最大宽度 0 = 不限制
-	public $maxWidth = 4096;
+	/**
+	 * $maxWidth 处理 图片 最大宽度 0 = 不限制
+	 * @var integer
+	 */
+	public $maxWidth = 8192;
 
-	// 处理 图片 最大高度 0 = 不限制
-	public $maxHeight = 4096;
+	/**
+	 * $maxHeight 处理 图片 最大高度 0 = 不限制
+	 * @var integer
+	 */
+	public $maxHeight = 8192;
 
-	// 处理 图片 最小宽度 0 = 不限制
+	/**
+	 * $maxPixels 处理 图片 最大像素 0 = 不限制
+	 * @var integer
+	 */
+	public $maxPixels = 16777216;
+
+
+
+
+	/**
+	 * $minWidth 处理 图片 最小宽度 0 = 不限制
+	 * @var integer
+	 */
 	public $minWidth = 0;
 
-	// 处理 图片 最小高度 0 = 不限制
+	/**
+	 * $minHeight 处理 图片 最小高度 0 = 不限制
+	 * @var integer
+	 */
 	public $minHeight = 0;
 
-	// jpg 处理质量
+	/**
+	 * $quality jpeg 处理质量
+	 * @var integer
+	 */
 	public $quality = 90;
 
-	// 处理图片内存限制
+	/**
+	 * $memory 处理图片内存限制
+	 * @var string
+	 */
 	public $memory = '512M';
 
 	// 文件后缀
 	public $types = [1 => ['jpg', 'jpeg', 'jpe', 'jfif', 'jif'], 2 => ['gif'], 3 => ['png'], 4 => ['webp']];
 
+	// mime类型
 	public $mimes = [1 => 'image/jpeg', 2 => 'image/gif', 3 => 'image/png', 4 => 'image/webp'];
+
 	/**
-	*	init
-	*
-	*	1 图像文件
-	*
-	*	返回值 bool
-	**/
-	public function __construct($im = '', $type = false) {
+	 * __construct
+	 * @param string         $file
+	 * @param boolean|string $type
+	 */
+	public function __construct($file = '', $type = false) {
 		@ini_set('memory_limit', $this->memory);
-		$im && $this->create($im, $type);
+		$file && $this->create($file, $type);
 	}
 
 	/**
-	*	打开图片
-	*
-	*	1 图像文件
-	*
-	*	返回值 bool
-	**/
-	abstract public function create($a, $type = false);
+	 * create
+	 * @param  string  $file
+	 * @param  boolean $type
+	 * @return this
+	 */
+	abstract public function create($file, $type = false);
 
 	/**
-	*	关闭图片
-	*
-	*	无参数
-	*
-	*	返回值 bool
-	**/
+	 * destroy
+	 * @return this
+	 */
 	abstract public function destroy();
 
 	/**
-	*	当前图像宽度
-	*
-	*	无参数
-	*
-	*	返回值 int
-	**/
+	 * width
+	 * @return boolean|integer
+	 */
 	abstract public function width();
 
 	/**
-	*	当前图像高度
-	*
-	*	无参数
-	*
-	*	返回值 int
-	**/
+	 * height
+	 * @return boolean|integer
+	 */
 	abstract public function height();
 
 
 	/**
-	*	返回图片类型
-	*
-	*	无参数
-	*
-	*	返回值 string
-	**/
+	 * type
+	 * @return const
+	 */
 	abstract public function type();
 
 	/**
-	 * [frames 帧数量]
-	 * @return bool or int
+	 * frames 帧数量
+	 * @return boolean|integer
 	 */
 	abstract public function frames();
 
 	/**
-	 * [length 返回一个循环的时间毫秒]
-	 * @return [type] [description]
+	 * length 返回一个循环的时间毫秒
+	 * @return boolean|integer
 	 */
 	abstract public function length();
 
+
 	/**
-	*	旋转图像
-	*
-	*	1 参数 angle
-	*
-	*	返回值 bool
-	**/
+	 * rotate
+	 * @param  integer|float $angle
+	 * @return this
+	 */
 	abstract public function rotate($angle);
 
 	/**
-	*	图像反转
-	*
-	*	1 参数 反转模式 self::FLIP_HORIZONTAL = 水平翻转 self::FLIP_VERTICAL = 垂直翻转图像 self::FLIP_BOTH = 水平和垂直翻转图像
-	*
-	*	返回值bool
-	*/
+	 * flip
+	 * @param  const $mode
+	 * @return this
+	 */
 	abstract public function flip($mode = self::FLIP_HORIZONTAL);
 
 	 /**
-     * 图像添加文字
-     * @param  string  $text   文字
-     * @param  string  $font   字体路径
-     * @param  integer $size   大小
-     * @param  string  $color  颜色
-     * @param  integer $top 上下位置 负数 = 下边开始 10% = 百分比
-     * @param  integer $left 左右位置 负数 = 右边开始 10% = 百分比
-     * @param  integer $angle  倾斜角度
+     * text
+     * @param  string           $text
+     * @param  string           $font
+     * @param  integer          $size
+     * @param  string|array     $color
+     * @param  string|integer   $top 上下位置 负数 = 下边开始 10% = 百分比
+     * @param  string|integer   $left 左右位置 负数 = 右边开始 10% = 百分比
+     * @param  string|integer   $angle  倾斜角度
      */
 	abstract public function text($text, $font, $size = 12, $color = '#000000', $x = 0, $y = 0, $angle = 0, $opacity = 1.0);
 
-  /**
-     * 图像添加图片
+
+	/**
+     * insert 图像添加图片
      * @param  string  $file   图片地址
      * @param  integer $top 上下位置 负数 = 下边开始
      * @param  integer $left 左右位置 负数 = 右边开始
@@ -169,31 +182,37 @@ abstract class Base {
    abstract public function insert($file, $x = 0, $y = 0, $opacity = 1.0);
 
 	/**
-	*	重采样拷贝部分图像并调整大小
-	*
-	*	参数 和 imagecopyresampled 移除1 2 参数 一样
-	*
-	*	无返回 bool
-	*/
-	abstract public function resampled($new_w, $new_h, $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h);
+	 * resampled 重采样拷贝部分图像并调整大小 参数 和 imagecopyresampled 移除1 2 参数 一样
+	 * @param  integer $newWidth
+	 * @param  integer $newHeight
+	 * @param  integer $dstX
+	 * @param  integer $dstY
+	 * @param  integer $srcX
+	 * @param  integer $srcY
+	 * @param  integer $dstWidth
+	 * @param  integer $dstHeight
+	 * @param  integer $srcWidth
+	 * @param  integer $srcHeight
+	 * @return this
+	 */
+	abstract public function resampled($newWidth, $newHeight, $dstX, $dstY, $srcX, $srcY, $dstWidth, $dstHeight, $srcWidth, $srcHeight);
+
+
 
 	/**
-	*	保存图像
-	*
-	*	2 参数 保存途径
-	*	3 参数 保存类型
-	*
-	*	返回值 保存的路径
-	**/
+	 * 保存图像
+	 * @param  string         $save  file
+	 * @param  string|boolean $type
+	 * @return this
+	 */
 	abstract public function save($save, $type = false);
 
+
 	/**
-	*	显示图像
-	*
-	*	1 参数 输出类型
-	*
-	*	返回值 true false
-	**/
+	 * show  输出图像
+	 * @param  string|boolean $type
+	 * @return this
+	 */
 	abstract public function show($type = false);
 
 	/**
@@ -207,10 +226,11 @@ abstract class Base {
 	*
 	*	返回值 文件绝对地址
 	**/
-	public function resize($max_w, $max_h, $crop = false, $enlarge = false, $fill = false) {
+
+	public function resize($maxWidth, $minHeight, $crop = false, $enlarge = false, $fill = false) {
 		// 强制控制大小
-		$this->_maxMin($max_w, $max_h);
-		return  call_user_func_array([$this, 'resampled'], $this->resizeDimensions($max_w, $max_h, $crop, $enlarge, $fill));
+		$this->_maxMin($maxWidth, $minHeight);
+		return  call_user_func_array([$this, 'resampled'], $this->resizeDimensions($maxWidth, $minHeight, $crop, $enlarge, $fill));
 	}
 
 	/**
@@ -224,107 +244,107 @@ abstract class Base {
 	*
 	*	返回值 数组 或者 false
 	**/
-	public function resizeDimensions($max_w = 0, $max_h = 0, $crop = false, $enlarge = false, $fill = false) {
-		if ($max_w <= 0 && $max_h <= 0) {
+	public function resizeDimensions($maxWidth = 0, $maxHeight = 0, $crop = false, $enlarge = false, $fill = false) {
+		if ($maxWidth <= 0 && $maxHeight <= 0) {
 			throw new Exception('Resize');
 		}
 
-		$w = $this->width();
-		$h = $this->height();
+		$width = $this->width();
+		$height = $this->height();
 		if ($crop) {
-			// 剪切 最大可能获得原始图像 $max_w 	$max_h
-			$aspect_ratio = $w / $h;
+			// 剪切 最大可能获得原始图像 $maxWidth 	$maxHeight
+			$aspect_ratio = $width / $height;
 			if (!$enlarge) {
-				$dst_w = min($max_w, $w);
-				$dst_h = min($max_h, $h);
+				$dstWidth = min($maxWidth, $width);
+				$dstHeight = min($maxHeight, $height);
 			} else {
-				$dst_w = $max_w;
-				$dst_h = $max_h;
+				$dstWidth = $maxWidth;
+				$dstHeight = $maxHeight;
 			}
-			if (!$dst_w) {
-				$dst_w = $dst_h * $aspect_ratio;
-			}
-
-			if (!$dst_h) {
-				$dst_h = $dst_w / $aspect_ratio;
+			if (!$dstWidth) {
+				$dstWidth = $dstHeight * $aspect_ratio;
 			}
 
-			$size_ratio = max($dst_w / $w, $dst_h / $h);
-			$src_w = $dst_w / $size_ratio;
-			$src_h = $dst_h / $size_ratio;
+			if (!$dstHeight) {
+				$dstHeight = $dstWidth / $aspect_ratio;
+			}
+
+			$size_ratio = max($dstWidth / $width, $dstHeight / $height);
+			$srcWidth = $dstWidth / $size_ratio;
+			$srcHeight = $dstHeight / $size_ratio;
 			if ($crop === 'top,left') {
 				// 左边上
-				$src_w = $dst_w;
-				$src_h = $dst_h;
-				$src_x = 0;
-				$src_y = 0;
+				$srcWidth = $dstWidth;
+				$srcHeight = $dstHeight;
+				$srcX = 0;
+				$srcY = 0;
 			} elseif ($crop === 'top') {
 				// 上
-				$src_x = ($w - $src_w) / 2;
-				$src_y = 0;
+				$srcX = ($width - $srcWidth) / 2;
+				$srcY = 0;
 			} elseif ($crop === 'top,right') {
 				// 右上
-				$src_x = $w - $src_w;
-				$src_y = 0;
+				$srcX = $width - $srcWidth;
+				$srcY = 0;
 			} elseif ($crop === 'in,left') {
 				// 中左
-				$src_x = 0;
-				$src_y = ($h - $src_h) / 2;
+				$srcX = 0;
+				$srcY = ($height - $srcHeight) / 2;
 			} elseif ($crop === 'in,right') {
 				// 右中
-				$src_x = $w - $src_w;
-				$src_y = ($h - $src_h) / 2;
+				$srcX = $width - $srcWidth;
+				$srcY = ($height - $srcHeight) / 2;
 			} elseif ($crop === 'bottom,left') {
 				// 左下
-				$src_x = 0;
-				$src_y = $h - $src_h;
+				$srcX = 0;
+				$srcY = $height - $srcHeight;
 			} elseif ($crop === 'bottom') {
 				// 下
-				$src_x = ($w - $src_w) / 2;
-				$src_y = $h - $src_h;
+				$srcX = ($width - $srcWidth) / 2;
+				$srcY = $height - $srcHeight;
 			} elseif ($crop === 'bottom,right') {
 				// 右下
-				$src_x = $w - $src_w;
-				$src_y = $h - $src_h;
+				$srcX = $width - $srcWidth;
+				$srcY = $height - $srcHeight;
 			} else {
-				$src_x = ($w - $src_w) / 2;
-				$src_y = ($h - $src_h) / 2;
+				$srcX = ($width - $srcWidth) / 2;
+				$srcY = ($height - $srcHeight) / 2;
 			}
 		} else {
 			// 没有剪切 的
-			$src_w = $w;
-			$src_h = $h;
+			$srcWidth = $width;
+			$srcHeight = $height;
 
-			$src_x = 0;
-			$src_y = 0;
+			$srcX = 0;
+			$srcY = 0;
 
-			list($dst_w, $dst_h) = $this->constrainDimensions($max_w, $max_h, $enlarge);
+			list($dstWidth, $dstHeight) = $this->constrainDimensions($maxWidth, $maxHeight, $enlarge);
 		}
-		$dst_x = 0;
-		$dst_y = 0;
-		$src_x = round($src_x);
-		$src_y = round($src_y);
-		$dst_w = max(round($dst_w), 1);
-		$dst_h = max(round($dst_h), 1);
-		$src_w = max(round($src_w), 1);
-		$src_h = max(round($src_h), 1);
-		$new_w = $dst_w;
-		$new_h = $dst_h;
+		$dstX = 0;
+		$dstY = 0;
+		$srcX = round($srcX);
+		$srcY = round($srcY);
+		$dstWidth = max(round($dstWidth), 1);
+		$dstHeight = max(round($dstHeight), 1);
+		$srcWidth = max(round($srcWidth), 1);
+		$srcHeight = max(round($srcHeight), 1);
+		$newWidth = $dstWidth;
+		$newHeight = $dstHeight;
 
 
-		if ($max_w && $max_h && $fill) {
-			if ($max_w != $dst_w) {
-				$dst_x = abs($max_w - $dst_w) / 2;
-				$new_w = $max_w;
+		if ($maxWidth && $maxHeight && $fill) {
+			if ($maxWidth != $dstWidth) {
+				$dstX = abs($maxWidth - $dstWidth) / 2;
+				$newWidth = $maxWidth;
 			}
-			if ($max_h != $dst_h) {
-				$dst_y = abs($max_h - $dst_h) / 2;
-				$new_h = $max_h;
+			if ($maxHeight != $dstHeight) {
+				$dstY = abs($maxHeight - $dstHeight) / 2;
+				$newHeight = $maxHeight;
 			}
 		}
 
 		// 返回的数组参数匹配到 第一个 第二个是新图像宽度高度 imagecopyresampled()
-		$r = [$new_w, $new_h, (int)$dst_x, (int)$dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h];
+		$r = [$newWidth, $newHeight, (int)$dstX, (int)$dstY, $srcX, $srcY, $dstWidth, $dstHeight, $srcWidth, $srcHeight];
 		return $r;
 	}
 
@@ -337,24 +357,31 @@ abstract class Base {
 	*	5 参数 是否放大 默认 false = 禁止放大 true = 允许放大
 	*
 	**/
-	public function constrainDimensions($max_w = 0, $max_h = 0, $enlarge = false) {
-		$w = $this->width();
-		$h = $this->height();
+	/**
+	 * constrainDimensions
+	 * @param  integer $maxWidth   [description]
+	 * @param  integer $maxHeight   [description]
+	 * @param  boolean $enlarge [description]
+	 * @return [type]           [description]
+	 */
+	public function constrainDimensions($maxWidth = 0, $maxHeight = 0, $enlarge = false) {
+		$width = $this->width();
+		$height = $this->height();
 
-		if (!$max_w && !$max_h)
-			return [$w, $h];
+		if (!$maxWidth && !$maxHeight)
+			return [$width, $height];
 
 		$width_ratio = $height_ratio = 1.0;
 		$did_width = $did_height = false;
 
 
-		if ($enlarge || ($max_w > 0 && $w > 0 && $w > $max_w)) {
-			$width_ratio = $max_w / $w;
+		if ($enlarge || ($maxWidth > 0 && $width > 0 && $width > $maxWidth)) {
+			$width_ratio = $maxWidth / $width;
 			$did_width = true;
 		}
 
-		if ($enlarge || ($max_h > 0 && $h > 0 && $h > $max_h)) {
-			$height_ratio = $max_h / $h;
+		if ($enlarge || ($maxHeight > 0 && $height > 0 && $height > $maxHeight)) {
+			$height_ratio = $maxHeight / $height;
 			$did_height = true;
 		}
 
@@ -362,30 +389,30 @@ abstract class Base {
 		$smaller_ratio = min($width_ratio, $height_ratio);
 		$larger_ratio = max($width_ratio, $height_ratio);
 
-		if (intval($w * $larger_ratio) > $max_w || intval($h * $larger_ratio) > $max_h) {
+		if (intval($width * $larger_ratio) > $maxWidth || intval($height * $larger_ratio) > $maxHeight) {
 			// 较大的比例太大。它会导致溢出。
 			$ratio = $smaller_ratio;
 		} else {
 			// 较大的比例配合，很可能是一个更 贴身 适合
 			$ratio = $larger_ratio;
 		}
-		$w = intval($w * $ratio);
-		$h = intval($h * $ratio);
+		$width = intval($width * $ratio);
+		$height = intval($height * $ratio);
 
 		// 有时候，由于四舍五入，我们会结束这样一个结果：在177x177箱465x700是117x176像素的短
 		// 我们也有在瞬息万变的结果导致递归调用的问题。制约约束的结果应该产生的结果。
 		// 因此，我们期待的尺寸是一个像素的最大值害羞和凹凸
-		if ($did_width && $w == $max_w - 1) {
+		if ($did_width && $width == $maxWidth - 1) {
 			// 它向上舍入
-			$w = $max_w;
+			$width = $maxWidth;
 		}
-		if ($did_height && $h == $max_h - 1) {
+		if ($did_height && $height == $maxHeight - 1) {
 			// 它向上舍入
-			$h = $max_h;
+			$height = $maxHeight;
 		}
-		$h = $h ? $h : 1;
-		$w = $w ? $w : 1;
-		return [$w, $h];
+		$height = $height ? $height : 1;
+		$width = $width ? $width : 1;
+		return [$width, $height];
 	}
 
 
@@ -397,26 +424,36 @@ abstract class Base {
 	*
 	*	无返回值 直接引用
 	**/
-	private function _maxMin(&$w, &$h) {
+	private function _maxMin(&$maxWidth, &$maxHeight) {
 
 		// 最大宽度检测
-		if ($w && $this->maxWidth && $this->maxWidth < $w) {
-			$w = $this->maxWidth;
+		if ($maxWidth && $this->maxWidth && $this->maxWidth < $maxWidth) {
+			$maxWidth = $this->maxWidth;
 		}
 
 		// 最大高度检测
-		if ($h && $this->maxHeight && $this->maxHeight < $h) {
-			$h = $this->maxHeight;
+		if ($maxHeight && $this->maxHeight && $this->maxHeight < $maxHeight) {
+			$maxHeight = $this->maxHeight;
 		}
 
 		// 最小宽度检测
-		if ($w && $this->minWidth && $this->minWidth < $w) {
-			$w = $this->minWidth;
+		if ($maxWidth && $this->minWidth && $this->minWidth < $maxWidth) {
+			$maxWidth = $this->minWidth;
 		}
 
 		// 最小高度检测
-		if ($h && $this->minHeight && $this->minHeight < $h) {
-			$h = $this->minHeight;
+		if ($maxHeight && $this->minHeight && $this->minHeight < $maxHeight) {
+			$maxHeight = $this->minHeight;
+		}
+
+		// 最大像素
+		while (($maxHeight * $maxWidth) > $this->maxPixels) {
+			// 最大比例缩小
+			if (($maxHeight / $this->maxHeight) > ($maxWidth / $this->maxWidth)) {
+				--$maxHeight;
+			} else {
+				--$maxWidth;
+			}
 		}
 	}
 }

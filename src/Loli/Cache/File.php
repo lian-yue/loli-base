@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-17 11:37:04
-/*	Updated: UTC 2015-03-22 08:18:29
+/*	Updated: UTC 2015-04-07 14:31:37
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
@@ -43,28 +43,28 @@ class File extends Base{
 		return $this->_data[$group][$key];
 	}
 
-	public function add($data, $key, $group = 'default', $ttl = 0) {
+	public function add($value, $key, $group = 'default', $ttl = 0) {
 		++$this->count['add'];
-		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1 || $this->get($key, $group) !== false) {
+		if ($value === NULL || $value === false || ($ttl = intval($ttl)) < -1 || $this->get($key, $group) !== false) {
 			return false;
 		}
-		if (is_object($data)) {
-			$data = clone $data;
+		if (is_object($value)) {
+			$value = clone $value;
 		}
-		$this->_data[$group][$key] = $data;
+		$this->_data[$group][$key] = $value;
 		$this->_ttl[$group][$key] = $ttl == -1 ? -1 : time() + $ttl;
 		return $this->_set($key, $group);
 	}
 
-	public function set($data, $key, $group = 'default', $ttl = 0) {
+	public function set($value, $key, $group = 'default', $ttl = 0) {
 		++$this->count['set'];
-		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1) {
+		if ($value === NULL || $value === false || ($ttl = intval($ttl)) < -1) {
 			return false;
 		}
-		if (is_object($data)) {
-			$data = clone $data;
+		if (is_object($value)) {
+			$value = clone $value;
 		}
-		$this->_data[$group][$key] = $data;
+		$this->_data[$group][$key] = $value;
 		$this->_ttl[$group][$key] = $ttl == -1 ? -1 : time() + $ttl;
 		return $this->_set($key, $group);
 	}

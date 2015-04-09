@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-10-24 10:41:06
-/*	Updated: UTC 2015-03-22 08:21:13
+/*	Updated: UTC 2015-04-07 14:32:33
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
@@ -43,8 +43,8 @@ class Redis extends Base{
 		if (!isset($this->_data[$group][$key])) {
 			$this->_data[$group][$key] = false;
 			try {
-				if (($data = $this->_obj($key, $group)->get($this->_key($key, $group))) !== false) {
-					$this->_data[$group][$key] = is_numeric($data) ? (int) $data : @unserialize($data);
+				if (($value = $this->_obj($key, $group)->get($this->_key($key, $group))) !== false) {
+					$this->_data[$group][$key] = is_numeric($value) ? (int) $value : @unserialize($value);
 				}
 			} catch (RedisException $e) {
 				new Exception($e->getMessage(), $e->getCode());
@@ -57,26 +57,26 @@ class Redis extends Base{
 	}
 
 
-	public function add($data, $key, $group = 'default', $ttl = 0) {
+	public function add($value, $key, $group = 'default', $ttl = 0) {
 		++$this->count['add'];
-		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1 || (!$ttl && $this->get($key, $group, true) !== false)) {
+		if ($value === NULL || $value === false || ($ttl = intval($ttl)) < -1 || (!$ttl && $this->get($key, $group, true) !== false)) {
 			return false;
 		}
-		if (is_object($data)) {
-			$data = clone $data;
+		if (is_object($value)) {
+			$value = clone $value;
 		}
 
 		if (!$ttl) {
 			$this->_ttl[$group][$key] = 0;
-			$this->_data[$group][$key] = $data;
+			$this->_data[$group][$key] = $value;
 			return true;
 		}
 		$r = false;
 		try {
 			$obj = $this->_obj($key, $group);
-			if ($obj->setnx($k = $this->_key($key, $group), is_int($data) ? $data : serialize($data))) {
+			if ($obj->setnx($k = $this->_key($key, $group), is_int($value) ? $value : serialize($value))) {
 				$ttl == -1 || $obj->expire($k, $ttl);
-				$this->_data[$group][$key] = $data;
+				$this->_data[$group][$key] = $value;
 				$this->_ttl[$group][$key] = NULL;
 				$r = true;
 			}
@@ -87,25 +87,25 @@ class Redis extends Base{
 	}
 
 
-	public function set($data, $key, $group = 'default', $ttl = 0) {
+	public function set($value, $key, $group = 'default', $ttl = 0) {
 		++$this->count['set'];
-		if ($data === NULL || $data === false || ($ttl = intval($ttl)) < -1) {
+		if ($value === NULL || $value === false || ($ttl = intval($ttl)) < -1) {
 			return false;
 		}
-		if (is_object($data)) {
-			$data = clone $data;
+		if (is_object($value)) {
+			$value = clone $value;
 		}
 		if (!$ttl) {
 			$this->_ttl[$group][$key] = 0;
-			$this->_data[$group][$key] = $data;
+			$this->_data[$group][$key] = $value;
 			return true;
 		}
 		$r = false;
 		try {
 			$obj = $this->_obj($key, $group);
-			if ($obj->set($k = $this->_key($key, $group), is_int($data) ? $data : serialize($data))) {
+			if ($obj->set($k = $this->_key($key, $group), is_int($value) ? $value : serialize($value))) {
 				$ttl == -1 || $obj->expire($k, $ttl);
-				$this->_data[$group][$key] = $data;
+				$this->_data[$group][$key] = $value;
 				$this->_ttl[$group][$key] = NULL;
 				$r = true;
 			}
