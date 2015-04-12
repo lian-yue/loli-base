@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-04-04 14:15:32
+/*	Updated: UTC 2015-04-09 08:00:49
 /*
 /* ************************************************************************** */
 
@@ -188,10 +188,8 @@ function simplexml_uncdata($xml) {
 			$find[] = $v;
 			$replace[] = '<'. $matches['tag'][$k] .'>' .htmlspecialchars($matches[2][$k], ENT_QUOTES). '</' . $matches['tag'][$k].'>';
 		}
-
 		$xml = str_replace($find, $replace, $xml);
 	}
-
 	return $xml;
 }
 
@@ -297,7 +295,9 @@ function prioritysort(array &$arrays, $key = 'priority', $asc = true) {
 
 
 function mb_rand($length, $string = false) {
-	$string = $string ? $string : '0123456789abcdefghijklmnopqrstuvwxyz';
+	if (!$string) {
+		$string = '0123456789abcdefghijklmnopqrstuvwxyz';
+	}
 	$strlen = mb_strlen($string) - 1;
 	$r = '';
 	for ($i = 0; $i < $length; ++$i) {

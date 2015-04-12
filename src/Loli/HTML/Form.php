@@ -8,583 +8,420 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-03-24 11:06:22
-/*	Updated: UTC 2015-03-29 04:42:59
+/*	Updated: UTC 2015-04-12 10:45:44
 /*
 /* ************************************************************************** */
 namespace Loli\HTML;
 class Form{
 
 	private static $_tags = ['span', 'div', 'p', 'a', 'code'];
+	private static $_types = ['text', 'hidden', 'file', 'password', 'email', 'url', 'search', 'number', 'color', 'range', 'tel', 'datetime-local', 'image', 'datetime', 'date', 'month', 'week', 'time', 'submit', 'reset', 'button', 'textarea', 'select', 'radio', 'checkbox', 'fieldset', 'table', 'lists'];
 
-	public static function get(array $a, $e = true) {
-		$a['type'] = empty($a['type']) ? 'text' : $a['type'];
-		if ( $a['type']{0} == '_' || strtolower($a['type']) == 'get' || !method_exists(__CLASS__, $a['type'])) {
+
+	/**
+	 * $_forms
+	 * @var array
+	 */
+	private $_forms = [];
+
+	public function __construct(array $array = []) {
+		$array && $this->__invoke($array);
+	}
+
+	/**
+	 * __toString 输出
+	 */
+	public function __toString() {
+		return implode('', $this->_forms);
+	}
+
+	/**
+	 * __call 回调函数
+	 * @param  string $name 表单类型名
+	 * @param  array $args  回调的参数
+	 * @return this
+	 */
+	public function __call($name, $args) {
+		$args[0]['type'] = $name;
+		$this->_forms[] = call_user_func_array([__CLASS__, 'get'], [$args[0], false]);
+		if (!empty($args[1])) {
+			echo implode('', $this->_forms);
+			$this->_forms = [];
+		}
+		return $this;
+	}
+
+	/**
+	 * __invoke 作为函数执行
+	 * @param  array  $array 数组
+	 * @return this
+	 */
+	public function __invoke(array $array) {
+		return $this->__call(empty($array['type']) ? reset(self::$_types) : $array['type'], func_get_args());
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	/**
+	 * get 获得
+	 * @param  array            $array  表单数组
+	 * @param  boolean          $echo   是否显示
+	 * @return string|output
+	 */
+
+	public static function get(array $array, $echo = true) {
+		$array['type'] = empty($array['type']) ? reset(self::$_types) : $array['type'];
+		if (!in_array($array['type'], self::$_types)) {
 			return false;
 		}
-		return call_user_func_array([__CLASS__, $a['type']], [$a, $e]);
+		return call_user_func_array([__CLASS__, $array['type']], [$array, $echo]);
 	}
 
-
-
-	public static function fieldset(array $a, $e = true, $class = '') {
-		$class = (array) $class;
-		$class[] = 'form-fieldset';
-		$r = '<fieldset class="'. implode(' ', $class) .'">';
-		if ( isset($a['legend'])) {
-			$r .='<legend class="form-legend">'. $a['legend']  .'</legend>';
+	/**
+	 * __callStatic 静态回调方法
+	 * @param  string $name 方法名
+	 * @param  array $args 回调参数二维数组
+	 * @return string or echo
+	 */
+	public static function __callStatic($name, $args) {
+		$name = strtr($name, '_', '-');
+		if (!in_array($name, self::$_types)) {
+			throw new Exception('Form type unknown');
 		}
-		if ( isset($a['value'])) {
-			if ( is_array($a['value'])) {
-				foreach ( $a['value'] as $kk => $vv) {
-					$r .='<div class="form-div form-div-'. $kk .'">'. (is_array($vv) ? self::get($vv, false) : $vv) . '</div>';
-				}
-			} else {
-				$r.= $a['value'];
-			}
-		}
-		$r .= '</fieldset>';
-
-		return self::_result($r, $e);
-	}
-
-	/**
-	*	text表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function text(array $a, $e = true) {
-		return self::_input('text', $a, $e);
-	}
+		$args += [[], true];
+		list($array, $echo) = $args;
 
 
+		$result .= self::_label($array);
 
-	/**
-	*	hidden 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function hidden(array $a, $e = true) {
-		return self::_input('hidden', $a, $e);
-	}
-
-	/**
-	*	file 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function file(array $a, $e = true) {
-		return self::_input('file', $a, $e);
-	}
-
-	/**
-	*	password 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function password(array $a, $e = true) {
-		return self::_input('password', $a, $e);
-	}
+		switch ($name) {
+			case 'lists':
+				$class = empty($array['class']) ? [] : (array) $array['class'];
+				$class[] = 'form-lists';
+				$current = empty($array['url']) ? (empty($array['query']) ? [] : parse_string($array['query'])) : (is_array($array['url']) ? ['query' => $array['url']] : parse_url($array['url']));
+				$thead = empty($array['thead']) ? (empty($array['head']) ? [] : $array['head']) : $array['thead']
+				$thead = array_unnull($thead);
+				$result .= '<table class="'. implode(' ', $class) .'" >';
+				if ($thead) {
+					$result .= '<thead>';
+					$result .= '<tr>';
+					foreach ($thead as $key => $value) {
+						if (is_array($value)) {
+							$value += ['url' => [], 'value' => ''];
+							// 自动设置url
+							if (!$value['url'] || is_array($value['url'])) {
+								$parse['query'] = parse_string($value['url']);
+								$parse['query'] = array_intersect_key($parse['query'],  ['$order' => NULL] + array_flip($parse['url']));
+								//if (is_array($v['url'])) {
+								//	$parse['query'] = array_intersect_key($parse['query'],  ['$order' => NULL] + array_flip($v['url']));
+								//}
+								//$parse['query']['$orderby'] = $k;
+								//$parse['query']['$order'] = empty($parse['query']['$order']) || strtoupper($parse['query']['$order']) != 'ASC' ? 'ASC' : 'DESC';
+								//$parse['query'] = merge_string($parse['query']);
+								//$v['url'] = merge_url($parse);
 
 
-	/**
-	*	email 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function email(array $a, $e = true) {
-		return self::_input('email', $a, $e);
-	}
-
-	/**
-	*	url 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function url(array $a, $e = true) {
-		return self::_input('url', $a, $e);
-	}
-
-	/**
-	*	search 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function search(array $a, $e = true) {
-		return self::_input('search', $a, $e);
-	}
-
-	/**
-	*	number 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function number(array $a, $e = true) {
-		return self::_input('number', $a, $e);
-	}
-
-	/**
-	*	color 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function color(array $a, $e = true) {
-		return self::_input('color', $a, $e);
-	}
-
-	/**
-	*	range 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function range(array $a, $e = true) {
-		return self::_input('range', $a, $e);
-	}
+							} else {
+								$isEmptyScheme = substr($value['url'], 0, 2) == '//';
+								$parse = parse_url($isEmptyScheme ? 'http:' . $value['url'] : $value['url']);
+								if ($isEmptyScheme) {
+									unset($parse['scheme']);
+								}
+							}
+							//$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
+							//$order = '';
+							//if (r('$orderby') == $k) {
+							//	if ($parse['query'] && !empty($parse['query']['$order']) && strtoupper($parse['query']['$order']) == 'ASC') {
+							//		$order = 'desc';
+							//	} else {
+							//		$order = 'asc';
+							//	}
+							//}
+							$result .= '<td class=" td-'. $key .' '. $order .'"><a href="'. $value['url'] .'"><span>' . $value['value'] . '</span><sorting></sorting></a></td>';
 
 
-	/**
-	*	tel 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function tel(array $a, $e = true) {
-		return self::_input('tel', $a, $e);
-	}
-
-	/**
-	*	datetime-local 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function datetime_local(array $a, $e = true) {
-		return self::_input('datetime-local', $a, $e);
-	}
-
-	/**
-	*	datetime-local 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function image(array $a, $e = true) {
-		return self::_input('image', $a, $e);
-	}
-	/**
-	*	date 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function datetime(array $a, $e = true) {
-		return self::_input('datetime', $a, $e);
-	}
-	/**
-	*	date 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function date(array $a, $e = true) {
-		return self::_input('date', $a, $e);
-	}
-
-	/**
-	*	month 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function month(array $a, $e = true) {
-		return self::_input('month', $a, $e);
-	}
 
 
-	/**
-	*	week 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function week(array $a, $e = true) {
-		return self::_input('week', $a, $e);
-	}
-
-	/**
-	*	time 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function time(array $a, $e = true) {
-		return self::_input('time', $a, $e);
-	}
-
-	/**
-	*	submit 按钮
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function submit(array $a, $e = true) {
-		$a['name'] = isset($a['name']) ? 'submit' : $a['name'];
-		return self::_input('submit', $a, $e);
-	}
-	/**
-	*	submit 按钮
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function reset(array $a, $e = true) {
-		return self::_input('reset', $a, $e);
-	}
 
 
-	/**
-	*	button 按钮
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function button(array $a, $e = true) {
-		$a['name'] = empty($a['name']) ? 'button' : $a['name'];
-		self::_filter($a, 'button');
-		$a['type'] = 'submit';
-		$r = self::_label($a);
-		$r .= '<button '. self::_attr($a, ['value']) . '><strong>'. $a['value'] .'</strong></button>';
-		$r .= self::_tags($a);
-		return self::_result($r, $e);
-	}
 
 
-	/**
-	*	textarea 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function textarea(array $a, $e = true) {
-		self::_filter($a, 'textarea');
-		$r = self::_label($a);
-		$r .= '<textarea '. self::_attr($a, ['value']) .' >'. $a['value'] .'</textarea>';
-		$r .= self::_tags($a);
-		return self::_result($r, $e);
-	}
 
 
-	/**
-	*	select 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function select(array $a, $e = true) {
-		self::_filter($a, 'select');
-		$r = self::_label($a);
-		$r .= '<select '. self::_attr($a, ['value', 'option']) .' >';
-		foreach ($a['option'] as $k => $v) {
-			if (is_array($v) && isset($v['label']) && isset($v['value'])) {
-					$r .= '<optgroup class="optgroup-'. $k .'" label="'. $v['label'] .'">';
-					foreach ($v['value'] as $kk => $vv) {
-						$r .= '<option '. (in_array((string) $kk, $a['value']) ? ' selected="selected"' : '') .' class="select-'. $kk .' select-'. $k .'-'. $kk .'" value="'. $kk .'">'. $vv .'</option>';
+
+						} else {
+							$result .= '<td class="td-'. $key .'"><span>' .$value. '</span></td>';
+						}
 					}
-					$r .= '</optgroup>';
-			} else {
-				$r .= '<option '. (in_array((string) $k, $a['value']) ? ' selected="selected"' : '') .' class="select-'. $k .'" value="'. $k .'">'. $v .'</option>';
-			}
-		}
-		$r .= '</select>';
-		$r .= self::_tags($a);
-		return self::_result($r, $e);
-	}
 
 
-	/**
-	*	radio 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function radio(array $a, $e = true) {
-		self::_filter($a, 'radio');
-		$r = '';
-		foreach ($a['option'] as $k => $v) {
-			$r .= '<label for="'. $a['id'] . '-' . $k .'" class="radio-label radio-'. $a['id'] .'  radio-'. $a['id'] .'-'. $k .'">';
-			$r .= '<input type="'. $a['type'] .'" name="'. $a['name'] .'" id="' . $a['id'] . '-' . $k .'" class="'. $a['class'][$k] . '" ' . $a['disabled'][$k] . $a['readonly'][$k] . ' value="'. $k .'" '.($a['value'] == $k ? 'checked="checked"' : '').' />';
-			$r .= '<span class="radio-span form-span">' . $v . '</span>';
-			$r .= '</label>';
-		}
-		$r .= self::_tags($a);
-		return self::_result($r, $e);
-	}
+				break;
+			case 'table':
+				$class = empty($array['class']) ? [] : (array) $array['class'];
+				$class[] = 'form-table';
+				$result .= '<table class="' . implode(' ', $class) .'" >';
+				$result .= '<tbody>';
+				$i = 0;
+				foreach (empty($array['value']) ? (empty($array['tbody']) ? [] : $array['tbody']) : $array['value'] as $key => $value) {
+					$value = is_string($value) ? ['value' => $value, 'class' => []] : $value + ['class' => []];
 
-	/**
-	*	checkbo 表单
-	*
-	*	1 参数 数组
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	public static function checkbox(array $a, $e = true) {
-		if (empty($a['option'])) {
-			return self::_input('checkbox', $a, $e);
-		}
-		self::_filter($a, 'checkbox');
-		$r = self::_label($a);
-		foreach ($a['option'] as $k => $v) {
-			$r .= '<label for="'. $a['id'] . '-' . $k .'" class="checkbox-label checkbox-'. $a['id'] .' checkbox-'. $a['id'] .'-'. $k .'">';
-			$r .= '<input type="'. $a['type'] .'" name="'. $a['name'] .'" id="' . $a['id'] . '-' . $k .'" class="'. $a['class'][$k] . '" ' . $a['disabled'][$k] . $a['readonly'][$k].  ' value="'. $k .'" '.(in_array((string) $k,  $a['value']) ? 'checked="checked"' : '').' />';
-			$r .= '<span class="checkbox-span form-span">' . $v . '</span>';
-			$r .= '</label>';
-		}
-		$r .= self::_tags($a);
-		return self::_result($r, $e);
-	}
-
-
-	/**
-	*	统一 input 标签
-	*
-	*	1 参数 type
-	*	2 参数 a 数组
-	*	3 参数 e 是否显示
-	*
-	**/
-	private static function _input($type,  array $a, $e = true) {
-		self::_filter($a, $type);
-		$r = self::_label($a);
-		$r .= '<input '. self::_attr($a) . '/>';
-		$r .= self::_tags($a);
-		return self::_result($r, $e);
-	}
-
-	/**
-	*	表单 判断是否显示
-	*
-	*	1 参数 显示或 返回值
-	*	2 参数 是否显示
-	*
-	*	返回值 或者显示
-	**/
-	private static function _result($r, $e) {
-		if (!$e) {
-			return $r;
-		}
-		echo $r;
-	}
-
-	/**
-	*	表单 label
-	*
-	*	1 参数 表单数组
-	*
-	*	返回值 label 标签 或 ''
-	**/
-	private static function _label(array $a) {
-		return empty($a['label']) ? '' : '<label for="'. $a['id'] . '" class="label-'. $a['id'] . ' form-label">'. $a['label'] . '</label>';
-	}
-
-	/**
-	*	表单 tags
-	*
-	*	1 参数 表单数组
-	*
-	*	返回值 label 标签 或 ''
-	**/
-	private static function _tags(array $a, array $tags = []) {
-		$r = '';
-		foreach ( array_intersect_key($a, array_flip($tags?(array)$tags:self::$_tags)) as $k => $v) {
-			if ( $v) {
-				if ( is_array( $v)) {
-					$r .= '<' . $k;
-					foreach ($v as $kk => $vv) {
-						$r .= ' '. preg_replace('/[^0-9a-z_-]/i','_', $kk) .'="'. strtr($vv, ['"' => '&quot;', '\'' => '&#039;', '<' => '&lt;', '>' => '&gt;']) .'"';
+					if (isset($value['value']) && is_array($value['value'])) {
+						$value['value'] = self::get($value['value'], false);
 					}
-					$r .= '>';
-				} else {
-					$r .= '<'. $k .' class="'. $k .'-'. $a['id'] . ' ' . $a['type'] .'-'. $k .' form-'. $k .'">'. $v;
+					$value['class'] = (array) $value['class'];
+					$value['class'][] = $i % 2 ? 'odd' : 'even';
+					$value['class'][] ='tr-'. $key;
+
+					if (isset($value['title']) || isset($value['value'])) {
+						$result .= '<tr class="'. implode(' ', $value['class']) .'">';
+						if (isset($value['title'])) {
+							$result .= '<th class="title" ' . (isset($value['value']) ? '' : 'colspan="2"') . '>' .$value['title']. '</th>';
+						}
+						if (isset($value['value'])) {
+							$result .= '<td class="value" ' . (isset($value['title']) ? '' : 'colspan="2"') . '>' .$value['value']. '</td>';
+						}
+						$result .= '</tr>';
+					}
+					++$i;
 				}
-				$r .= '</'. $k .'>';
-			}
+				$result .= '</tbody>';
+				$result .= '</table>';
+				break;
+			case 'fieldset':
+				$class = empty($array['class']) ? [] : (array) $array['class'];
+				$class[] = 'form-fieldset';
+				$result .= '<fieldset class="'. implode(' ', $class) .'">';
+				if (isset($array['legend'])) {
+					$result .='<legend class="form-legend">'. $array['legend']  .'</legend>';
+				}
+				if (isset($array['value'])) {
+					if (is_array($array['value'])) {
+						foreach ($array['value'] as $key => $value) {
+							$result .='<div class="form-div form-div-'. $key .'">'. (is_array($value) ? self::get($value, false) : $value) . '</div>';
+						}
+					} else {
+						$result .= $array['value'];
+					}
+				}
+				$result .= '</fieldset>';
+				break;
+			case 'checkbox':
+				foreach ($array['option'] as $key => $value) {
+					$result .= '<label for="'. $array['id'] . '-' . $key .'" class="checkbox-label checkbox-'. $array['id'] .' checkbox-'. $array['id'] .'-'. $key .'">';
+					$result .= '<input type="'. $array['type'] .'" name="'. $array['name'] .'" id="' . $array['id'] . '-' . $key .'" class="'. $array['class'][$key] . '" ' . $array['disabled'][$key] . $array['readonly'][$key].  ' value="'. $key .'" '.(in_array((string) $key,  $array['value']) ? 'checked="checked"' : '').' />';
+					$result .= '<span class="checkbox-span form-span">' . $value . '</span>';
+					$result .= '</label>';
+				}
+				break;
+			case 'radio':
+				foreach ($array['option'] as $key => $value) {
+					$result .= '<label for="'. $array['id'] . '-' . $key .'" class="radio-label radio-'. $array['id'] .'  radio-'. $array['id'] .'-'. $key .'">';
+					$result .= '<input type="'. $array['type'] .'" name="'. $array['name'] .'" id="' . $array['id'] . '-' . $key .'" class="'. $array['class'][$key] . '" ' . $array['disabled'][$key] . $array['readonly'][$key] . ' value="'. $key .'" '.($array['value'] == $key ? 'checked="checked"' : '').' />';
+					$result .= '<span class="radio-span form-span">' . $value . '</span>';
+					$result .= '</label>';
+				}
+				break;
+			case 'select':
+				$result .= '<select '. self::_attributes($array, ['value', 'option']) .' >';
+				foreach ($array['option'] as $key => $value) {
+					if (is_array($value) && isset($value['label']) && isset($value['value'])) {
+							$result .= '<optgroup class="optgroup-'. $key .'" label="'. $value['label'] .'">';
+							foreach ($value['value'] as $k => $v) {
+								$result .= '<option '. (in_array($k, $array['value']) ? ' selected="selected"' : '') .' class="select-'. $k .' select-'. $key .'-'. $k .'" value="'. $k .'">'. $v .'</option>';
+							}
+							$result .= '</optgroup>';
+					} else {
+						$result .= '<option '. (in_array($key, $array['value']) ? ' selected="selected"' : '') .' class="select-'. $key .'" value="'. $key .'">'. $value .'</option>';
+					}
+				}
+				$result .= '</select>';
+				break;
+			case 'textarea':
+				$result .= '<textarea '. self::_attributes($array, ['value']) .' >'. $array['value'] .'</textarea>';
+				break;
+			case 'button':
+				$array['name'] = empty($array['name']) ? 'button' : $array['name'];
+				$array['type'] = 'submit';
+
+
+				$result .= '<button '. self::_attributes($array, ['value']) . '><strong>'. $array['value'] .'</strong></button>';
+				break;
+			case 'submit':
+				$array['name'] = isset($array['name']) ? 'submit' : $array['name'];
+			default:
+				$result .= '<input '. self::_attributes($array) . '/>';
 		}
-		return $r;
+
+
+
+
+
+		$result .= self::_tags($array);
+	}
+
+
+
+
+	/**
+	 * _label 标签
+	 * @param  array  $array 数组
+	 * @return string
+	 */
+	private static function _label(array $array) {
+		return empty($array['label']) ? '' : '<label for="'. $array['id'] . '" class="label-'. $array['id'] . ' form-label">'. $array['label'] . '</label>';
 	}
 
 
 	/**
-	*	标签 attr
-	*
-	*	回调函数
-	*
-	*	请勿直接使用
-	***/
-	private static function _attr(array $a, array $in = []) {
-		$r = '';
-		foreach ($a as $k => $v) {
-			if ( $k == 'label' || $k == 'legend' || in_array($k, self::$_tags) || in_array($k, $in) || (!$v && !in_array($k, ['value', 'min', 'max']))) {
+	 * _tags tags名
+	 * @param  array  $array 数组
+	 * @param  array  $tags  只能匹配的key
+	 * @return string
+	 */
+	private static function _tags(array $array, array $tags = []) {
+		$result = '';
+		foreach (array_intersect_key($array, array_flip($tags ? $tags : self::$_tags)) as $key => $value) {
+			if (!$value) {
 				continue;
+			}
+			if (is_array($value)) {
+				$this->_text($value, []);
+				$result .= '<' . $key . is_array($value) ? self::_attributes($value) . '>';
 			} else {
-				$v = is_array($v) || is_object($v) ? reset($v) : $v;
-				$r .= ' '. $k .'="'. $v .'"';
+				$result .= '<' . $key .' class="'. $key .'-'. $array['id'] . ' ' . $array['type'] .'-'. $key .' form-'. $key .'">' . $value;
+			}
+			$result .= '</'. $key .'>';
+		}
+		return $result;
+	}
+
+
+
+	/**
+	 * _attributes
+	 * @param  array  $array 数组
+	 * @param  array  $names 不使用的names
+	 * @return this
+	 */
+	private static function _attributes(array $array, array $names) {
+		$result = '';
+		foreach ($array as $key => $value) {
+			if ($key == 'label' || $key == 'legend' || in_array($key, self::$_tags) || in_array($key, $names) || (!$value && !in_array($key, ['value', 'min', 'max']))) {
+				continue;
+			}
+			$value = is_array($value) || is_object($value) ? reset($value) : $value;
+			$result .= ' '. $key .'="'. $value .'"';
+		}
+		return $result;
+	}
+
+
+	/**
+	 * _text 过滤html 代码
+	 * @param  array  &$array 数组
+	 * @param  array  $tags = NULL   不过滤的标签
+	 */
+	private static function _text(array &$array, array $tags = NULL) {
+		foreach ($array as $key => &$value) {
+			if (in_array($key, $tags === NULL ? self::$_tags : $tags)) {
+				continue;
+			}
+			if (is_array($value)) {
+				self::_text($value, []);
+			} else {
+				$value = strtr($value, ['"' => '&quot;', '\'' => '&#039;', '<' => '&lt;', '>' => '&gt;']);
 			}
 		}
-		return $r;
 	}
 
 
 
 
 
-	/**
-	*	表单 数组整理
-	*
-	*	1 参数 数组
-	*	2 参数 表单类型
-	*
-	*	引用返回
-	**/
-	private static function _filter(array &$a, $type = 'text') {
-		$a['name'] = empty($a['name']) ? 'form' : $a['name'];
-		$i = 'form-' . preg_replace('/[^0-9a-z_-]/i','_', $a['name']);
-		$a = $a + [ 'name' => '', 'class' => '', 'id' => $i, 'value' => '', 'option' => []];
+	private static function _filter(array &$array, $type = 'text') {
+		$array['name'] = empty($array['name']) ? 'form' : $array['name'];
+		$i = 'form-' . preg_replace('/[^0-9a-z_-]/i','_', $array['name']);
+		$array = $array + [ 'name' => '', 'class' => '', 'id' => $i, 'value' => '', 'option' => []];
 
-		$a['type'] = $type;
-		$a['option'] = (array) $a['option'];
+		$array['type'] = $type;
+		$array['option'] = (array) $array['option'];
 
-		if ($in_array = in_array($a['type'], ['checkbox', 'radio']) && !empty($a['option'])) {
+		if ($in_array = in_array($array['type'], ['checkbox', 'radio']) && !empty($array['option'])) {
 			$class = [];
-			foreach ($a['option'] as $k =>$v) {
-				if (is_array($a['class']) && !empty($a['class'][$k])) {
-					$class[$k] = preg_replace("/[^0-9a-zA-Z_ -]/",'', $a['class'][$k]);
+			foreach ($array['option'] as $k =>$v) {
+				if (is_array($array['class']) && !empty($array['class'][$k])) {
+					$class[$k] = preg_replace("/[^0-9a-zA-Z_ -]/",'', $array['class'][$k]);
 				} else {
-					$class[$k] = !is_array($a['class']) && !empty($a['class']) ? preg_replace("/[^0-9a-zA-Z_ -]/",'', $a['class']) : $i;
+					$class[$k] = !is_array($array['class']) && !empty($array['class']) ? preg_replace("/[^0-9a-zA-Z_ -]/",'', $array['class']) : $i;
 				}
 				$class[$k] .= ' '. $type;
 			}
-			$a['class'] = $class;
+			$array['class'] = $class;
 		} else {
-			$a['class'] =  $a['class'] ? preg_replace("/[^0-9a-zA-Z_ -]/",'', is_array($a['class']) ? implode(' ', $a['class']) : $a['class']) : $i;
-			$a['class'] .= ' '. $type;
+			$array['class'] =  $array['class'] ? preg_replace("/[^0-9a-zA-Z_ -]/",'', is_array($array['class']) ? implode(' ', $array['class']) : $array['class']) : $i;
+			$array['class'] .= ' '. $type;
 		}
 
 		if ($in_array) {
 			$disabled = [];
-			foreach ($a['option'] as $k =>$v) {
-				$disabled[$k] =! empty($a['disabled']) && (!is_array($a['disabled']) || in_array((string) $k, $a['disabled'])) ? 'disabled' : '';
+			foreach ($array['option'] as $k =>$v) {
+				$disabled[$k] =! empty($array['disabled']) && (!is_array($array['disabled']) || in_array((string) $k, $array['disabled'])) ? 'disabled' : '';
 				if ($disabled[$k]) {
-					$a['class'][$k] .= ' disabled';
+					$array['class'][$k] .= ' disabled';
 				}
 			}
-			$a['disabled'] = $disabled;
-		} elseif (!empty($a['disabled'])) {
-			$a['disabled'] = 'disabled';
-			$a['class'] .= ' disabled';
+			$array['disabled'] = $disabled;
+		} elseif (!empty($array['disabled'])) {
+			$array['disabled'] = 'disabled';
+			$array['class'] .= ' disabled';
 		}
 
 
 		if ($in_array) {
 			$readonly = [];
-			foreach ($a['option'] as $k =>$v) {
-				$readonly[$k] =! empty($a['readonly']) && (!is_array($a['readonly']) || in_array((string) $k, $a['readonly'])) ? 'readonly' : '';
+			foreach ($array['option'] as $k =>$v) {
+				$readonly[$k] =! empty($array['readonly']) && (!is_array($array['readonly']) || in_array((string) $k, $array['readonly'])) ? 'readonly' : '';
 				if ($readonly[$k]) {
-					$a['class'][$k] .= ' readonly';
+					$array['class'][$k] .= ' readonly';
 				}
 			}
-			$a['readonly'] = $readonly;
-		} elseif (!empty($a['readonly'])) {
-			$a['readonly'] = 'readonly';
-			$a['class'] .= ' readonly';
+			$array['readonly'] = $readonly;
+		} elseif (!empty($array['readonly'])) {
+			$array['readonly'] = 'readonly';
+			$array['class'] .= ' readonly';
 		}
 
 
 
 
-		if ($a['type'] == 'select' && !empty($a['multiple'])) {
-			$a['class'] .= ' multiple';
+		if ($array['type'] == 'select' && !empty($array['multiple'])) {
+			$array['class'] .= ' multiple';
 		}
 
 		// 值是数组
-		if (in_array($a['type'], ['checkbox', 'select'])) {
-			$a['value'] = (array) $a['value'];
-		} elseif ( is_array($a['value']) || is_object($a['value'])) {
-			$a['value'] = htmlspecialchars(json_encode($a['value']), ENT_QUOTES);
+		if (in_array($array['type'], ['checkbox', 'select'])) {
+			$array['value'] = (array) $array['value'];
+		} elseif (is_array($array['value']) || is_object($array['value'])) {
+			$array['value'] = htmlspecialchars(json_encode($array['value']), ENT_QUOTES);
 		}
 
 		// html 转义
-		self::_html($a);
+		self::_text($array);
 		return true;
-	}
-
-	private static function _html(array &$a, array $tags = []) {
-		foreach ($a as $k => &$v) {
-			if (in_array($k, $tags ? (array)$tags : self::$_tags)) {
-				continue;
-			}
-			if (is_array($v)) {
-				self::_html($v, []);
-			} else {
-				$v = strtr($v, ['"' => '&quot;', '\'' => '&#039;', '<' => '&lt;', '>' => '&gt;']);
-			}
-		}
 	}
 }

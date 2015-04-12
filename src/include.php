@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-12-31 15:46:54
-/*	Updated: UTC 2015-04-03 14:45:20
+/*	Updated: UTC 2015-04-09 07:52:48
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -37,7 +37,7 @@ while(ob_get_level()) {
 const VERSION = '0.0.2';
 
 // 系统技术支持
-const SUPPORT = 'www.Loli.Net';
+const POWERED = 'Loli.Net';
 
 
 if (!headers_sent()) {
@@ -48,7 +48,7 @@ if (!headers_sent()) {
 	header('X-Version: ' . VERSION);
 
 	// 版权信息
-	header('X-Support: ' . SUPPORT);
+	header('X-Powered-By: ' . SUPPORT);
 }
 
 // Debug

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-05 09:48:17
-/*	Updated: UTC 2015-03-25 10:12:13
+/*	Updated: UTC 2015-04-11 02:34:48
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -164,7 +164,7 @@ class PDO extends Base{
 			}
 			return false;
 		}
-		if (($protocol = $this->protocol()) === 'mysql') {
+		if ($this->protocol() === 'mysql') {
 			return ($matches[1] ? '`'. $matches[1]. '`.' : '') . ($matches[2] === '*' ? $matches[2] : '`'. $matches[2] .'`');
 		}
 		return ($matches[1] ? '\''. $matches[1]. '\'.' : '') . ($matches[2] === '*' ? $matches[2] : '\''. $matches[2] .'\'');

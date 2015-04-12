@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-10 08:00:28
-/*	Updated: UTC 2015-03-25 08:36:13
+/*	Updated: UTC 2015-04-11 01:41:40
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -69,9 +69,15 @@ abstract class Cursor{
 	// 缓存时间
 	protected $cache = [0, 0];
 
-	// 有修改表的日志  /*[数据库 or ID=>[表名=>执行时间戳]]*/
+	// 有修改表的日志  [database=>[表名=>执行时间戳]]
 	private static $_logs = [];
 
+	/**
+	 * __construct
+	 * @param Base   $DB
+	 * @param array|string $tables
+	 * @param array  $indexs 索引
+	 */
 	public function __construct(Base $DB, $tables = [], array $indexs = []) {
 		$this->DB = $DB;
 		$this->database = $DB->database();
@@ -79,13 +85,20 @@ abstract class Cursor{
 		$this->tables((array)$tables);
 	}
 
-
+	/**
+	 * slave 主从设置
+	 * @param  boolean|null $slave
+	 * @return this
+	 */
 	public function slave($slave) {
 		$this->slave = $slave;
 		return $this;
 	}
 
-	// 读取主从同步
+	/**
+	 * getSlave  读取使用主从
+	 * @return boolean
+	 */
 	protected function getSlave() {
 		if ($this->slave === NULL) {
 			$this->slave = $this->DB->slave;
@@ -103,7 +116,11 @@ abstract class Cursor{
 		return true;
 	}
 
-	// 写入主从同步
+	/**
+	 * setSlave 设置主从
+	 * @param  integer $ttl
+	 * @return this
+	 */
 	protected function setSlave($ttl = 2) {
 		if (empty($this->data['uses'])) {
 			return $this;
@@ -114,22 +131,42 @@ abstract class Cursor{
 		return $this;
 	}
 
+	/**
+	 * callback 回调对象
+	 * @param  callback|null $callback
+	 * @return this
+	 */
 	public function callback(callback $callback = NULL) {
 		$this->callback = $callback;
 		return $this;
 	}
 
+	/**
+	 * execute 是否返回的是执行
+	 * @param  boolean $execute
+	 * @return this
+	 */
 	public function execute($execute) {
 		$this->execute = $execute;
 		return $this;
 	}
 
+	/**
+	 * cache 设置缓存
+	 * @param  integer  $ttl
+	 * @param  integer $refresh
+	 * @return this
+	 */
 	public function cache($ttl, $refresh = 0) {
 		$this->cache = [$ttl, $refresh];
 		return $this;
 	}
 
-
+	/**
+	 * indexs 设置索引
+	 * @param  array  $indexs
+	 * @return this
+	 */
 	public function indexs(array $indexs) {
 		$this->data = [];
 		foreach ($indexs as $column => $value) {
@@ -145,14 +182,19 @@ abstract class Cursor{
 		}
 		return $this;
 	}
-
+	/**
+	 * index
+	 * @param  string $column
+	 * @param  array|string|null $value
+	 * @return this
+	 */
 	public function index($column, $value) {
 		return $this->indexs([$column=>$value]);
 	}
 
 	/**
-	 * 选择表多个表
-	 * @param  array  $tables 选择的表 诉诸
+	 * tables 选择表多个表
+	 * @param  array  $tables 选择的表 数组
 	 * @return $this
 	 */
 	public function tables(array $tables) {
@@ -175,13 +217,13 @@ abstract class Cursor{
 	}
 
 	/**
-	 * 选择表多个
-	 * @param  [type] $table  选择的表
-	 * @param  [type] $alias  别名 重命名
-	 * @param  [type] $join   选择的表 join 参数
-	 * @param  [type] $on     选择的表 on 参数
-	 * @param  array  $params 附加参数
-	 * @return $this
+	 * table 选择表
+	 * @param  string              $table  表名
+	 * @param  string|null         $alias  表别名
+	 * @param  string|null         $join   join 参数
+	 * @param  array|string|null   $on
+	 * @param  array               $params 附加参数
+	 * @return this
 	 */
 	public function table($table, $alias = NULL, $join = NULL, $on = NULL, array $params = []) {
 		$this->data = [];
@@ -194,6 +236,11 @@ abstract class Cursor{
 		return $this;
 	}
 
+	/**
+	 * columns 字段
+	 * @param  array  $columns
+	 * @return this
+	 */
 	public function columns(array $columns) {
 		foreach ($columns as $name => $column) {
 			if ($column instanceof Param) {
@@ -205,6 +252,14 @@ abstract class Cursor{
 		return $this;
 	}
 
+	/**
+	 * column  添加字段
+	 * @param  string             $name   字段名
+	 * @param  string|null        $type   字段类型
+	 * @param  array|integer|null $length 字段长度
+	 * @param  array              $params 附加参数
+	 * @return this
+	 */
 	public function column($name, $type = NULL, $length = NULL, array $params = []) {
 		if ($name instanceof Param) {
 			$this->columns[] = $name;
@@ -215,9 +270,9 @@ abstract class Cursor{
 	}
 
 	/**
-	 * 选择字段多个
+	 * fields 选择字段多个
 	 * @param  array  $fields 字段数组
-	 * @return $this
+	 * @return this
 	 */
 	public function fields(array $fields) {
 		$this->data = [];
@@ -241,12 +296,12 @@ abstract class Cursor{
 	}
 
 	/**
-	 * 选择单个字段
-	 * @param  [type] $field    字段名
-	 * @param  [type] $alias    别名 重命名
-	 * @param  [type] $function 字段函数
-	 * @param  array  $params   附加参数
-	 * @return $this
+	 * field 选择单个字段
+	 * @param  string      $field    字段名
+	 * @param  string|null $alias    别名 重命名
+	 * @param  string|null $function 字段函数
+	 * @param  array       $params   附加参数
+	 * @return this
 	 */
 	public function field($field, $alias = NULL, $function = NULL, array $params = []) {
 		$this->data = [];
@@ -260,10 +315,9 @@ abstract class Cursor{
 	}
 
 	/**
-	 * 添加查询 信息
+	 * querys 选择查询
 	 * @param  array  $querys 写入的查询数组
-	 * @param  array  $indexs 写入的数组 索引方法
-	 * @return  $this
+	 * @return this
 	 */
 	public function querys(array $querys) {
 		$this->data = [];
@@ -277,13 +331,13 @@ abstract class Cursor{
 		return $this;
 	}
 	/**
-	 * 添加查询 信息
-	 * @param  [type] $column  字段
-	 * @param  [type] $value   值
-	 * @param  [type] $compare 运算符
-	 * @param  [type] $function 函数
-	 * @param  array  $params  附加变量
-	 * @return $this
+	 * query 添加查询 信息
+	 * @param  string      $column  字段
+	 * @param  *           $value   值
+	 * @param  string|null $compare 运算符
+	 * @param  string|null $function 函数
+	 * @param  array       $params  附加变量
+	 * @return this
 	 */
 	public function query($column, $value = NULL, $compare = NULL, $function = NULL, array $params = []) {
 		$this->data = [];
@@ -299,10 +353,10 @@ abstract class Cursor{
 
 
 	/**
-	 * 插入 values
+	 * values 插入
 	 * @param  array   $values     插入的数组
 	 * @param  boolean $toDocument 是否写入成 文档
-	 * @return $this
+	 * @return this
 	 */
 	public function values(array $values, $toDocument = false) {
 		$this->data = [];
@@ -321,12 +375,12 @@ abstract class Cursor{
 	}
 
 	/**
-	 * 插入 value
-	 * @param  [type]  $name       插入的名称
-	 * @param  [type]  $value      插入的值
+	 * value 插入
+	 * @param  string  $name       插入的名称
+	 * @param  *       $value      插入的值
 	 * @param  array   $params     附加参数
 	 * @param  boolean $toDocument 是否写 成文档
-	 * @return $this
+	 * @return this
 	 */
 	public function value($name, $value = NULL, array $params = [], $toDocument = false) {
 		$this->data = [];
@@ -343,9 +397,9 @@ abstract class Cursor{
 	}
 
 	/**
-	 * 写入的文档多个
+	 * documents 写入的文档多个
 	 * @param  array  $documents 二维数组
-	 * @return $this
+	 * @return this
 	 */
 	public function documents(array $document) {
 		$this->data = [];
@@ -358,7 +412,7 @@ abstract class Cursor{
 
 
 	/**
-	 * 写入的文档
+	 * document 写入的文档
 	 * @param  array  $document 数组
 	 * @return $this
 	 */
@@ -393,10 +447,10 @@ abstract class Cursor{
 
 	/**
 	 * 添加单个选项
-	 * @param  [type] $name  选项名称
-	 * @param  [type] $value   值
+	 * @param  string $name  选项名称
+	 * @param  *      $value   值
 	 * @param  array  $params  附加变量
-	 * @return $this
+	 * @return this
 	 */
 	public function option($name, $value = NULL, array $params = []) {
 		$this->data = [];
@@ -411,8 +465,8 @@ abstract class Cursor{
 
 	/**
 	 * 分组选项
-	 * @param  [type] $columns  字段
-	 * @return $this
+	 * @param  array|string $columns  字段
+	 * @return this
 	 */
 	public function group($columns) {
 		$this->data = [];
@@ -433,7 +487,12 @@ abstract class Cursor{
 	}
 
 
-
+	/**
+	 * order
+	 * @param  array|string $columns
+	 * @param  integer|null $order
+	 * @return this
+	 */
 	public function order($columns, $order = NULL) {
 		$this->data = [];
 		if ($columns instanceof Param) {
@@ -459,9 +518,9 @@ abstract class Cursor{
 	}
 
 	/**
-	 * 偏移选项
-	 * @param  [type] $offset 偏移位置
-	 * @return $this
+	 * offset
+	 * @param  integer $offset 偏移位置
+	 * @return this
 	 */
 	public function offset($offset) {
 		$this->data = [];
@@ -470,9 +529,9 @@ abstract class Cursor{
 	}
 
 	/**
-	 * 限制选项
-	 * @param  [type] $limit 限制数量
-	 * @return $this
+	 * limit
+	 * @param  integer $limit 限制数量
+	 * @return this
 	 */
 	public function limit($limit) {
 		$this->data = [];
@@ -480,7 +539,14 @@ abstract class Cursor{
 		return $this;
 	}
 
-	public function unions(array $unions, $all = NULL) {
+
+	/**
+	 * unions
+	 * @param  array   $unions
+	 * @param  boolean $all
+	 * @return this
+	 */
+	public function unions(array $unions, $all = false) {
 		$this->data = [];
 		foreach ($unions as $union) {
 			if ($union instanceof Param) {
@@ -492,7 +558,13 @@ abstract class Cursor{
 		return $this;
 	}
 
-	public function union($union, $all = NULL) {
+	/**
+	 * union
+	 * @param  Param|Cursor   $union
+	 * @param  boolean $all
+	 * @return this
+	 */
+	public function union($union, $all = false) {
 		$this->data = [];
 		if ($union instanceof Param) {
 			$this->unions[] = $union;
@@ -503,36 +575,75 @@ abstract class Cursor{
 	}
 
 
-	// 判断表是否存在
+	/**
+	 * exists 判断某个表是否存在
+	 * @return boolean
+	 */
 	abstract public function exists();
 
-	// 创建表
+	/**
+	 * create
+	 * @return boolean
+	 */
 	abstract public function create();
 
-	// 清空表
+	/**
+	 * truncate
+	 * @return boolean
+	 */
 	abstract public function truncate();
 
-	// 删除表
+	/**
+	 * drop
+	 * @return boolean
+	 */
 	abstract public function drop();
 
-	// 插入字段
+	/**
+	 * insert
+	 * @return integer|array
+	 */
 	abstract public function insert();
 
-	// 更新字段
+
+	/**
+	 * update
+	 * @return integer|array
+	 */
 	abstract public function update();
 
-	// 删除字段
+
+	/**
+	 * delete
+	 * @return integer
+	 */
 	abstract public function delete();
 
-	// 读取表
+	/**
+	 * select
+	 * @return array
+	 */
 	abstract public function select();
 
-	// 数量
+	/**
+	 * count
+	 * @return integer
+	 */
 	abstract public function count();
 
 
+	/**
+	 * deleteCacheSelect 删除读取缓存
+	 * @param  integer $refresh 延迟刷新时间
+	 * @return this
+	 */
 	abstract public function deleteCacheSelect($refresh = NULL);
 
 
+	/**
+	 * deleteCacheCount 删除数量缓存
+	 * @param  integer $refresh 延迟刷新时间
+	 * @return this
+	 */
 	abstract public function deleteCacheCount($refresh = NULL);
 }

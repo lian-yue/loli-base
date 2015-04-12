@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-03-22 14:44:16
+/*	Updated: UTC 2015-04-09 12:50:06
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -80,7 +80,7 @@ class Code{
 			}
 		}
 
-		// base64_decode 随机字符串 和数据
+		// base64_encode 随机字符串 和数据
 		$code = strtr(base64_encode(self::_code($type .chr(0). ($ttl? $ttl + time() : 0) .chr(0). ($type == 9 ? serialize($value) :$value), $rand . $password)), ['=' => '', '+' => '-', '/' => '_']);
 
 

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-04-09 01:43:29
+/*	Updated: UTC 2015-04-09 08:14:54
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -216,34 +216,30 @@ abstract class Base {
 	abstract public function show($type = false);
 
 	/**
-	*	剪切调整图像
-	*
-	*	1 参数 最大宽度
-	*	2 参数 最大高度
-	*	3 参数 是否剪切 默认 false false = 对等缩缩小 true = 缩小剪切
-	*	4 参数 是否放大 默认 false false = 不允许放大 true = 允许放大
-	*	5 参数 是否填补	默认 flash = 禁止填补 ture = 允许填补
-	*
-	*	返回值 文件绝对地址
-	**/
-
+	 * resize 剪切
+	 * @param  integer $maxWidth  宽度
+	 * @param  integer $minHeight 高度
+	 * @param  boolean $crop      剪裁
+	 * @param  boolean $enlarge   放大
+	 * @param  boolean $fill      填补
+	 * @return this
+	 */
 	public function resize($maxWidth, $minHeight, $crop = false, $enlarge = false, $fill = false) {
 		// 强制控制大小
 		$this->_maxMin($maxWidth, $minHeight);
 		return  call_user_func_array([$this, 'resampled'], $this->resizeDimensions($maxWidth, $minHeight, $crop, $enlarge, $fill));
 	}
 
+
 	/**
-	*	处理尺寸
-	*
-	*	1 参数 剪切最大宽度
-	*	2 参数 剪切最大高度
-	*	3 参数 是否剪切	默认 false = 对等缩小 ture = 剪切图片
-	*	4 参数 是否放大	默认 flash = 禁止放大 ture = 允许放大
-	*	5 参数 是否填补	默认 flash = 禁止填补 ture = 允许填补
-	*
-	*	返回值 数组 或者 false
-	**/
+	 * resizeDimensions 获得计算的剪切控制
+	 * @param  integer        $maxWidth  宽度
+	 * @param  integer        $maxHeight 高度
+	 * @param  boolean|string $crop      剪切
+	 * @param  boolean        $enlarge   放大
+	 * @param  boolean        $fill      填补
+	 * @return array
+	 */
 	public function resizeDimensions($maxWidth = 0, $maxHeight = 0, $crop = false, $enlarge = false, $fill = false) {
 		if ($maxWidth <= 0 && $maxHeight <= 0) {
 			throw new Exception('Resize');
@@ -318,7 +314,7 @@ abstract class Base {
 			$srcX = 0;
 			$srcY = 0;
 
-			list($dstWidth, $dstHeight) = $this->constrainDimensions($maxWidth, $maxHeight, $enlarge);
+			list($dstWidth, $dstHeight) = $this->_constrainDimensions($maxWidth, $maxHeight, $enlarge);
 		}
 		$dstX = 0;
 		$dstY = 0;
@@ -344,27 +340,18 @@ abstract class Base {
 		}
 
 		// 返回的数组参数匹配到 第一个 第二个是新图像宽度高度 imagecopyresampled()
-		$r = [$newWidth, $newHeight, (int)$dstX, (int)$dstY, $srcX, $srcY, $dstWidth, $dstHeight, $srcWidth, $srcHeight];
-		return $r;
+		return [$newWidth, $newHeight, (int)$dstX, (int)$dstY, $srcX, $srcY, $dstWidth, $dstHeight, $srcWidth, $srcHeight];
 	}
 
+
 	/**
-	*	计算新的尺寸为下采样图像。
-	*	1 参数 现在宽度
-	*	1 参数 现在高度
-	*	3 参数 剪切最大宽度
-	*	4 参数 剪切最大高度
-	*	5 参数 是否放大 默认 false = 禁止放大 true = 允许放大
-	*
-	**/
-	/**
-	 * constrainDimensions
-	 * @param  integer $maxWidth   [description]
-	 * @param  integer $maxHeight   [description]
-	 * @param  boolean $enlarge [description]
-	 * @return [type]           [description]
+	 * _constrainDimensions
+	 * @param  integer $maxWidth   宽度
+	 * @param  integer $maxHeight  高度
+	 * @param  boolean $enlarge    放大
+	 * @return array
 	 */
-	public function constrainDimensions($maxWidth = 0, $maxHeight = 0, $enlarge = false) {
+	private function _constrainDimensions($maxWidth, $maxHeight, $enlarge) {
 		$width = $this->width();
 		$height = $this->height();
 
@@ -416,14 +403,13 @@ abstract class Base {
 	}
 
 
+
+
 	/**
-	*	图像宽度高度检测
-	*
-	*	1 参数 图像宽度
-	*	2 参数 图像高度
-	*
-	*	无返回值 直接引用
-	**/
+	 * _maxMin 限制最大宽度高度
+	 * @param  integer &$maxWidth
+	 * @param  integer &$maxHeight
+	 */
 	private function _maxMin(&$maxWidth, &$maxHeight) {
 
 		// 最大宽度检测

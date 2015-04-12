@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-12 15:00:16
-/*	Updated: UTC 2015-03-22 14:33:12
+/*	Updated: UTC 2015-04-09 08:14:20
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -17,6 +17,7 @@ class_exists('Loli\Image\Base') || exit;
 class Imagick extends Base{
 
 	private $_im;
+
 	private $_type = false;
 
 	public function create($file, $type = false) {
@@ -390,7 +391,7 @@ class Imagick extends Base{
 				$this->_im->setImageCompressionQuality($this->quality);
 				$this->_im->setImageInterlaceScheme(true);
 			}
-			header('Content-Type: ' . (empty($this->mime[$this->_type]) ? reset($this->mime) : $this->mime[$this->_type]));
+			headers_sent() || header('Content-Type: ' . (empty($this->mime[$this->_type]) ? reset($this->mime) : $this->mime[$this->_type]));
 			echo $this->_type == self::TYPE_GIF ? $this->_im->getImagesBlob() : $this->_im->getImage();
 		} catch (ImagickException $e) {
 			throw new Exception($e->getMessage());

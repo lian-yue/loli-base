@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 12:09:10
-/*	Updated: UTC 2015-03-25 09:33:55
+/*	Updated: UTC 2015-04-09 12:49:12
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -205,34 +205,36 @@ class CURL{
 			$this->_chs[$key] = curl_init();
 
 			$options += $this->defaults;
+			$skips = [];
 			foreach ($options as $optoin => $value) {
- 				if ($value === NULL) {
+ 				if ($value === NULL || in_array($optoin, $skips)) {
  					continue;
  				}
- 				if ($optoin == CURLOPT_URL) {
- 					if (substr($value, 0, 2) == '//') {
+ 				if ($optoin === CURLOPT_URL) {
+ 					if (substr($value, 0, 2) === '//') {
 						$value = 'http:' . $value;
 					}
- 				} elseif ($optoin == CURLOPT_PROGRESSFUNCTION) {
+ 				} elseif ($optoin === CURLOPT_PROGRESSFUNCTION) {
  					if (!isset($options[CURLOPT_NOPROGRESS])) {
 						curl_setopt($this->_chs[$key], CURLOPT_NOPROGRESS, false);
 					}
-				} elseif ($optoin == CURLOPT_COOKIEJAR || $optoin == CURLOPT_COOKIEFILE) {
+				} elseif ($optoin === CURLOPT_COOKIEJAR || $optoin === CURLOPT_COOKIEFILE) {
 					$value = $this->cookie($value);
-				} elseif ($optoin == CURLOPT_FILE) {
+				} elseif ($optoin === CURLOPT_FILE) {
 					if (!is_resource($value)) {
 						$downloads[$key]['file'] = $value;
 						$downloads[$key]['temp'] = $value = tmpfile();
 					}
+					$skips[] = CURLOPT_RETURNTRANSFER;
 					curl_setopt($this->_chs[$key], CURLOPT_RETURNTRANSFER, false);
 				}
+				$skips[] = $optoin;
 				curl_setopt($this->_chs[$key], $optoin, $value);
 			}
 			if (!$all) {
 				break;
 			}
 		}
-
 
 
 		$this->_info = [];
@@ -242,15 +244,11 @@ class CURL{
 			foreach ($this->_chs as $key => &$ch) {
 				// 结果
 				$content = curl_exec($ch);
-
 				// 信息
 				$this->_info[$key] = curl_getinfo($ch);
 				$this->_info[$key]['error'] = curl_error($ch);
 				$this->_info[$key]['errno'] = curl_errno($ch);
 				$this->_info[$key]['content'] = $content;
-
-				// 关闭
-				curl_close($ch);
 
 				// 如果有下载就移动文件
 				if (!empty($downloads[$key])) {
@@ -261,7 +259,6 @@ class CURL{
 					}
 					fclose($downloads[$key]['temp']);
 				}
-
 				$this->_options = $this->_chs = [];
 				return $content;
 			}

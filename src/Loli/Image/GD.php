@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-16 08:55:06
-/*	Updated: UTC 2015-03-23 13:58:17
+/*	Updated: UTC 2015-04-09 13:07:39
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -24,7 +24,7 @@ class GD extends Base {
 		if (!$file || !is_file($file)) {
 			throw new Exception('Image does not exist');
 		}
-		if (!($info = @getimagesize($file)) || !($contents = file_get_contents($file)) || !($this->_im = @imagecreatefromstring($contents)) || !($this->_old = @imagecreatefromstring($a))) {
+		if (!($info = @getimagesize($file)) || !($contents = file_get_contents($file)) || !($this->_im = @imagecreatefromstring($contents)) || !($this->_old = @imagecreatefromstring($contents))) {
 			throw new Exception('Open the image');
 		}
 		unset($contents);
@@ -120,28 +120,28 @@ class GD extends Base {
 		$width = $this->width();
 		$height = $this->height();
 
-		$src_x = 0;
-		$src_y = 0;
-		$src_width = $width;
-		$src_height = $height;
+		$srcX = 0;
+		$srcY = 0;
+		$srcWidth = $width;
+		$srcHeight = $height;
 
 		switch ($mode) {
 			case self::FLIP_HORIZONTAL:
-				$src_y = $height -1;
-				$src_height = -$height;
+				$srcY = $height -1;
+				$srcHeight = -$height;
 				break;
 			case self::FLIP_VERTICAL:
-				$src_x = $width -1;
-				$src_width = -$width;
+				$srcX = $width -1;
+				$srcWidth = -$width;
 				break;
 			default:
-				$src_x = $width -1;
-				$src_y = $height -1;
-				$src_width = -$width;
-				$src_height = -$height;
+				$srcX = $width -1;
+				$srcY = $height -1;
+				$srcWidth = -$width;
+				$srcHeight = -$height;
 		}
 		$image = $this->_create($width, $height);
-		if (!imagecopyresampled($image, $this->_im, 0, 0, $src_x, $src_y , $width, $height, $src_width, $src_height)) {
+		if (!imagecopyresampled($image, $this->_im, 0, 0, $srcX, $srcY , $width, $height, $srcWidth, $srcHeight)) {
 			throw new Exception('Flip');
 		}
 
@@ -217,6 +217,10 @@ class GD extends Base {
 			$y -= $info[7];
 		}
 
+		if (!function_exists('imagettftext')) {
+			throw new Exception('Freetype is not supported');
+		}
+
 		imagealphablending($this->_im, true);
 		$color = imagecolorallocatealpha($this->_im, $red, $green, $blue, 127 - $opacity * 127);
 		imagettftext($this->_im, $size, $angle, $x, $y, $color, $font, $text);
@@ -263,11 +267,11 @@ class GD extends Base {
 
 
 
-	public function resampled($new_w, $new_h, $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h) {
+	public function resampled($newWidth, $newHeight, $dstX, $dstY, $srcX, $srcY, $dstWidth, $dstHeight, $srcWidth, $srcHeight) {
 		if (!$this->_im) {
 			throw new Exception('Resource');
 		}
-		if (!imagecopyresampled($image = $this->_create($new_w, $new_h), $this->_im, $dst_x, $dst_y, $src_x, $src_y, $dst_w, $dst_h, $src_w, $src_h)) {
+		if (!imagecopyresampled($image = $this->_create($newWidth, $newHeight), $this->_im, $dstX, $dstY, $srcX, $srcY, $dstWidth, $dstHeight, $srcWidth, $srcHeight)) {
 			throw new Exception('Resize');
 		}
 		imagedestroy($this->_im);
@@ -300,12 +304,12 @@ class GD extends Base {
 				throw new Exception('Save');
 			}
 		} elseif (self::TYPE_GIF == $type) {
-			$this->stotal();
+			$this->_stotal();
 			if (!imagegif($this->_im, $save)) {
 				throw new Exception('Save');
 			}
 		} elseif (self::TYPE_PNG == $type) {
-			$this->stotal();
+			$this->_stotal();
 			if (!imagepng($this->_im, $save)) {
 				throw new Exception('Save');
 			}
@@ -332,18 +336,18 @@ class GD extends Base {
 			throw new Exception('Resource');
 		}
 		$type = $type ? $type : $this->type();
-		header('Content-Type: ' . (empty($this->mime[$type]) ? reset($$this->mime) : $this->mime[$type]));
-		if (self::TYPE_WEBP == $type) {
+		headers_sent() || header('Content-Type: ' . (empty($this->mimes[$type]) ? reset($$this->mimes) : $this->mimes[$type]));
+		if (self::TYPE_WEBP === $type) {
 			if (!imagewebp($this->_im)) {
 				throw new Exception('Show');
 			}
-		} elseif (self::TYPE_GIF == $type) {
-			$this->stotal();
+		} elseif (self::TYPE_GIF === $type) {
+			$this->_stotal();
 			if (!imagegif($this->_im)) {
 				throw new Exception('Show');
 			}
-		} elseif (self::TYPE_PNG == $type) {
-			$this->stotal();
+		} elseif (self::TYPE_PNG === $type) {
+			$this->_stotal();
 			imagepng($this->_im);
 		} else {
 			imageinterlace($this->_im, true);
@@ -357,27 +361,21 @@ class GD extends Base {
 
 
 	/**
-	*	索引颜色转换
-	*
-	*	无参数
-	*
-	*	返回值 bool
-	**/
-	public function stotal() {
-		return function_exists('imageistruecolor') && $this->_old && $this->_im && !imageistruecolor($this->_old) && imagetruecolortopalette($this->_im, false, imagecolorstotal($this->_old));
+	 * _stotal
+	 */
+	private function _stotal() {
+		function_exists('imageistruecolor') && $this->_old && $this->_im && !imageistruecolor($this->_old) && imagetruecolortopalette($this->_im, false, imagecolorstotal($this->_old));
 	}
 
 
 
 
 	/**
-	*	创建新图像
-	*
-	*	1 参数 宽度
-	*	2 参数 高度
-	*
-	*	返回值 false or 资源
-	**/
+	 * _create 创建文件
+	 * @param  integer $w
+	 * @param  integer $h
+	 * @return resource
+	 */
 	private function _create($w, $h) {
 		if (!$image = imagecreatetruecolor($w, $h)) {
 			throw new Exception('Creating images');
@@ -387,5 +385,4 @@ class GD extends Base {
 		imagesavealpha($image, true);
 		return $image;
 	}
-
 }

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-11 16:13:26
-/*	Updated: UTC 2015-03-25 10:16:59
+/*	Updated: UTC 2015-04-11 02:24:24
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -28,7 +28,7 @@ class SQLCursor extends Cursor{
 
 
 
-	// assignment
+	// 计算运算符
 	private $_assignments = [
 		'INC' => '+',
 		'+' => '+',
@@ -74,7 +74,7 @@ class SQLCursor extends Cursor{
 		'LIKE' => 'LIKE',
 	];
 
-
+	// 比较运算符 加上not 的
 	private $_notCompares = [
 
 
@@ -107,9 +107,10 @@ class SQLCursor extends Cursor{
 
 	];
 
+	// 聚合函数
 	private $_havings = ['SUM','MIN','MAX','AVG','COUNT'];
 
-
+	// 全部函数
 	private $_functions = [
 		'SUM' => 'MIN',
 		'MAX' => 'MAX',
@@ -120,10 +121,22 @@ class SQLCursor extends Cursor{
 		'LAST' => 'LAST',
 	];
 
+
+	// 是否缓存
 	private $_isCache = false;
 
+
+	// 需要使用的表
 	private $_useTables = [];
 
+
+	/**
+	 * _command 执行命令
+	 * @param  string                          $command     query
+	 * @param  integer                         $ttl         表过期时间
+	 * @param  string                          $function    回调函数名
+	 * @return array|string|integer|boolean
+	 */
 	private function _command($command, $ttl = 2, $function = __FUNCTION__) {
 		if (!$this->execute) {
 			return $command;
@@ -133,6 +146,10 @@ class SQLCursor extends Cursor{
 		return $results;
 	}
 
+	/**
+	 * _table 取得一个表的对象
+	 * @return Param
+	 */
 	private function _table() {
 		// 没有表
 		if (!$this->tables) {
@@ -149,6 +166,10 @@ class SQLCursor extends Cursor{
 		return $table;
 	}
 
+	/**
+	 * _ignore 忽略参数
+	 * @return string
+	 */
 	private function _ignore() {
 		$ignore = '';
 		foreach ($this->options as $option) {
@@ -159,6 +180,11 @@ class SQLCursor extends Cursor{
 		return $ignore ? 'IGNORE' : '';
 	}
 
+	/**
+	 * _from 取得表的  from
+	 * @param  string $type  类型  SELECT or UPDATE  or DELETE
+	 * @return string
+	 */
 	private function _from($type) {
 		if (isset($this->data[__FUNCTION__][$type])) {
 			$this->data['uses'] = $this->data[__FUNCTION__][$type][1];
@@ -238,7 +264,11 @@ class SQLCursor extends Cursor{
 		return $this->data[__FUNCTION__][$type][0] = strtr($command, [':using' => implode(',', $usings), ':table' => implode(' ', $arrays)]);
 	}
 
-	private function _field() {
+	/**
+	 * _fields 选择的字段
+	 * @return string
+	 */
+	private function _fields() {
 		if (isset($this->data[__FUNCTION__])) {
 			return $this->data[__FUNCTION__];
 		}
@@ -265,7 +295,10 @@ class SQLCursor extends Cursor{
 		return $this->data[__FUNCTION__] = implode(', ', $fields);
 	}
 
-
+	/**
+	 * _limit 限制的数量
+	 * @return string
+	 */
 	private function _limit() {
 		if (isset($this->data[__FUNCTION__])) {
 			return $this->data[__FUNCTION__];
@@ -279,7 +312,10 @@ class SQLCursor extends Cursor{
 		return $this->data[__FUNCTION__] = ($limit = intval($limit)) ? 'LIMIT ' . $limit : '';
 	}
 
-
+	/**
+	 * _rows 是否记录此次查询的统计  mysql 可用
+	 * @return string
+	 */
 	private function _rows() {
 		if (isset($this->data[__FUNCTION__])) {
 			return $this->data[__FUNCTION__];
@@ -296,7 +332,10 @@ class SQLCursor extends Cursor{
 		return $this->data[__FUNCTION__] = $rows;
 	}
 
-
+	/**
+	 * _offset 偏移
+	 * @return string
+	 */
 	private function _offset() {
 		if (isset($this->data[__FUNCTION__])) {
 			return $this->data[__FUNCTION__];
@@ -307,11 +346,14 @@ class SQLCursor extends Cursor{
 				$offset = $option->value;
 			}
 		}
-		return $this->data[__FUNCTION__] = ($offset = intval($offset)) ? 'LIMIT ' . $offset : '';
+		return $this->data[__FUNCTION__] = ($offset = intval($offset)) ? 'OFFSET ' . $offset : '';
 	}
 
 
-
+	/**
+	 * _order 排序
+	 * @return string
+	 */
 	private function _order() {
 		if (isset($this->data[__FUNCTION__])) {
 			return $this->data[__FUNCTION__];
@@ -342,6 +384,11 @@ class SQLCursor extends Cursor{
 		return $this->data[__FUNCTION__] = $arrays ? 'ORDER BY ' . implode(', ', $arrays) : '';
 	}
 
+	/**
+	 * _group  分组
+	 * @param  $type  SELECT or COUNT
+	 * @return string
+	 */
 	private function _group($type) {
 		if (isset($this->data[__FUNCTION__][$type])) {
 			return $this->data[__FUNCTION__][$type];
@@ -363,7 +410,10 @@ class SQLCursor extends Cursor{
 
 	}
 
-
+	/**
+	 * _where 查询
+	 * @return string
+	 */
 	private function _where() {
 		if (isset($this->data[__FUNCTION__])) {
 			$this->data['uses'] = array_merge($this->data['uses'], $this->data[__FUNCTION__][1]);
@@ -375,6 +425,10 @@ class SQLCursor extends Cursor{
 		return $this->data[__FUNCTION__][0] = $query ? 'WHERE ' . $query : '';
 	}
 
+	/**
+	 * _having 聚合
+	 * @return string
+	 */
 	private function _having() {
 		if (isset($this->data[__FUNCTION__])) {
 			$this->data['uses'] = array_merge($this->data['uses'], $this->data[__FUNCTION__][1]);
@@ -386,7 +440,13 @@ class SQLCursor extends Cursor{
 		return $this->data[__FUNCTION__][0] = $query ? 'HAVING ' . $query : '';
 	}
 
-
+	/**
+	 * _query  查询
+	 * @param  array        $querys
+	 * @param  boolean|null $having  是否是聚合 null 允许全部
+	 * @param  string       $logical 链接运算符
+	 * @return array
+	 */
 	private function _query(array $querys, $having = NULL, $logical = '') {
 		// 逻辑 运算符
 		if (!$logical) {
@@ -605,6 +665,10 @@ class SQLCursor extends Cursor{
 		return implode(' '. $logical .' ', $commands);
 	}
 
+	/**
+	 * _union 链接
+	 * @return string
+	 */
 	private function _union() {
 		if (isset($this->data[__FUNCTION__])) {
 			$this->data['uses'] = array_merge($this->data['uses'], $this->data[__FUNCTION__][1]);
@@ -635,7 +699,14 @@ class SQLCursor extends Cursor{
 		return $this->data[__FUNCTION__][0] = implode(' ', $unions);
 	}
 
-	// 判断表是否存在
+
+
+
+
+
+
+
+
 	public function exists() {
 		// 储存语句
 		$param = $this->_table()->keyValue;
@@ -664,8 +735,6 @@ class SQLCursor extends Cursor{
 		return $result ? true : false;
 	}
 
-
-	// 创建表
 	public function create() {
 		$table = $this->_table()->keyValue;
 		$options = [];
@@ -975,7 +1044,9 @@ class SQLCursor extends Cursor{
 		return $this->_command($command, 60);
 	}
 
-	// 清空表
+
+
+
 	public function truncate() {
 		$table = $this->_table()->keyValue;
 		switch ($this->protocol) {
@@ -990,7 +1061,8 @@ class SQLCursor extends Cursor{
 	}
 
 
-	// 删除表
+
+
 	public function drop() {
 		$table = $this->_table()->keyValue;
 		switch ($this->protocol) {
@@ -1016,7 +1088,8 @@ class SQLCursor extends Cursor{
 		return $this->_command($command, 60);
 	}
 
-	// 插入字段
+
+
 	public function insert() {
 		$table = $this->_table()->keyValue;
 
@@ -1085,7 +1158,7 @@ class SQLCursor extends Cursor{
 		return $this->_command($command);
 	}
 
-	// 更新字段
+
 	public function update() {
 		if ($this->values) {
 			$this->documents[] = $this->values;
@@ -1153,14 +1226,14 @@ class SQLCursor extends Cursor{
 		return $this->_command($command);
 	}
 
-	// 删除字段
+
 	public function delete() {
 		$command = 'DELETE :ignore :form :where :order :offset :limit';
 		$command = strtr($command, [':ignore' => $this->_ignore(), ':using' => $this->_using(), ':form' => $this->_from('DELETE'), ':where' => $this->_where(), ':order' => $this->_order(), ':limit' => $this->_limit()]);
 		return $this->_command($command);
 	}
 
-	// 读取表
+
 	public function select() {
 		//  缓存数据
 		if ($this->execute && $this->_isCache && isset($this->data[__FUNCTION__])) {
@@ -1190,7 +1263,7 @@ class SQLCursor extends Cursor{
 			}
 		}
 
-		$replaces = [':field' => $this->_field(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()];
+		$replaces = [':field' => $this->_fields(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()];
 		$command = 'SELECT :rows :field :form :where :group :having :order :offset :limit :lock :union;';
 		$command = strtr($command, $replaces + [':lock' => $lock, ':rows' => $rows = $this->_rows()]);
 
@@ -1264,7 +1337,7 @@ class SQLCursor extends Cursor{
 
 
 	public function deleteCacheSelect($refresh = NULL) {
-		$this->cache[0] && Cache::delete(json_decode(['database' => $this->database, 'protocol' => $this->protocol, 'cache' => $this->cache, ':field' => $this->_field(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()]), __CLASS__, $refresh === NULL ? $this->cache[1] : $refresh);
+		$this->cache[0] && Cache::delete(json_decode(['database' => $this->database, 'protocol' => $this->protocol, 'cache' => $this->cache, ':field' => $this->_fields(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()]), __CLASS__, $refresh === NULL ? $this->cache[1] : $refresh);
 		unset($this->data['select']);
 		return $this;
 	}

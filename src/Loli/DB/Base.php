@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-03-23 13:30:37
+/*	Updated: UTC 2015-04-10 13:03:34
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -64,7 +64,12 @@ abstract class Base{
 	// 是否是运行的 slave
 	public $slave = true;
 
-
+	/**
+	 * __construct
+	 * @param array   $masterServers 主服务器
+	 * @param array   $slaveServers  从服务器
+	 * @param boolean $explain       是否explain
+	 */
 	public function __construct(array $masterServers, array $slaveServers = [], $explain = false) {
 		foreach ($masterServers as $servers) {
 			$this->_masterServers[] = $this->parseServers($servers);
@@ -75,10 +80,19 @@ abstract class Base{
 		$this->explain = $explain;
 	}
 
+	/**
+	 * __get
+	 * @param  string $name
+	 */
 	public function __get($name) {
 		return $this->cursor($name);
 	}
 
+	/**
+	 * link
+	 * @param  boolean $slave 使用链接类型
+	 * @return
+	 */
 	public function link($slave = NULL) {
 		if ($slave !== NULL) {
 			$this->slave = $slave;
@@ -166,7 +180,11 @@ abstract class Base{
 		return $this->_masterLink;
 	}
 
-
+	/**
+	 * parseServers 解析服务器信息
+	 * @param  array|string $servers 服务器数组
+	 * @return array
+	 */
 	protected function parseServers($servers) {
 		$servers = array_filter(is_array($servers) ? $servers : array_map('trim', explode(',', $servers)));
 		if ($servers && !is_int(key($servers))) {
@@ -204,12 +222,22 @@ abstract class Base{
 		return $results;
 	}
 
-	public function cursor($tables = []) {
+	/**
+	 * cursor 查询游标
+	 * @param  array|string $tables 表名可以是数组
+	 * @return class cursor
+	 */
+	public function cursor($tables = NULL) {
 		$class = __NAMESPACE__ . '\\' . $this->cursor;
 		return new $class($this, $tables);
 	}
 
-
+	/**
+	 * log 写入日志
+	 * @param  string|array|object $query 查询语句
+	 * @param  string|array|object $value 结果数据
+	 * @return this
+	 */
 	public function log($query, $value) {
 		$query = is_array($query) || is_object($query) ? var_export($query, true) : $query;
 		$value = is_array($value) || is_object($value) ? var_export($value, true) : $value;
@@ -217,6 +245,11 @@ abstract class Base{
 		return $this;
 	}
 
+
+	/**
+	 * protocol 返回链接的协议
+	 * @return  string
+	 */
 	public function protocol() {
 		if ($this->protocol === NULL) {
 			$this->protocol = reset($this->_masterServers)[0]['protocol'];
@@ -224,26 +257,85 @@ abstract class Base{
 		return $this->protocol;
 	}
 
-	public function database($name = true) {
+	/**
+	 * database 返回链接的数据库 or 文件名 or ID
+	 * @param  boolean $name 是否只显示名称
+	 * @return string
+	 */
+	public function database() {
 		if ($this->database === NULL) {
 			$this->database = reset($this->_masterServers)[0]['database'];
 		}
-		return $name ? basename($this->database) : $this->database;
+		return basename($this->database);
 	}
 
+	/**
+	 * inTransaction 是否在执行事务
+	 * @return boolean
+	 */
 	public function inTransaction() {
 		return $this->inTransaction;
 	}
 
-
+	/**
+	 * connect 链接到服务器
+	 * @param  array  $servers 服务器信息
+	 * @return 链接资源 or 对象
+	 */
 	abstract protected function connect(array $servers);
+
+
+	/**
+	 * ping
+	 * @param  boolean $slave
+	 * @return this
+	 */
 	abstract protected function ping($slave = NULL);
+
+	/**
+	 * command
+	 * @param  string|array|object    $command
+	 * @param  boolean                $slave
+	 * @return array|boolean|integer
+	 */
 	abstract public function command($command, $slave = NULL);
+
+	/**
+	 * beginTransaction 开始事务
+	 * @return this
+	 */
 	abstract public function beginTransaction();
+
+	/**
+	 * commit 提交事务
+	 * @return this
+	 */
 	abstract public function commit();
+
+	/**
+	 * rollBack 滚回事务
+	 * @return this
+	 */
 	abstract public function rollBack();
+
+	/**
+	 * lastInsertID
+	 * @return integer
+	 */
 	abstract public function lastInsertID();
+
+	/**
+	 * key 转义键名
+	 * @param  string $key
+	 * @return string|boolean
+	 */
 	abstract public function key($key);
+
+	/**
+	 * value 转义键值
+	 * @param  * $value
+	 * @return *
+	 */
 	abstract public function value($value);
 
 }
