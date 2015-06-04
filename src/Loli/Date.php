@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-04-07 14:10:32
+/*	Updated: UTC 2015-05-23 10:59:11
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -91,7 +91,10 @@ class Date{
 				}
 			}
 		}
-		//self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
+		//foreach(DateTimeZone::listIdentifiers() as $identifier) {
+			//$this->allTimezone[$identifier['']]
+		//}
+		self::$allTimezone = array_merge(DateTimeZone::listIdentifiers(), self::$allTimezone);
 	}
 
 
@@ -123,7 +126,7 @@ class Date{
 	 * getTimezone 获得当前时区
 	 * @return string
 	 */
-	public function getTimezone() {
+	public static function getTimezone() {
 		return self::$timezone;
 	}
 
@@ -216,12 +219,12 @@ class Date{
 	}
 
 	/**
-	 * human 返回2个时间的相差
+	 * diff 返回2个时间的相差
 	 * @param  integer         $from 时间
 	 * @param  boolean|integer $to   当前时间
 	 * @return string
 	 */
-	public static function human($from, $to = false) {
+	public static function diff($from, $to = false) {
 		$to = $to === false ? time() : $to;
 		$diff = max($to, $from) - min($to, $from);
 
@@ -291,3 +294,4 @@ class Date{
 	}
 }
 Date::init();
+Events::run('Date');

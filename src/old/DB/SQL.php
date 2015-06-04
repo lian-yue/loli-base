@@ -8,12 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-11 16:13:26
-/*	Updated: UTC 2015-04-11 02:24:24
+/*	Updated: UTC 2015-05-23 08:19:01
 /*
 /* ************************************************************************** */
-namespace Loli\DB;
-use Traversable, Loli\Cache;
-class SQLCursor extends Cursor{
+namespace Loli\DB\Builder;
+use Loli\Cache;
+class SQL extends Base{
 
 	// 逻辑运算符
 	private $_logicals = [
@@ -126,18 +126,13 @@ class SQLCursor extends Cursor{
 	private $_isCache = false;
 
 
-	// 需要使用的表
-	private $_useTables = [];
-
-
 	/**
 	 * _command 执行命令
 	 * @param  string                          $command     query
 	 * @param  integer                         $ttl         表过期时间
-	 * @param  string                          $function    回调函数名
 	 * @return array|string|integer|boolean
 	 */
-	private function _command($command, $ttl = 2, $function = __FUNCTION__) {
+	private function _command($command, $ttl = 2) {
 		if (!$this->execute) {
 			return $command;
 		}
@@ -160,9 +155,12 @@ class SQLCursor extends Cursor{
 		if (count($this->tables) !== 1) {
 			throw new Exception($this->tables, 'Can only handle a single table');
 		}
+
 		$table = reset($this->tables);
 		$table->keyValue = $this->DB->key($table->value, true);
-		$this->data['users'] = [$table->value];
+
+		// 使用的表
+		$this->useTables = [$table->value];
 		return $table;
 	}
 
@@ -171,13 +169,17 @@ class SQLCursor extends Cursor{
 	 * @return string
 	 */
 	private function _ignore() {
-		$ignore = '';
-		foreach ($this->options as $option) {
-			if ($option->name === 'ignore') {
-				$ignore = $option->value;
+		static $ignore;
+		if (!isset($ignore)) {
+			$ignore = '';
+			foreach ($this->options as $option) {
+				if ($option->name === 'ignore') {
+					$ignore = $option->value;
+				}
 			}
+			$ignore = $ignore ? 'IGNORE' : '';
 		}
-		return $ignore ? 'IGNORE' : '';
+		return $ignore;
 	}
 
 	/**
@@ -186,113 +188,125 @@ class SQLCursor extends Cursor{
 	 * @return string
 	 */
 	private function _from($type) {
-		if (isset($this->data[__FUNCTION__][$type])) {
-			$this->data['uses'] = $this->data[__FUNCTION__][$type][1];
-			return $this->data[__FUNCTION__][$type][0];
-		}
-		$this->data['uses'] = [];
+		static $form, $using, $useTables;
 
-		// 没有表
-		if (!$this->tables) {
-			throw new Exception('', 'Unselected table');
+		if (!isset($form)) {
+			// 没有表
+			if (!$this->tables) {
+				throw new Exception('', 'Unselected table');
+			}
+
+			$useTables = $usings = $arrays = [];
+			foreach ($this->tables as $param) {
+				if ($param->value instanceof Cursor) {
+					// 子查询表
+					$execute = $param->value->execute;
+					$name = '(' . rtrim($param->value->execute(false)->select(), " \t\n\r\0\x0B;") . ')';
+					$param->value->execute($execute);
+					$useTables = array_merge($useTables, $param->value->getUseTables());
+				} elseif ($param->expression) {
+					// 直接连符
+					$name = '('. $param->value .')';
+				} else {
+					// 表名
+					$name = $this->DB->key($param->value, true);
+					if ($param->using === false) {
+						$usings[] = $name;
+					}
+					$useTables[] = $param->value;
+				}
+
+				// join
+				$join = $arrays ? (in_array($join = strtoupper($param->join), ['INNER', 'LEFT', 'RIGHT', 'FULL']) ? $join : 'INNER') : '';
+
+
+				$on = '';
+				if ($arrays) {
+					if ($param->on instanceof Param) {
+						$on = $param->on->value;
+					} elseif ($param->on) {
+						$ons = [];
+						foreach ((array) $param->on as $column1 => $column2) {
+							$ons[] = $this->DB->key($column1, true) . ' = '. $this->DB->key($column2);
+						}
+						$on = implode(' AND ', $ons);
+					} else {
+						$on = '1 = 2';
+					}
+				}
+
+				$arrays[] = ['name' => $name, 'alias' => $param->alias ? $this->DB->key($param->alias, true) : false, 'join' => $join, 'on' => $on];
+			}
+
+			$forms = [];
+			foreach ($arrays as $array) {
+				$forms[] = $array['table'];
+				if ($array['alias']) {
+					$forms[] = 'AS ' . $array['alias'];
+				}
+				if ($array['join']) {
+					$forms[] = $array['join'] . ' JOIN';
+				}
+				if ($array['on']) {
+					$forms[] = 'ON '. $array['on'];
+				}
+			}
+			$form = implode(',', $forms);
+			$using = implode(',', $usings);
 		}
+
+
 
 		switch ($type) {
 			case 'SELECT':
-				$command = 'FORM :table';
+				$command = 'FORM :form';
 				break;
 			case 'UPDATE':
-				$command = ':table';
+				$command = ':form';
 				break;
 			case 'DELETE':
-				$command = ':using FORM :table';
+				$command = ':using FORM :form';
 				break;
 			default:
 				throw new Exception($type, 'Unknown table structure type');
 		}
+		$this->useTables = $useTables;
 
-
-
-		$usings = $tables = [];
-		foreach ($this->tables as $param) {
-			if ($param->value instanceof SQLCursor) {
-				$execute = $param->value->execute;
-				$table = '(' . rtrim($param->value->execute(false)->select(), " \t\n\r\0\x0B;") . ')';
-				$param->value->execute($execute);
-				$this->data['uses'] = array_merge($this->data['uses'], $param->value->data['uses']);
-			} elseif ($param->expression) {
-				$table = '('. $param->value .')';
-			} else {
-				$table = $this->DB->key($param->value, true);
-				if ($param->using === false) {
-					$usings[] = $table;
-				}
-				$this->data['uses'][] = $param->value;
-			}
-			$join = $tables ? (in_array($join = strtoupper($param->join), ['INNER', 'LEFT', 'RIGHT', 'FULL']) ? $join : 'INNER') : '';
-			$on = '';
-			if ($tables) {
-				if ($param->on instanceof Param) {
-					$on = $param->on->value;
-				} elseif ($param->on) {
-					$ons = [];
-					foreach ((array) $param->on as $column1 => $column2) {
-						$ons[] = $this->DB->key($column1, true) . ' = '. $this->DB->key($column2);
-					}
-					$on = implode(' AND ', $ons);
-				} else {
-					$on = '1 = 2';
-				}
-			}
-			$tables[] = ['table' => $table, 'alias' => $param->alias ? $this->DB->key($param->alias, true) : false, 'join' => $join, 'on' => $on];
-		}
-
-		$arrays = [];
-		foreach ($tables as $value) {
-			$arrays[] = $value['table'];
-			if ($value['alias']) {
-				$arrays[] = 'AS ' . $value['alias'];
-			}
-			if ($value['join']) {
-				$arrays[] = $value['join'] . ' JOIN';
-			}
-			if ($value['on']) {
-				$arrays[] = 'ON '. $value['on'];
-			}
-		}
-		$this->data[__FUNCTION__][$type][1] = $this->data['uses'];
-		return $this->data[__FUNCTION__][$type][0] = strtr($command, [':using' => implode(',', $usings), ':table' => implode(' ', $arrays)]);
+		return strtr($command, [':using' => $using, ':form' => $form]);
 	}
+
+
+
 
 	/**
 	 * _fields 选择的字段
 	 * @return string
 	 */
 	private function _fields() {
-		if (isset($this->data[__FUNCTION__])) {
-			return $this->data[__FUNCTION__];
-		}
-		// 字段
-		$fields = [];
-		foreach ($this->fields as $field) {
-			if (!$field->value) {
-				continue;
+		static $fields;
+		if (empty($fields)) {
+			$arrays = [];
+			foreach ($this->fields as $field) {
+				if (!$field->value) {
+					continue;
+				}
+				$value = $field->expression ? $field->value : $this->DB->key($field->value);
+				if (!$value) {
+					continue;
+				}
+				$function = empty($field->function) ? '' : (empty($this->_functions[$function = strtoupper($field->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function);
+				$alias = $field->alias ? $this->DB->key($field->alias) : '';
+				if ($function) {
+					$value = $function. '('.$value .')';
+				}
+				$arrays[] = $alias ? $value . ' AS ' .$alias : $value;
 			}
-			$value = $field->expression ? $field->value : $this->DB->key($field->value);
-			if (!$value) {
-				continue;
+			if (!$arrays) {
+				$arrays[] = '*';
 			}
-			$function = empty($field->function) ? '' : (empty($this->_functions[$function = strtoupper($field->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function);
-			$alias = $field->alias ? $this->DB->key($field->alias) : '';
-			if ($function) {
-				$value = $function. '('.$value .')';
-			}
-			$fields[] = $alias ? $value . ' AS ' .$alias : $value;
+			$fields = implode(', ', $arrays);
 		}
-		if (!$fields) {
-			$fields[] = '*';
-		}
-		return $this->data[__FUNCTION__] = implode(', ', $fields);
+		return $fields;
 	}
 
 	/**
@@ -300,16 +314,17 @@ class SQLCursor extends Cursor{
 	 * @return string
 	 */
 	private function _limit() {
-		if (isset($this->data[__FUNCTION__])) {
-			return $this->data[__FUNCTION__];
-		}
-		$limit = 0;
-		foreach ($this->options as $option) {
-			if ($option->name === 'limit') {
-				$limit = $option->value;
+		static $limit;
+		if (!isset($limit)) {
+			$limit = 0;
+			foreach ($this->options as $option) {
+				if ($option->name === 'limit') {
+					$limit = $option->value;
+				}
 			}
+			$limit = ($limit = intval($limit)) ? 'LIMIT ' . $limit : '';
 		}
-		return $this->data[__FUNCTION__] = ($limit = intval($limit)) ? 'LIMIT ' . $limit : '';
+		return $limit;
 	}
 
 	/**
@@ -317,19 +332,19 @@ class SQLCursor extends Cursor{
 	 * @return string
 	 */
 	private function _rows() {
-		if (isset($this->data[__FUNCTION__])) {
-			return $this->data[__FUNCTION__];
-		}
-		$rows = '';
-		if ($this->protocol === 'mysql') {
-			foreach ($this->options as $option) {
-				if ($option->name === 'rows') {
-					$rows = $option->value;
+		static $rows;
+		if (!isset($rows)) {
+			$rows = '';
+			if ($this->DB->protocol() === 'mysql') {
+				foreach ($this->options as $option) {
+					if ($option->name === 'rows') {
+						$rows = $option->value;
+					}
 				}
+				$rows = $rows ? 'SQL_CALC_FOUND_ROWS' : '';
 			}
-			$rows = $rows ? 'SQL_CALC_FOUND_ROWS' : '';
 		}
-		return $this->data[__FUNCTION__] = $rows;
+		return $rows;
 	}
 
 	/**
@@ -337,16 +352,17 @@ class SQLCursor extends Cursor{
 	 * @return string
 	 */
 	private function _offset() {
-		if (isset($this->data[__FUNCTION__])) {
-			return $this->data[__FUNCTION__];
-		}
-		$offset = 0;
-		foreach ($this->options as $option) {
-			if ($option->name === 'offset') {
-				$offset = $option->value;
+		static $offset;
+		if (!isset($offset)) {
+			$offset = 0;
+			foreach ($this->options as $option) {
+				if ($option->name === 'offset') {
+					$offset = $option->value;
+				}
 			}
+			$offset = ($offset = intval($offset)) ? 'OFFSET ' . $offset : '';
 		}
-		return $this->data[__FUNCTION__] = ($offset = intval($offset)) ? 'OFFSET ' . $offset : '';
+		return $offset;
 	}
 
 
@@ -355,33 +371,33 @@ class SQLCursor extends Cursor{
 	 * @return string
 	 */
 	private function _order() {
-		if (isset($this->data[__FUNCTION__])) {
-			return $this->data[__FUNCTION__];
-		}
-		$orderby = [];
-		foreach ($this->options as $option) {
-			if ($option->name === 'order') {
-				if (!$column = $this->DB->key($option->column)) {
-					continue;
-				}
-				if ($option->value === NULL || $option->value === false) {
-					unset($orderby[$column]);
-				} else {
-					$orderby[$column] = $option->order;
+		static $order;
+		if (!isset($order)) {
+			$array = [];
+			foreach ($this->options as $option) {
+				if ($option->name === 'order') {
+					if (!$column = $this->DB->key($option->column)) {
+						continue;
+					}
+					if ($option->value === NULL || $option->value === false) {
+						unset($array[$column]);
+					} else {
+						$array[$column] = $option->order;
+					}
 				}
 			}
-		}
 
-		$arrays = [];
-		foreach ($orderby as $column => $value) {
-			if (!$value || $value < 0) {
-				$value = 'ASC';
-			} else {
-				$value = 'DESC';
+			foreach ($array as $column => &$value) {
+				if ((is_string($value) && strtoupper($value) === 'DESC') || $value < 0) {
+					$value = 'DESC';
+				} else {
+					$value = 'ASC';
+				}
+				$value = $column . ' ' . $value;
 			}
-			$arrays[] = $column . ' ' . $value;
+			$order = $array ? 'ORDER BY ' . implode(', ', $array) : '';
 		}
-		return $this->data[__FUNCTION__] = $arrays ? 'ORDER BY ' . implode(', ', $arrays) : '';
+		return $order;
 	}
 
 	/**
@@ -390,25 +406,19 @@ class SQLCursor extends Cursor{
 	 * @return string
 	 */
 	private function _group($type) {
-		if (isset($this->data[__FUNCTION__][$type])) {
-			return $this->data[__FUNCTION__][$type];
-		}
-		// 分组
-		$group = [];
-		foreach ($this->options as $option) {
-			if ($option->name === 'group' && $option->value) {
-				$group[$option->name] = $option->value ? ($option->expression ? $option->value : $this->DB->key($option->value, true)) : NULL;
+		static $group;
+		if (!isset($group)) {
+			$array = [];
+			foreach ($this->options as $option) {
+				if ($option->name === 'group' && $option->value) {
+					$array[$option->value] = $option->value ? ($option->expression ? $option->value : $this->DB->key($option->value, true)) : NULL;
+				}
 			}
+			$group = implode(', ', array_filter($array));
 		}
-		$group = array_filter($group);
-		if ($type === 'SELECT') {
-			$group = $group ? 'GROUP BY ' . implode(', ', $group) : '';
-		} else {
-			$group = $group ? 'COUNT(DISTINCT ' . implode(',', $group) . ')' : 'COUNT(*)';
-		}
-		return $this->data[__FUNCTION__][$type] = $group;
-
+		return $type === 'SELECT' ? ($group ? 'GROUP BY ' . $group : '') : ($group ? 'COUNT(DISTINCT ' . $group . ')' : 'COUNT(*)');
 	}
+
 
 	/**
 	 * _where 查询
@@ -665,38 +675,40 @@ class SQLCursor extends Cursor{
 		return implode(' '. $logical .' ', $commands);
 	}
 
+
+
+
 	/**
 	 * _union 链接
 	 * @return string
 	 */
 	private function _union() {
-		if (isset($this->data[__FUNCTION__])) {
-			$this->data['uses'] = array_merge($this->data['uses'], $this->data[__FUNCTION__][1]);
-			return $this->data[__FUNCTION__][0];
-		}
-		$useTables = [];
-		// 联合表
-		$unions = [];
-		foreach ($this->unions as $union) {
-			if (!$union->value) {
-				continue;
-			}
-			if ($union->value instanceof Cursor) {
-				$execute = $union->value->execute;
-				$unions[] = 'UNION ' .($union->all ? '' : 'ALL '). rtrim($union->value->execute(false)->select(), " \t\n\r\0\x0B;");
-				$union->value->execute($execute);
-				$useTables = array_merge($useTables, $union->data['uses']);
-				continue;
-			}
+		static $union, $useTables;
+		if (!isset($union)) {
+			$array = $useTables = [];
+			foreach ($this->unions as $param) {
+				if (!$param->value) {
+					continue;
+				}
+				if ($param->value instanceof Cursor) {
+					$execute = $param->value->execute;
+					$array[] = 'UNION ' .($param->all ? '' : 'ALL '). rtrim($param->value->execute(false)->select(), " \t\n\r\0\x0B;");
+					$param->value->execute($execute);
+					$useTables = array_merge($useTables, $param->value->getUseTables());
+					continue;
+				}
 
-			if ($union->expression) {
-				$unions[] = 'UNION ' .($union->all ? '' : 'ALL ') . trim($union->value, " \t\n\r\0\x0B;");
-				continue;
+				if ($param->expression) {
+					$array[] = 'UNION ' .($param->all ? '' : 'ALL ') . trim($param->value, " \t\n\r\0\x0B;");
+					continue;
+				}
+				throw new Exception($param, 'Does not support this type of union');
 			}
-			throw new Exception($union, 'Does not support this type of union');
+			$union = implode(' ', $array);
 		}
-		$this->data[__FUNCTION__][1] = $useTables;
-		return $this->data[__FUNCTION__][0] = implode(' ', $unions);
+
+		$this->useTables = array_merge($this->useTables, $useTables);
+		return $union;
 	}
 
 
@@ -710,7 +722,7 @@ class SQLCursor extends Cursor{
 	public function exists() {
 		// 储存语句
 		$param = $this->_table()->keyValue;
-		switch ($this->protocol) {
+		switch ($this->DB->protocol()) {
 			case 'mysql':
 				$table = $this->DB->value(addcslashes($param->value, '%_'));
 				$command = 'SHOW TABLES LIKE :table;';;
@@ -758,7 +770,7 @@ class SQLCursor extends Cursor{
 			'increment' => '',
 		];
 		$searchs = $keys = $uniques = $primarys = $values = [];
-		switch ($this->protocol) {
+		switch ($this->DB->protocol()) {
 			case 'mysql':
 				$command = 'CREATE TABLE :exists :table(:value) :engine DEFAULT CHARSET=utf8;';
 				$commandOptions = [
@@ -792,7 +804,7 @@ class SQLCursor extends Cursor{
 			$value = [];
 			$name = $this->DB->key($column->name, true);
 
-			switch ($this->protocol) {
+			switch ($this->DB->protocol()) {
 				case 'mysql':
 					$integerType = ['tinyint' => [1, 3, 4], 'smallint' => [2, 5, 6], 'mediumint' => [3, 8, 9], 'int' => [4, 10, 11], 'bigint' => [8, 20, 20]];
 					$floatType = ['real', 'double', 'float', 'decimal'];
@@ -1049,7 +1061,7 @@ class SQLCursor extends Cursor{
 
 	public function truncate() {
 		$table = $this->_table()->keyValue;
-		switch ($this->protocol) {
+		switch ($this->DB->protocol()) {
 			case 'sqlite':
 				$command = 'DELETE FROM :table;';
 				break;
@@ -1065,7 +1077,7 @@ class SQLCursor extends Cursor{
 
 	public function drop() {
 		$table = $this->_table()->keyValue;
-		switch ($this->protocol) {
+		switch ($this->DB->protocol()) {
 			case 'mysql':
 			case 'pgsql':
 			case 'sqlite':
@@ -1144,7 +1156,7 @@ class SQLCursor extends Cursor{
 		];
 
 
-		switch ($this->protocol) {
+		switch ($this->DB->protocol()) {
 			case 'mysql':
 			case 'sqlite':
 				$command = empty($options['replace']) ? 'INSERT INTO :table (:column) VALUES :document;' : 'REPLACE INTO :table (:column) VALUES :document;';
@@ -1164,6 +1176,7 @@ class SQLCursor extends Cursor{
 			$this->documents[] = $this->values;
 			$this->values = [];
 		}
+
 
 		if (!$this->documents) {
 			throw new Exception($this->documents, 'Update can not be empty');
@@ -1240,6 +1253,7 @@ class SQLCursor extends Cursor{
 			return $this->data[__FUNCTION__];
 		}
 
+
 		$options = [];
 		foreach ($this->options as $option) {
 			$options[$option->name] = $option->name;
@@ -1272,12 +1286,12 @@ class SQLCursor extends Cursor{
 			return $command;
 		}
 
-		if (!$lock && $this->cache[0] && $this->_isCache && (is_array($results = Cache::get($cacheKey = json_decode(['database' => $this->database, 'protocol' => $this->protocol, 'cache' => $this->cache] + $replaces), __CLASS__)) && ($this->cache[1] < 1 || $this->cache[0] === -1 || (Cache::ttl($cacheKey, __CLASS__) > $this->cache[1] || !Cache::add(true, 'TTL' . $cacheKey, __CLASS__, $this->cache[1] + 1))))) {
+		if (!$lock && $this->cache[0] && $this->_isCache && (is_array($results = Cache::get($cacheKey = json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache] + $replaces), __CLASS__)) && ($this->cache[1] < 1 || $this->cache[0] === -1 || (Cache::ttl($cacheKey, __CLASS__) > $this->cache[1] || !Cache::add(true, 'TTL' . $cacheKey, __CLASS__, $this->cache[1] + 1))))) {
 			// 用缓存的
 		} else {
 			// 不用缓存
 			$results = $this->DB->command($command, $this->slave);
-			$this->cache[0] && Cache::set($results, json_decode(['database' => $this->database, 'protocol' => $this->protocol, 'cache' => $this->cache] + $replaces), __CLASS__, $this->cache[0]);
+			$this->cache[0] && Cache::set($results, json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache] + $replaces), __CLASS__, $this->cache[0]);
 			if ($this->_isCache && $rows) {
 				$this->_isCache = false;
 				$this->count();
@@ -1317,7 +1331,7 @@ class SQLCursor extends Cursor{
 			return $command;
 		}
 
-		if ($this->cache[0] && $this->_isCache && (($this->data[__FUNCTION__] = Cache::get(json_decode(['database' => $this->database, 'protocol' => $this->protocol, 'cache' => $this->cache] + $replaces), __CLASS__)) !== false && ($this->cache[1] < 1 || $this->cache[0] === -1 || (Cache::ttl($cacheKey, __CLASS__) > $this->cache[1] || (Cache::ttl($cacheKey, __CLASS__) > $this->cache[1] || !Cache::add(true, 'TTL' . $cacheKey, __CLASS__, $this->cache[1] + 1)))))) {
+		if ($this->cache[0] && $this->_isCache && (($this->data[__FUNCTION__] = Cache::get(json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache] + $replaces), __CLASS__)) !== false && ($this->cache[1] < 1 || $this->cache[0] === -1 || (Cache::ttl($cacheKey, __CLASS__) > $this->cache[1] || (Cache::ttl($cacheKey, __CLASS__) > $this->cache[1] || !Cache::add(true, 'TTL' . $cacheKey, __CLASS__, $this->cache[1] + 1)))))) {
 			// 用缓存的
 		} else {
 			if ($this->_isCache && $this->_rows()) {
@@ -1329,7 +1343,7 @@ class SQLCursor extends Cursor{
 			foreach ((array)$this->DB->command($command, $this->slave) as $row) {
 				$this->data[__FUNCTION__] += array_sum((array) $row);
 			}
-			$this->cache[0] && Cache::set($this->data[__FUNCTION__], json_decode(['database' => $this->database, 'protocol' => $this->protocol, 'cache' => $this->cache] + $replaces), __CLASS__, $this->cache[0]);
+			$this->cache[0] && Cache::set($this->data[__FUNCTION__], json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache] + $replaces), __CLASS__, $this->cache[0]);
 		}
 
 		return $this->data[__FUNCTION__];
@@ -1337,14 +1351,15 @@ class SQLCursor extends Cursor{
 
 
 	public function deleteCacheSelect($refresh = NULL) {
-		$this->cache[0] && Cache::delete(json_decode(['database' => $this->database, 'protocol' => $this->protocol, 'cache' => $this->cache, ':field' => $this->_fields(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()]), __CLASS__, $refresh === NULL ? $this->cache[1] : $refresh);
+		$this->cache[0] && Cache::delete(json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache, ':field' => $this->_fields(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()]), __CLASS__, $refresh === NULL ? $this->cache[1] : $refresh);
 		unset($this->data['select']);
 		return $this;
 	}
 
 	public function deleteCacheCount($refresh = NULL) {
-		$this->cache[0] && Cache::delete(json_decode(['database' => $this->database, 'protocol' => $this->protocol, 'cache' => $this->cache, ':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union()]), __CLASS__, $refresh === NULL ? $this->cache[1] : $refresh);
+		$this->cache[0] && Cache::delete(json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache, ':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union()]), __CLASS__, $refresh === NULL ? $this->cache[1] : $refresh);
 		unset($this->data['count']);
 		return $this;
 	}
+
 }

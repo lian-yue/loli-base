@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-25 10:50:28
-/*	Updated: UTC 2015-03-22 14:34:51
+/*	Updated: UTC 2015-05-23 11:01:10
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -30,7 +30,7 @@ class Log{
 
 			// 回调
 			$args['progress'][] = function() {
-				return Filter::get('Log', func_get_args());
+				return Events::get('Log', func_get_args());
 			};
 			self::$_link = new $class($args);
 		}

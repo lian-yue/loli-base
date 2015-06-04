@@ -8,57 +8,51 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-22 09:02:15
-/*	Updated: UTC 2015-04-06 12:08:31
+/*	Updated: UTC 2015-05-23 11:55:55
 /*
 /* ************************************************************************** */
 namespace Loli;
 class DB{
 	private $_link;
 	private $_protocols = [
-		'mysql' => 'MySQLi',
-		'maria' => 'MySQLi',
-		'mariadb' => 'MySQLi',
+		'mysql' => ['mysql', 'MySQLi'],
+		'maria' => ['mysql', 'MySQLi'],
+		'mariadb' => ['mysql', 'MySQLi'],
 
-		'postgresql' => 'PGSQL',
-		'pgsql' => 'PGSQL',
-		'pg' => 'PGSQL',
+		'postgresql' => ['pgsql', 'PGSQL'],
+		'pgsql' => ['pgsql', 'PGSQL'],
+		'pg' => ['pgsql', 'PGSQL'],
 
-		'sqlserver' => 'MSSQL',
-		'mssql' => 'MSSQL',
+		'sqlserver' => ['mssql', 'MSSQL'],
+		'mssql' => ['mssql', 'MSSQL'],
 
-		'sqlite' => 'SQLite',
+		'sqlite' => ['sqlite', 'SQLite'],
 
-		'mongo' => 'Mongo',
-		'mongodb' => 'Mongo',
+		'mongo' => ['mongo', 'Mongo'],
+		'mongodb' => ['mongo', 'Mongo'],
 
-		'oci' => 'OCI',
-		'oracle' => 'OCI',
+		'oci' => ['oci', 'OCI'],
+		'oracle' => ['oci', 'OCI'],
 
-		'odbc' => 'ODBC',
+		'odbc' => ['odbc', 'ODBC'],
 	];
 
 
-	public function __construct(array $masterServers, array $slaveServers = [], $explain = false) {
-		$master = reset($masterServers);
-		if (is_int(key($master))) {
-			$master = reset($master);
+	public function __construct(array $servers) {
+		if (empty($server['protocol'])) {
+			$server['protocol'] = 'mysql';
 		}
-		if (!is_array($master)) {
-			$protocol = parse_url($master, PHP_URL_SCHEME);
-		} else {
-			$protocol = empty($master['protocol']) ? 'mysql' : $master['protocol'];
-		}
-
 		$class = __CLASS__.'\\';
-		if (class_exists('PDO') && in_array($protocol = strtolower($protocol), \PDO::getAvailableDrivers())) {
+		if (class_exists('PDO') && in_array($servers['protocol'], \PDO::getAvailableDrivers())) {
 			$class .= 'PDO';
-		} elseif (isset($this->_protocols[$protocol])) {
-			$class .= $this->_protocols[$protocol];
+		} elseif (isset($this->_protocols[$servers['protocol']])) {
+			$class .= $this->_protocols[$servers['protocol']];
 		} else {
-			$class .= ucwords($protocol);
+			$class .= ucwords($servers['protocol']);
 		}
-		$this->_link = new $class($masterServers, $slaveServers, $explain);
+		$this->_link = new $class($servers);
 	}
+
 	public function __call($method, $args) {
 		return call_user_func_array([$this->_link, $method], $args);
 	}

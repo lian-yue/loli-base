@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-05 09:48:17
-/*	Updated: UTC 2015-04-11 02:34:48
+/*	Updated: UTC 2015-05-23 11:49:14
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -16,20 +16,16 @@ use PDOException;
 class_exists('Loli\DB\Base') || exit;
 class PDO extends Base{
 
-	protected function connect(array $servers) {
-		$server = $servers[array_rand($servers)];
-		if ($server['protocol'] !== $this->protocol()) {
-			throw new ConnectException('this.connect()', 'Database protocol is incorrect');
+	protected function connect(array $server) {
+		if (!is_array($server['hostname'])) {
+			$server['hostname'] = explode(', ', $server['hostname']);
 		}
-		if (basename($server['database']) !== $this->database()) {
-			throw new ConnectException('this.connect()', 'Database name is incorrect');
-		}
-
-		// sqlite 需要当前 文件目录的写入权限
+		shuffle($server['hostname']);
+		// 不支持的驱动器
 		if (!in_array($server['protocol'], \PDO::getAvailableDrivers())) {
 			throw new ConnectException('Does not support this protocol');
 		}
-		$hostname = explode(':', $server['hostname']);
+		$hostname = explode(':', reset($server['hostname']), 2);
 		try {
 			switch ($server['protocol']) {
 				case 'mysql':
@@ -38,8 +34,12 @@ class PDO extends Base{
 					$link->query('SET TIME_ZONE = `+0:00`')->execute();
 					break;
 				case 'sqlite':
+					// sqlite 需要当前 文件目录的写入权限
+					if (!is_writable(dirname($server['database']))) {
+						throw new ConnectException('File directory is not writable');
+					}
 					$link = new \PDO('sqlite:' . $server['database'] . ';charset=UTF8', $server['username'], $server['password'], [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
-					$dsnQuery = 'this.PDO(sqlite:'.basename($server['database']).')';
+					$dsnQuery = 'this.PDO(sqlite:'.$this->database().')';
 					break;
 				default:
 					throw new ConnectException('this.PDO()', 'Unknown database protocol');
@@ -50,10 +50,10 @@ class PDO extends Base{
 		return $link;
 	}
 
-	protected function ping($slave = NULL) {
+	protected function ping() {
 		++self::$querySum;
 		try {
-			if (!($status = $this->link($slave)->getAttribute(\PDO::ATTR_CONNECTION_STATUS)) || stripos($status, 'has gone away')) {
+			if (!($status = $this->link()->getAttribute(\PDO::ATTR_CONNECTION_STATUS)) || stripos($status, 'has gone away')) {
 				throw new ConnectException('this.ping()', $status);
 			}
 		} catch (PDOException $e) {
@@ -63,10 +63,10 @@ class PDO extends Base{
 	}
 
 
-	public function command($query, $slave = NULL, $type = NULL) {
+	public function command($query, $write = NULL, $type = NULL) {
 		// 查询不是字符串
 		if (!is_string($query)) {
-			throw new Exception(json_encode($query), 'Query is not a string');
+			throw new Exception($query, 'Query is not a string');
 		}
 
 		// 查询为空
@@ -77,17 +77,17 @@ class PDO extends Base{
 		$query = trim($query, ';') . ';';
 		try {
 			if (preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query) && in_array($type, [NULL, 0])) {
-				$results = $this->link($slave)->query($query)->fetchAll(\PDO::FETCH_CLASS);
+				$results = new Iterator($this->link($write)->query($query)->fetchAll(\PDO::FETCH_CLASS, __NAMESPACE__ . '\\Row'));
 				if ($this->explain && preg_match('/^\s*(SELECT)\s+/i', $query)) {
-					$this->command('EXPLAIN ' . $query, $slave, $type);
+					$this->command('EXPLAIN ' . $query, $write, $type);
 				}
 				self::$queryRow += count($results);
 			} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE)\s+/i', $query) && in_array($type, [NULL, 1], true)) {
-				$results = $this->link(false)->exec($query);
+				$results = $this->link(true)->exec($query);
 			} elseif (in_array($type, [NULL, 2], true)) {
-				$results = $this->link(false)->query($query)->execute();
+				$results = $this->link(true)->query($query)->execute();
 			} else {
-				$results = $this->link(false)->query($query);
+				$results = $this->link(true)->query($query);
 			}
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
@@ -106,7 +106,7 @@ class PDO extends Base{
 		++self::$querySum;
 		try {
 			$this->inTransaction = true;
-			$this->link(false)->beginTransaction();
+			$this->link(true)->beginTransaction();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
 			throw new Exception('this.beginTransaction()', $e->getMessage(), $info[0], $info[1]);
@@ -121,7 +121,7 @@ class PDO extends Base{
 		++self::$querySum;
 		try {
 			$this->inTransaction = false;
-			$this->link(false)->commit();
+			$this->link(true)->commit();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
 			throw new Exception('this.commit()', $e->getMessage(), $info[0], $info[1]);
@@ -136,7 +136,7 @@ class PDO extends Base{
 		++self::$querySum;
 		try {
 			$this->inTransaction = false;
-			$this->link(false)->rollBack();
+			$this->link(true)->rollBack();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
 			throw new Exception('this.rollBack()', $e->getMessage(), $info[0], $info[1]);
@@ -149,7 +149,7 @@ class PDO extends Base{
 	public function lastInsertID() {
 		++self::$querySum;
 		try {
-			return call_user_func_array([$this->link(false), 'lastInsertId'], func_get_args());
+			return call_user_func_array([$this->link(true), 'lastInsertId'], func_get_args());
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['IM001', 0];
 			throw new Exception('this.lastInsertID()', $e->getMessage(), $info[0], $info[1]);
@@ -169,6 +169,8 @@ class PDO extends Base{
 		}
 		return ($matches[1] ? '\''. $matches[1]. '\'.' : '') . ($matches[2] === '*' ? $matches[2] : '\''. $matches[2] .'\'');
 	}
+
+
 
 	public function value($value) {
 		if (is_array($value) || is_object($value)) {

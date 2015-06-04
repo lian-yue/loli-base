@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-03-25 10:11:54
+/*	Updated: UTC 2015-05-23 11:48:58
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -17,23 +17,18 @@ class MySQLi extends Base{
 
 	protected $protocol = 'mysql';
 
-	public function connect(array $servers) {
-		$server = $servers[array_rand($servers)];
+	public function connect(array $server) {
+		if (!is_array($server['hostname'])) {
+			$server['hostname'] = explode(', ', $server['hostname']);
+		}
+		shuffle($server['hostname']);
 
-		if ($server['database'] !== $this->database()) {
-			throw new ConnectException('this.connect()', 'Database name is incorrect');
+		if (!empty($server['protocol']) && !in_array($server['protocol'], ['mysql', 'mysqli', 'mariadb'], true)) {
+			throw new ConnectException('this.connect()', 'Does not support this protocol');
 		}
 
-		// sqlite 需要当前 文件目录的写入权限
-		if (!in_array($server['protocol'], ['mysql', 'mysqli'])) {
-			throw new ConnectException('Does not support this protocol');
-		}
-		$hostname = explode(':', $server['hostname'])+ [1 => 3306];
+		$hostname = explode(':', reset($server['hostname']), 2) + [1 => 3306];
 
-		// 数据库名为空
-		if (empty($server['database'])) {
-			throw new ConnectException('this.MySQLi().select_db()', 'Database name can not be empty');
-		}
 
 		// 链接到到mysql
 		$link = new \MySQLi($hostname[0], $server['username'], $server['password'], $server['database'], $hostname[1]);
@@ -51,10 +46,14 @@ class MySQLi extends Base{
 		return $link;
 	}
 
-	public function command($query, $slave = NULL) {
+
+
+
+
+	public function command($query, $write = NULL) {
 		// 查询不是字符串
 		if (!is_string($query)) {
-			throw new Exception(json_encode($query), 'Query is not a string');
+			throw new Exception($query, 'Query is not a string');
 		}
 
 		// 查询为空
@@ -64,11 +63,11 @@ class MySQLi extends Base{
 		$query = trim($query, ';') . ';';
 
 
-		// 是否用主数据库
-		$slave = !$this->inTransaction && preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query) ? $slave : false;
+		// 是否是写入
+		$write = !$this->inTransaction && preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query) ? $write : true;
 
 		// 链接
-		$link = $this->link($slave);
+		$link = $this->link($write);
 		++self::$querySum;
 		// 查询
 		$result = $link->query($query);
@@ -82,11 +81,12 @@ class MySQLi extends Base{
 			$results = $link->affected_rows;
 		} elseif (preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query)) {
 			$results = [];
-			while ($fetch = $result->fetch_object()) {
+			while ($fetch = $result->fetch_assoc()) {
 				++self::$queryRow;
-				$results[] = $fetch;
+				$results[] = new Row($fetch);
 			}
 			$results && $result->free_result();
+			$results = new Iterator($results);
 			if ($this->explain && preg_match('/^\s*(SELECT)\s+/i', $query)) {
 				$this->command('EXPLAIN ' . $query, $slave);
 			}
@@ -102,7 +102,7 @@ class MySQLi extends Base{
 		}
 		++self::$querySum;
 		$this->inTransaction = true;
-		$link = $this->link(false);
+		$link = $this->link(true);
 		if (!$link->autoCommit(false) && $link->errno) {
 			throw new Exception('this.beginTransaction()', '', , $link->error, $link->errno);
 		}
@@ -115,7 +115,7 @@ class MySQLi extends Base{
 		}
 		++self::$querySum;
 		$this->inTransaction = false;
-		$link = $this->link(false);
+		$link = $this->link(true);
 		$link->commit();
 		if (!$link->commit() && $link->errno) {
 			throw new Exception('this.commit()', $link->error, $link->errno);
@@ -129,7 +129,7 @@ class MySQLi extends Base{
 		}
 		++self::$querySum;
 		$this->inTransaction = false;
-		$link = $this->link(false);
+		$link = $this->link(true);
 		$rollback = $link->rollBack();
 		if (!$link->rollBack() && $link->errno) {
 			throw new Exception('this.rollBack()', $link->error, $link->errno);
@@ -140,12 +140,12 @@ class MySQLi extends Base{
 
 	public function lastInsertID() {
 		++self::$querySum;
-		return $this->link(false)->insert_id;
+		return $this->link(true)->insert_id;
 	}
 
 
-	public function ping($slave = NULL) {
-		$link = $this->link($slave);
+	public function ping($write = NULL) {
+		$link = $this->link($write);
 		++self::$querySum;
 		if (!$link->ping()) {
 			throw new ConnectException('this.ping()', $link->error, '', $link->errno);
@@ -161,10 +161,7 @@ class MySQLi extends Base{
 			}
 			return false;
 		}
-		if (($protocol = $this->protocol()) === 'mysql') {
-			return ($matches[1] ? '`'. $matches[1]. '`.' : '') . ($matches[2] === '*' ? $matches[2] : '`'. $matches[2] .'`');
-		}
-		return ($matches[1] ? '\''. $matches[1]. '\'.' : '') . ($matches[2] === '*' ? $matches[2] : '\''. $matches[2] .'\'');
+		return ($matches[1] ? '`'. $matches[1]. '`.' : '') . ($matches[2] === '*' ? $matches[2] : '`'. $matches[2] .'`');
 	}
 
 	public function value($value) {

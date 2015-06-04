@@ -8,10 +8,10 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-04-03 02:58:45
+/*	Updated: UTC 2015-06-02 01:51:18
 /*
 /* ************************************************************************** */
-namespace Loli\HTML;
+namespace Loli\DOM;
 class Filter{
 
 
@@ -20,14 +20,14 @@ class Filter{
 		'a', 'abbr', 'acronym', 'address', 'applet', 'area', 'article', 'aside', 'audio',
 		'b', 'base', 'basefont', 'bdi', 'bdo', 'big', 'blockquote', 'blockcode', 'body', 'br', 'button',
 		'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'command',
-		'datalist', 'dd', 'del', 'details', 'dfn', 'dir', 'div', 'dl', 'dt',
+		'datalist', 'dd', 'del', 'details', 'dfn', 'dir', 'div', 'dl', 'dt', 'dialog',
 		'em', 'embed',
 		'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'frame', 'frameset',
 		'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html',
 		'i', 'iframe', 'img', 'input', 'ins',
 		'keygen', 'kbd',
 		'label', 'legend', 'li', 'link',
-		'map', 'mark', 'menu', 'meta', 'meter',
+		'map', 'mark', 'menu', 'menuitem', 'meta', 'meter',
 		'nav', 'noframes', 'noscript',
 		'object', 'ol', 'optgroup', 'option', 'output',
 		'p', 'param', 'pre', 'progress', 'polygon',
@@ -42,9 +42,9 @@ class Filter{
 	];
 
 	// 下面是特殊的 html 标签
-	// 'base', 'html', 'meta', 'link', 'script', 'style', 'head', 'body', 'title', 'noframes', 'noscript', 'frameset', 'frame', 'iframe', 'applet', 'polygon', 'svg'
+	// 'base', 'html', 'meta', 'link', 'script', 'style', 'head', 'body', 'title', 'noframes', 'noscript', 'frameset', 'frame', 'iframe', 'applet', 'polygon', 'svg', 'dialog'
 	// 'object', 'embed'
-	// 'form', 'input', 'select', 'option', 'textarea', 'button'
+	// 'form', 'input', 'select', 'option', 'textarea', 'button', 'command', 'keygen', 'output',
 
 	// 所有 单标签 无结束标签的
 	protected $singles = [

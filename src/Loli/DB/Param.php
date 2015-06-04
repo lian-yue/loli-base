@@ -7,15 +7,12 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2015-03-05 17:06:44
-/*	Updated: UTC 2015-03-14 14:13:46
+/*	Created: UTC 2015-05-04 11:42:33
+/*	Updated: UTC 2015-05-23 11:47:41
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
-class Param{
-	public function __construct(array $params = []) {
-		$this->setParams($params);
-	}
+class Param extends Row{
 	public function setParams(array $params) {
 		foreach ($params as $key => $value) {
 			$this->$key = $value;
@@ -23,8 +20,5 @@ class Param{
 	}
 	public function setParam($key, $value) {
 		$this->$key = $value;
-	}
-	public function __get($name) {
-		return NULL;
 	}
 }

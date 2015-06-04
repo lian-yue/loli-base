@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-04-09 07:56:37
-/*	Updated: UTC 2015-04-10 13:03:34
+/*	Updated: UTC 2015-05-16 13:32:51
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -17,26 +17,21 @@ abstract class Base{
 
 
 
-	// 主服务器
-	private $_masterServers;
-
 	// 主连接
-	private $_masterLink;
-
+	private $_writeLink;
 
 	// 上次ping时间
-	protected $_masterPingTime;
+	protected $_writePingTime;
 
-
-
- 	// 从服务器
-	private $_slaveServers;
 
 	// 从连接
-	private $_slaveLink;
+	private $_readLink;
 
 	// 上次ping时间
-	protected $_slavePingTime;
+	protected $_readPingTime;
+
+
+
 
 
 
@@ -46,38 +41,65 @@ abstract class Base{
 	// 位置 debug 用的
 	protected $explain = false;
 
-	// 连接协议
+
+
+
+
+	// 服务器组
+	protected $servers = [];
+
+	// 服务器默认参数
+	protected $default = [];
+
+
+	// 服务器信息
 	protected $protocol;
 
-	// 链接到的表 or 链接的id
+	// 服务器信息
 	protected $database;
+
+
 
 	// 是否是事务
 	protected $inTransaction = false;
 
-	// cursor 方法名
-	protected $cursor = 'SQLCursor';
 
+
+
+	// 查询次数
 	public static $querySum = 0;
+
+	// 查询行数
 	public static $queryROW = 0;
 
-	// 是否是运行的 slave
-	public $slave = true;
+
+
+	// 是否是写入语句
+	public $write = true;
 
 	/**
 	 * __construct
-	 * @param array   $masterServers 主服务器
-	 * @param array   $slaveServers  从服务器
-	 * @param boolean $explain       是否explain
+	 * @param array   $servers 服务器
+	 * @param array   $default 默认参数
 	 */
-	public function __construct(array $masterServers, array $slaveServers = [], $explain = false) {
-		foreach ($masterServers as $servers) {
-			$this->_masterServers[] = $this->parseServers($servers);
+	public function __construct(array $servers) {
+		if (!is_int(key($servers))) {
+			$servers = [$servers];
 		}
-		foreach ($slaveServers as $servers) {
-			$this->_slaveServers[] = $this->parseServers($servers);
+
+		$this->default = reset($servers) + ['protocol' => '', 'hostname' => ['localhost'], 'username' => 'root', 'password' => '', 'readonly' => false];
+		if (!$this->default['protocol'] && !$this->protocol) {
+			throw new ConnectException('this.__construct()', 'Link protocol is empty');
 		}
-		$this->explain = $explain;
+		if (!$this->default['database']) {
+			throw new ConnectException('this.__construct()', 'Database is not selected');
+		}
+		if (!$this->protocol) {
+			$this->protocol = $this->default['protocol'];
+		}
+		$this->database = $this->default['database'];
+		$this->explain = !empty($this->default['explain']);
+		shuffle($this->servers);
 	}
 
 	/**
@@ -90,146 +112,107 @@ abstract class Base{
 
 	/**
 	 * link
-	 * @param  boolean $slave 使用链接类型
+	 * @param  null|boolean $write 使用链接类型
 	 * @return
 	 */
-	public function link($slave = NULL) {
-		if ($slave !== NULL) {
-			$this->slave = $slave;
+	public function link($write = NULL) {
+		if ($write !== NULL) {
+			$this->write = $write;
 		}
 
-		// 从数据库
-		if ($this->slave && $this->_slaveServers && !$this->inTransaction) {
 
-
-			// 链接从数据库
-			if ($this->_slaveLink === NULL) {
-				$this->_slaveLink = false;
-				shuffle($this->_slaveServers);
+		// 读取的服务器
+		if (!$this->write && !$this->inTransaction) {
+			// 连接到读取服务器
+			if ($this->_readLink === NULL) {
+				$this->_readLink = false;
 				$i = 0;
-				foreach($this->_slaveServers as $servers) {
+				foreach($this->servers as $server) {
 					if ($i > 3) {
 						break;
 					}
+					$server += $this->default;
+
+					// 不是只读的
+					if (!$server['readonly']) {
+						continue;
+					}
+
 					try {
-						$this->_slaveLink = $this->connect($servers);
-						$this->_slavePingTime = time();
+						$this->_readLink = $this->connect($server);
+						$this->_readPingTime = time();
 						break;
 					} catch (\Exception $e) {
-						if (!$this->explain) {
+						if ($this->explain) {
 							throw $e;
 						}
-						$this->_slaveLink = false;
+						$this->_readLink = false;
 					}
 					++$i;
 				}
 			}
 
-
-			// 自动ping
-			if ($this->_slaveLink && $this->pingInterval > 0 && ($this->_slavePingTime + $this->pingInterval) < time()) {
-				$this->_slavePingTime = time();
-				$this->ping();
-			}
-
-			// 从数据库有 返回
-			if ($this->_slaveLink) {
-				return $this->_slaveLink;
+			// 读取数据库返回
+			if ($this->_readLink) {
+				// 自动 ping
+				if ($this->pingInterval > 0 && ($this->_readPingTime + $this->pingInterval) < time()) {
+					$this->_readPingTime = time();
+					$this->ping();
+				}
+				return $this->_readLink;
 			}
 		}
 
 
 
-
-
-		// 主数据库
-		$this->_master = false;
-
-		// 链接主数据库
-		if ($this->_masterLink === NULL) {
-			$this->_masterLink = false;
-			shuffle($this->_masterServers);
+		// 写入的服务器
+		if ($this->_writeLink === NULL) {
+			$this->_writeLink = false;
 			$i = 0;
-			foreach ($this->_masterServers as $servers) {
+			foreach($this->servers as $server) {
 				if ($i > 3) {
 					break;
 				}
+				$server += $this->default;
+
+				// 不只读的
+				if ($server['readonly']) {
+					continue;
+				}
+
 				try {
-					$this->_masterLink = $this->connect($servers);
-					$this->_masterPingTime = time();
+					$this->_writeLink =  $this->connect($server);
+					$this->_writePingTime = time();
 					break;
 				} catch (\Exception $e) {
-					if (!$this->explain) {
+					if ($this->explain) {
 						throw $e;
 					}
-					$this->_masterLink = false;
+					$this->_writeLink = false;
 				}
 				++$i;
 			}
 		}
 
-		if (!$this->_masterLink) {
-			throw new ConnectException('this.link()', 'Master link is unavailable');
+		if (!$this->_writeLink) {
+			throw new ConnectException('this.link()', 'Database link is unavailable');
 		}
 
 		// 自动 ping
-		if ($this->pingInterval > 0 && ($this->_masterPingTime + $this->pingInterval) < time()) {
-			$this->_masterPingTime = time();
+		if ($this->pingInterval > 0 && ($this->_writePingTime + $this->pingInterval) < time()) {
+			$this->_writePingTime = time();
 			$this->ping();
 		}
-		return $this->_masterLink;
 	}
 
-	/**
-	 * parseServers 解析服务器信息
-	 * @param  array|string $servers 服务器数组
-	 * @return array
-	 */
-	protected function parseServers($servers) {
-		$servers = array_filter(is_array($servers) ? $servers : array_map('trim', explode(',', $servers)));
-		if ($servers && !is_int(key($servers))) {
-			$servers = [$servers];
-		}
-		$results = [];
-		foreach ($servers as $value) {
-			if (!$value) {
-				continue;
-			}
-			if (!is_array($value)) {
-				$parse = parse_url($value);
-				$value = [];
-				foreach (['scheme' => 'protocol', 'host' => 'hostname', 'user' => 'username', 'pass' => 'password', 'path' => 'database'] as $k => $v) {
-					if (isset($parse[$k])) {
-						$value[$v] = $parse[$k];
-					}
-				}
-			}
-			if (empty($value['protocol'])) {
-				throw new ConnectException('this.parseServers()', 'The database server protocol can not be empty');
-			}
-			if (empty($value['database'])) {
-				throw new ConnectException('this.parseServers()', 'Database is not selected');
-			}
-			if (!strpos($value['database'], '.') && !strpos($value['database'], '/') && !strpos($value['database'], '\\')) {
-				$value['database'] = ltrim($value['database'], '/');
-			}
-			$value += ['hostname' => 'localhost', 'username' => 'root', 'password' => NULL];
-			$results[] = $value;
-		}
-		if (!$results) {
-			throw new ConnectException('this.parseServers()', 'The database server is empty');
-		}
-		return $results;
-	}
 
 	/**
 	 * cursor 查询游标
 	 * @param  array|string $tables 表名可以是数组
-	 * @return class cursor
+	 * @return Cursor
 	 */
 	public function cursor($tables = NULL) {
-		$class = __NAMESPACE__ . '\\' . $this->cursor;
-		return new $class($this, $tables);
+		return (new Cursor)->tables($tables ? (array) $tables : []);
 	}
 
 	/**
@@ -239,9 +222,9 @@ abstract class Base{
 	 * @return this
 	 */
 	public function log($query, $value) {
-		$query = is_array($query) || is_object($query) ? var_export($query, true) : $query;
-		$value = is_array($value) || is_object($value) ? var_export($value, true) : $value;
-		Log::debug($query ."\n\n". $value);
+		$query = is_array($query) || is_object($query) ? json_encode($query) : $query;
+		$value = is_array($value) || is_object($value) ? json_encode($value) : $value;
+		Log::debug($query .'	'. $value);
 		return $this;
 	}
 
@@ -251,21 +234,14 @@ abstract class Base{
 	 * @return  string
 	 */
 	public function protocol() {
-		if ($this->protocol === NULL) {
-			$this->protocol = reset($this->_masterServers)[0]['protocol'];
-		}
 		return $this->protocol;
 	}
 
 	/**
 	 * database 返回链接的数据库 or 文件名 or ID
-	 * @param  boolean $name 是否只显示名称
 	 * @return string
 	 */
 	public function database() {
-		if ($this->database === NULL) {
-			$this->database = reset($this->_masterServers)[0]['database'];
-		}
 		return basename($this->database);
 	}
 
@@ -279,26 +255,26 @@ abstract class Base{
 
 	/**
 	 * connect 链接到服务器
-	 * @param  array  $servers 服务器信息
-	 * @return 链接资源 or 对象
+	 * @param  string|array            $hostname  连接的服务器或 文件地址
+	 * @return mixed
 	 */
-	abstract protected function connect(array $servers);
+	abstract protected function connect(array $server);
 
 
 	/**
 	 * ping
-	 * @param  boolean $slave
+	 * @param  null|boolean $write
 	 * @return this
 	 */
-	abstract protected function ping($slave = NULL);
+	abstract protected function ping();
 
 	/**
 	 * command
 	 * @param  string|array|object    $command
-	 * @param  boolean                $slave
+	 * @param  null|boolean           $write
 	 * @return array|boolean|integer
 	 */
-	abstract public function command($command, $slave = NULL);
+	abstract public function command($command, $write = NULL);
 
 	/**
 	 * beginTransaction 开始事务

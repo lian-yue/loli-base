@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-04-09 08:00:49
+/*	Updated: UTC 2015-05-17 02:27:00
 /*
 /* ************************************************************************** */
 
@@ -107,22 +107,6 @@ function to_array($a) {
 }
 
 
-/**
-*	转成对象
-*
-*	1 参数 数组 或者 对象
-*
-*	返回值 对象
-**/
-function to_object($a) {
-	$a = (object) $a;
-	foreach ($a as &$v) {
-		if (is_array($v) || is_object($v)) {
-			$v = to_object($v);
-		}
-	}
-	return $a;
-}
 
 
 
@@ -311,47 +295,3 @@ function mb_rand($length, $string = false) {
 
 
 
-
-
-
-
-
-
-/*
-function get_redirect($redirects = [], $defaults = []) {
-	$redirects = (array) $redirects;
-	$defaults = $defaults ? (array) $defaults : [];
-
-	if ($redirect = r('redirect')) {
-		$redirects[] = $redirect;
-	}
-
-	if (in_array('cookie',  $redirects) && ($redirect = c('redirect'))) {
-		$redirects[] = $redirect;
-	}
-
-	if (in_array('referer',  $redirects) && !($redirect = h('Referer'))) {
-		$redirects[] = $redirect;
-	}
-
-	$redirects = array_diff($redirects, ['cookie', 'referer']);
-
-	foreach ($redirects as $redirect) {
-		if (!$redirect || !is_string($redirect)) {
-			continue;
-		}
-		if (!preg_match('/^(https?\:)?\/\/\w+\.\w+/i', $redirect)) {
-			if ($redirect{0} !== '/') {
-				$redirect = substr($path = explode('?', empty($_SERVER['REQUEST_URI']) ? '/' : $_SERVER['REQUEST_URI'])[0], -1, 1) === '/' ? $path . $redirect : dirname($path) .'/'. $redirect;
-			}
-			$redirect = '//'. h('Host') . '/' . ltrim($redirect, '/');
-		}
-
-		foreach ($defaults as $default) {
-			if (domain_match($redirect, $default)) {
-				return $redirect;
-			}
-		}
-	}
-	return reset($defaults);
-}*/

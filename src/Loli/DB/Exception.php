@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-10 12:48:56
-/*	Updated: UTC 2015-03-22 08:01:00
+/*	Updated: UTC 2015-05-04 14:45:18
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
@@ -20,10 +20,10 @@ class Exception extends LogException{
 	protected $query;
 	protected $level = 3;
 	public function __construct($query, $message, $state = '', $code = 0, Exception $previous = NULL) {
-		$message = is_array($message) || is_object($message) ? var_export($message, true) : $message;
-		$this->query = is_array($query) || is_object($query) ? var_export($query, true) : $query;
+		$message = is_array($message) || is_object($message) ? json_encode($message) : $message;
+		$this->query = is_array($query) || is_object($query) ? json_encode($query) : $query;
 		$this->state = $state && $state !== '00000' ? $state : $this->state;
-		$this->log = $message .  "\n" . $this->query;
+		$this->log = $message .  '		' . $this->query;
 		parent::__construct($message, $code, $previous);
 	}
 	public function getState() {

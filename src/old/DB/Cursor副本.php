@@ -8,11 +8,12 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-03-10 08:00:28
-/*	Updated: UTC 2015-05-23 11:48:42
+/*	Updated: UTC 2015-05-21 12:38:46
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
-class Cursor{
+use Iterator as Iterator_;
+class Cursor implements Iterator_{
 
 	// 数据库对象
 	protected $DB;
@@ -20,7 +21,7 @@ class Cursor{
 	// 是否要执行 false = 数据语句信息
 	protected $execute = true;
 
-	// 是否用从据库
+	// 是否用写据库
 	protected $write;
 
 	// indexs 索引 重命名 键信息的
@@ -53,8 +54,12 @@ class Cursor{
 	// 缓存时间
 	protected $cache = [0, 0];
 
-	// 自动递增id
-	protected $insertID;
+
+
+
+	// 回调方法
+	protected $callbacks = [];
+
 
 
 	// 构造器对象
@@ -69,26 +74,54 @@ class Cursor{
 	protected $data = [];
 
 	/**
-	 * args 取得参数
-	 * @param  string $name
-	 * @return mixed
+	 * __construct
+	 * @param Base|NULL   $DB
+	 * @param array|string $tables
+	 * @param array  $indexs 索引
 	 */
-	public function arg($name) {
+	public function __construct(Base $DB = NULL, $tables = [], array $indexs = []) {
+		$DB && $this->DB($DB);
+		$tables && $this->tables((array)$tables);
+		$indexs && $this->indexs($indexs);
+	}
+
+
+	public function args($name) {
 		return $this->$name;
 	}
 
 
+	/**
+	 * callback 回调方法添加
+	 * @param  string        $name     Method name
+	 * @param  callback|null $callback
+	 * @return this
+	 */
+	public function callback($name, callback $callback = NULL) {
+		if ($callback === NULL) {
+			unset($this->callbacks[$name]);
+		} else {
+			$this->callbacks[$name] = $callback;
+		}
+		return $this;
+	}
+
+	/**
+	 * callbacks
+	 * @param  array  $callbacks   name => callback
+	 * @return this
+	 */
+	public function callbacks(array $callbacks) {
+		foreach ($callbacks as $name => $callback) {
+			$this->callback($name, $callback);
+		}
+		return $this;
+	}
 
 
 	public function DB(Base $DB) {
 		$this->data = [];
 		$this->DB = $DB;
-	}
-
-
-	public function insertID($insertID) {
-		$this->data = [];
-		$this->insertID = $insertID;
 	}
 
 
@@ -135,7 +168,17 @@ class Cursor{
 	 */
 	public function indexs(array $indexs) {
 		$this->data = [];
-		$this->indexs = array_merge($this->indexs, $indexs);
+		foreach ($indexs as $column => $value) {
+			if ($value === false || $value === NULL) {
+				unset($this->indexs[$column]);
+				continue;
+			}
+			if (is_array($value) || is_object($value)) {
+				$this->indexs[$column] = (array) $value;
+				continue;
+			}
+			$this->indexs[$column] = ['compare' => $value];
+		}
 		return $this;
 	}
 
@@ -159,7 +202,20 @@ class Cursor{
 	 */
 	public function tables(array $tables) {
 		$this->data = [];
-		$this->tables = array_merge($this->tables, $tables);
+		foreach ($tables as $alias => $table) {
+			if ($table instanceof Param) {
+				$this->tables[] = $table;
+				continue;
+			}
+			if (is_array($table) && !empty($table['value'])) {
+				$this->tables[] = new Param(['value' => $table['value'], 'alias' => isset($table['alias']) ? $table['alias'] : (is_int($alias) ? NULL : $alias), 'join' => empty($table['join']) ? NULL : $table['join'], 'on' => empty($table['on']) ? NULL : $table['on']]);
+				continue;
+			}
+			if ($table) {
+				$this->tables[] = new Param(['value' => $table, 'alias' => is_int($alias) ? NULL : $alias]);
+				continue;
+			}
+		}
 		return $this;
 	}
 
@@ -176,9 +232,6 @@ class Cursor{
 	public function table($table, $alias = NULL, $join = NULL, $on = NULL, array $params = []) {
 		$this->data = [];
 		if ($table instanceof Param) {
-			$alias === NULL || $table->setParam('alias', $alias);
-			$join === NULL || $table->setParam('join', $join);
-			$on === NULL || $table->setParam('on', $on);
 			$table->setParams($params);
 			$this->tables[] = $table;
 		} else {
@@ -195,7 +248,13 @@ class Cursor{
 	 */
 	public function columns(array $columns) {
 		$this->data = [];
-		$this->columns = array_merge($this->columns, $columns);
+		foreach ($columns as $name => $column) {
+			if ($column instanceof Param) {
+				$this->columns[] = $column;
+			} else {
+				$this->columns[] = new Param($column + ['name' => $name]);
+			}
+		}
 		return $this;
 	}
 
@@ -210,9 +269,7 @@ class Cursor{
 	public function column($name, $type = NULL, $length = NULL, array $params = []) {
 		$this->data = [];
 		if ($name instanceof Param) {
-			$type === NULL || $name->setParam('type', $type);
-			$length === NULL || $name->setParam('length', $length);
-			$name->setParams($params);
+			$this->columns[] = $name;
 			$this->columns[] = $name;
 		} else {
 			$this->columns[] = new Param($params + ['name' => $name, 'type' => $type, 'length' => $length]);
@@ -227,7 +284,22 @@ class Cursor{
 	 */
 	public function fields(array $fields) {
 		$this->data = [];
-		$this->fields = array_merge($this->fields, $fields);
+		foreach ($fields as $alias => $field) {
+			if ($field instanceof Param) {
+				$this->fields[] = $field;
+				continue;
+			}
+
+			if (is_array($field) && !empty($field['value'])) {
+				$this->fields[] = new Param(['value' => $field['value'], 'alias' => isset($field['alias']) ? $field['alias'] : (is_int($alias) ? NULL : $alias)]);
+				continue;
+			}
+
+			if ($field) {
+				$this->fields[] = new Param(['value' => $field, 'alias' => is_int($alias) ? NULL : $alias]);
+				continue;
+			}
+		}
 		return $this;
 	}
 
@@ -242,8 +314,6 @@ class Cursor{
 	public function field($field, $alias = NULL, $function = NULL, array $params = []) {
 		$this->data = [];
 		if ($field instanceof Param) {
-			$alias === NULL || $field->setParam('alias', $alias);
-			$function === NULL || $field->setParam('function', $function);
 			$field->setParams($params);
 			$this->fields[] = $field;
 		} else {
@@ -259,7 +329,13 @@ class Cursor{
 	 */
 	public function querys(array $querys) {
 		$this->data = [];
-		$this->querys = array_merge($this->querys, $querys);
+		foreach ($querys as $name => $value) {
+			if ($value instanceof Param) {
+				$this->querys[] = $value;
+				continue;
+			}
+			$this->querys[] = new Param(['name' => $name, 'value' => $value]);
+		}
 		return $this;
 	}
 	/**
@@ -274,13 +350,10 @@ class Cursor{
 	public function query($column, $value = NULL, $compare = NULL, $function = NULL, array $params = []) {
 		$this->data = [];
 		if ($column instanceof Param) {
-			$value === NULL || $column->setParam('value', $value);
-			$compare === NULL || $column->setParam('compare', $compare);
-			$function === NULL || $column->setParam('function', $function);
 			$column->setParams($params);
 			$this->querys[] = $column;
 		} else {
-			$this->querys[] = new Param($params + ['column' => $column, 'function' => $function, 'column'=> $column, 'value'=> $value, 'compare' => $compare]);
+			$this->querys[] = new Param($params + ['function' => $function, 'column'=> $column, 'value'=> $value, 'compare' => $compare]);
 		}
 		return $this;
 	}
@@ -295,8 +368,14 @@ class Cursor{
 	 */
 	public function values(array $values, $toDocument = false) {
 		$this->data = [];
-		$this->values = array_merge($this->values, $values);
-		if ($toDocument && $this->values) {
+		foreach ($values as $name => $value) {
+			if ($value instanceof Param) {
+				$this->values[] = $value;
+				continue;
+			}
+			$this->values[] = new Param(['name' => $name, 'value' => $value]);
+		}
+		if ($toDocument) {
 			$this->documents[] = $this->values;
 			$this->values = [];
 		}
@@ -316,13 +395,11 @@ class Cursor{
 	public function value($name, $value = NULL, array $params = [], $toDocument = false) {
 		$this->data = [];
 		if ($name instanceof Param) {
-			$value === NULL || $name->setParam('value', $value);
-			$name->setParams($params);
 			$this->values[] = $name;
 		} else {
 			$this->values[] = new Param($params + ['name' => $name, 'value' => $value]);
 		}
-		if ($toDocument && $this->values) {
+		if ($toDocument) {
 			$this->documents[] = $this->values;
 			$this->values = [];
 		}
@@ -336,6 +413,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function documents(array $document) {
+		$this->data = [];
 		foreach ($documents as $document) {
 			$this->document($document);
 		}
@@ -351,6 +429,11 @@ class Cursor{
 	 */
 	public function document(array $document) {
 		$this->data = [];
+		foreach ($document as $name => &$value) {
+			if (!$value instanceof Param) {
+				$value = new Param(['name' => $name, 'value' => $value]);
+			}
+		}
 		$this->documents[] = $document;
 		return $this;
 	}
@@ -363,7 +446,13 @@ class Cursor{
 	 */
 	public function options(array $options) {
 		$this->data = [];
-		$this->options = array_merge($this->options, $options);
+		foreach ($options as $name => $value) {
+			if ($value instanceof Param) {
+				$this->options[] = $value;
+				continue;
+			}
+			$this->options[] = new Param(['name' => $name, 'value' => $value]);
+		}
 		return $this;
 	}
 
@@ -377,11 +466,10 @@ class Cursor{
 	public function option($name, $value = NULL, array $params = []) {
 		$this->data = [];
 		if ($name instanceof Param) {
-			$value === NULL || $name->setParam('value', $value);
 			$name->setParams($params);
 			$this->options[] = $name;
 		} else {
-			$this->options[] = new Param($params + ['name' => $name, 'value' => $value]);
+			$this->options[] = new Param($params + ['name'=> $name, 'value'=> $value]);
 		}
 		return $this;
 	}
@@ -393,7 +481,7 @@ class Cursor{
 	 * @param  array|string $columns  字段
 	 * @return this
 	 */
-	public function group($columns, $function = NULL) {
+	public function group($columns) {
 		$this->data = [];
 		if ($columns instanceof Param) {
 			$columns = [$columns];
@@ -402,11 +490,10 @@ class Cursor{
 		}
 		foreach ($columns as $value) {
 			if ($value instanceof Param) {
-				$value->setParam('name', 'group');
-				$function === NULL || $value->setParam('function', $function);
+				$value->setParams(['name' => 'group']);
 				$this->options[] = $value;
 			} else {
-				$this->options[] = new Param(['name'=> 'group', 'value'=> $value, 'function' => $function]);
+				$this->options[] = new Param(['name'=> 'group', 'value'=> $value]);
 			}
 		}
 		return $this;
@@ -419,7 +506,7 @@ class Cursor{
 	 * @param  integer|null $order
 	 * @return this
 	 */
-	public function order($columns, $order = NULL, $function = NULL) {
+	public function order($columns, $order = NULL) {
 		$this->data = [];
 		if ($columns instanceof Param) {
 			$columns = [$columns];
@@ -434,12 +521,10 @@ class Cursor{
 		}
 		foreach ($columns as $column => $value) {
 			if ($value instanceof Param) {
-				$value->setParam('name', 'order');
-				$order === NULL || $value->setParam('order', $order);
-				$function === NULL || $value->setParam('function', $function);
+				$value->setParams(['name' => 'order']);
 				$this->options[] = $value;
 			} else {
-				$this->options[] = new Param(['name'=> 'order', 'value'=> $value, 'column' => $column, 'function' => $function]);
+				$this->options[] = new Param(['name'=> 'order', 'value'=> $value, 'column' => $column]);
 			}
 		}
 		return $this;
@@ -451,7 +536,9 @@ class Cursor{
 	 * @return this
 	 */
 	public function offset($offset) {
-		return $this->option('offset', $offset);
+		$this->data = [];
+		$this->options[] = new Param(['name'=> 'offset', 'value'=> $offset]);
+		return $this;
 	}
 
 	/**
@@ -460,7 +547,9 @@ class Cursor{
 	 * @return this
 	 */
 	public function limit($limit) {
-		return $this->option('limit', $limit);
+		$this->data = [];
+		$this->options[] = new Param(['name'=> 'limit', 'value'=> $limit]);
+		return $this;
 	}
 
 
@@ -473,8 +562,7 @@ class Cursor{
 	public function unions(array $unions, $all = false) {
 		$this->data = [];
 		foreach ($unions as $union) {
-			if ($union instanceof Param || !$all) {
-				$all && $union->setParam('all', $all);
+			if ($union instanceof Param) {
 				$this->unions[] = $union;
 				continue;
 			}
@@ -491,13 +579,39 @@ class Cursor{
 	 */
 	public function union($union, $all = false) {
 		$this->data = [];
-		if ($union instanceof Param || !$all) {
-			$all && $union->setParam('all', $all);
+		if ($union instanceof Param) {
 			$this->unions[] = $union;
 		} else {
 			$this->unions[] = new Param(['value' => $union, 'all' => $all]);
 		}
 		return $this;
+	}
+
+	protected function iterator() {
+		if (!isset($this->data['iterator'])) {
+			$this->data['iterator'] = $this->select();
+		}
+		return $this->data['iterator'];
+	}
+
+	public function current() {
+		return $this->iterator()->current();
+	}
+
+	public function key() {
+		return $this->iterator()->key();
+	}
+
+	public function next() {
+		return $this->iterator()->next();
+	}
+
+	public function rewind() {
+		return $this->iterator()->rewind();
+	}
+
+	public function valid() {
+		return $this->iterator()->valid();
 	}
 
 	/**
@@ -510,13 +624,6 @@ class Cursor{
 		return $this->__call('select', $args);
 	}
 
-	public function getUseTables() {
-		if (empty($this->data['builder'])) {
-			return [];
-		}
-		return $this->data['builder']->getUseTables();
-	}
-
 	/**
 	 * __call
 	 * @param  string $name
@@ -525,14 +632,21 @@ class Cursor{
 	 */
 	public function __call($name, $args) {
 
-		if ($this->values) {
-			$this->documents[] = $this->values;
-			$this->values = [];
-		}
-
 		// 私有变量
 		if ($name{0} === '_') {
 			throw new Exception('this._?', 'No access to this method');
+		}
+
+		// 回调
+		if (isset($this->callbacks[$name])) {
+			$call = call_user_func($this->callbacks[$name], $this, $args, $name);
+			if ($call !== NULL && $call !== true) {
+				$name = $call;
+			}
+
+			if (!$name) {
+				throw new Exception('this.empty', 'Invalid statement');
+			}
 		}
 
 		// 无数据库信息
@@ -540,9 +654,10 @@ class Cursor{
 			throw new Exception('this.DB', 'No database objects');
 		}
 
+
 		// 构造器
 		if (empty($this->data['builder'])) {
-			$builderName = __NAMESPACE__ '\\'. (isset($this->builders[$this->DB->protocol()]) ? $this->builders[$this->DB->protocol()] : 'SQLBuilder');
+			$builderName = __NAMESPACE__ '\\Builder\\'. (isset($this->builders[$this->DB->protocol()]) ? $this->builders[$this->DB->protocol()] : 'SQL');
 			$this->data['builder'] = new $builderName($this);
 		}
 

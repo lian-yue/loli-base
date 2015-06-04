@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-02-25 13:38:13
-/*	Updated: UTC 2015-04-07 13:27:55
+/*	Updated: UTC 2015-04-25 05:28:44
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -30,8 +30,6 @@ class Lang{
 
 	// 当前的语言
 	protected static $langs = [];
-
-
 
 
 
@@ -219,17 +217,14 @@ class Lang{
 			$lang = self::$replace[$lang];
 		}
 		// 全部允许语言
-		if (empty(self::$all[$lang])  {
+		if (empty(self::$all[$lang])) {
 			return false;
 		}
 		return $lang;
 	}
 }
-
 Lang::init();
-Filter::run('Lang', []);
-
-
+Events::run('Lang');
 
 
 
