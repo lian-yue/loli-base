@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-05-25 13:03:30
-/*	Updated: UTC 2015-06-04 09:51:46
+/*	Updated: UTC 2015-06-05 03:46:09
 /*
 /* ************************************************************************** */
 namespace Loli\DOM;
@@ -41,12 +41,11 @@ class Attributes implements IteratorAggregate, ArrayAccess, Serializable, Counta
 	}
 
 	public function offsetSet($name, $value) {
-		if ($value === NULL || $value === false) {
-			if ($name !== NULL) {
-				unset($this->_attributes[$name]);
-			}
-		} elseif ($name = trim($name)) {
-			$this->_attributes[strtolower($name)] = $value;
+		$name = strtolower(trim($name));
+		if (!$name || $value === NULL || $value === false) {
+			unset($this->_attributes[$name]);
+		} else {
+			$this->_attributes[$name] = $value;
 		}
 	}
 	public function offsetExists($name) {

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-05-23 11:20:19
-/*	Updated: UTC 2015-06-04 10:07:02
+/*	Updated: UTC 2015-06-06 15:20:43
 /*
 /* ************************************************************************** */
 namespace Loli\DOM;
@@ -144,7 +144,7 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 
 
 	//  预处理
-	protected function prepare($node) {
+	protected function prepare(Node $node) {
 		static $nesting = 0;
 		// 限制嵌套层次
 		if ($nesting >= self::NESTING) {
@@ -679,18 +679,16 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 	 * replaceChild 替换节点
 	 * @param  Node   $new 新节点
 	 * @param  Node   $old 旧节点
-	 * @return Node   返回旧节点
+	 * @return Node|false   返回旧节点
 	 */
 	public function replaceChild(Node $new, Node $old) {
-		foreach($this->childNodes as $key => $value) {
-			if ($value === $old) {
-				$new->parentNode = $this;
-				$this->childNodes[$key] = $new;
-				$old->parentNode = NULL;
-				break;
-			}
+		if (($index = array_search($node, $this->childNodes, true)) !== false) {
+			$this->childNodes[$index] = $new;
+			$new->parentNode = $this;
+			$old->parentNode = NULL;
+			return $old;
 		}
-		return $old;
+		return false;
 	}
 
 
@@ -698,20 +696,15 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 	/**
 	 * removeChild 移除某个子节点
 	 * @param  Node   $node 节点对象
-	 * @return Node    返回移除的节点
+	 * @return Node|false    返回移除的节点
 	 */
 	public function removeChild(Node $node) {
-		if ($node->parentNode) {
-			foreach($this->childNodes as $key =>$value) {
-				if ($value === $node) {
-					$this->childNodes[$key]->parentNode = NULL;
-					unset($this->childNodes[$key]);
-					$this->childNodes = array_values($this->childNodes);
-					break;
-				}
-			}
+		if ($node->parentNode && ($index = array_search($node, $this->childNodes, true)) !== false) {
+			unset($this->childNodes[$index]);
+			$this->childNodes = array_values($this->childNodes);
+			return $node;
 		}
-		return $node;
+		return false;
 	}
 
 
@@ -743,12 +736,11 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 	}
 
 	public function querySelectorAll($selectors) {
-		$styles = new Styles;
-		$arrays = $styles->selectors($selectors);
-		if (!$arrays || $selectors) {
+		$selectors = new CSS\Selectors($selectors);
+		if (!$selectors->count()) {
 			return [];
 		}
-		return array_values($this->quersyNodeMatch(array_map('array_reverse', $arrays)));
+		return array_values($this->quersyNodeMatch(array_map('array_reverse', $selectors->toArray())));
 	}
 
 
@@ -926,37 +918,6 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 								}
 							}
 							$results = $_results;
-
-
-
-
-							/*
-							$array = [];
-							foreach ($queryNodeMatchAll as $currentHash => $resultsHash) {
-								$all[$currentHash]->parentNode->queryMatchValues($values, $array);
-							}
-
-							$_queryNodeMatchAll = [];
-							foreach ($queryNodeMatchAll as $currentHash => $resultsHash) {
-								foreach ($all[$currentHash]->parentNode->childNodes as $childNode) {
-
-									// 超过当前就跳出
-									if ($childNode->hash === $currentHash) {
-										break;
-									}
-
-									// 不匹配的
-									if (empty($array[$childNode->hash])) {
-										continue;
-									}
-
-									if (empty($_queryNodeMatchAll[$childNode->hash])) {
-										$_queryNodeMatchAll[$childNode->hash] = [];
-									}
-									$_queryNodeMatchAll[$childNode->hash] += $resultsHash;
-								}
-							}
-							$queryNodeMatchAll = $_queryNodeMatchAll;*/
 							break;
 						default:
 							$results = [];
@@ -1205,7 +1166,7 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 						case 'nth-child':
 							// 的第几个元素
 							$n = $value[2][2];
-							foreach ($results as $result) {
+							foreach ($results as &$result) {
 								++$n;
 								if ($n !== $value[2][0] && (!$value[2][1] || ($n % $value[2][0]) !== 0)) {
 									$result = false;
@@ -1218,7 +1179,7 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 							$n = $value[2][2];
 							$results = array_reverse($results, true);
 							$n = $value[2][2];
-							foreach ($results as $result) {
+							foreach ($results as &$result) {
 								++$n;
 								if ($n !== $value[2][0] && (!$value[2][1] || ($n % $value[2][0]) !== 0)) {
 									$result = false;
@@ -1259,7 +1220,7 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 							// 子元素存在 匹配 不能嵌套 matches
 							foreach ($nodes as $hash => $node) {
 								if ($results[$hash]) {
-									$results[$hash] = $node->quersyNodeMatch(array_map('array_reverse', $value[2])) ? true : false;
+									$results[$hash] = $node->quersyNodeMatch(array_map('array_reverse', $value[2]->toArray())) ? true : false;
 								}
 							}
 							break;
@@ -1267,7 +1228,7 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 							// 子元素存在 忽略 不能嵌套 matches
 							foreach ($nodes as $hash => $node) {
 								if ($results[$hash]) {
-									$results[$hash] = $node->quersyNodeMatch(array_map('array_reverse', $value[2])) ? false : true;
+									$results[$hash] = $node->quersyNodeMatch(array_map('array_reverse', $value[2]->toArray())) ? false : true;
 								}
 							}
 							break;
@@ -1317,6 +1278,10 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 			return false;
 		}
 		switch ($compare) {
+			case '':
+				// 存在
+				return $node->attributes[$attributeName] !== NULL && $node->attributes[$attributeName] !== false;
+				break;
 			case '=':
 				// 等于
 				if (isset($cases[$attributeName])) {

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-06-01 10:31:52
-/*	Updated: UTC 2015-06-02 03:13:45
+/*	Updated: UTC 2015-06-06 10:30:35
 /*
 /* ************************************************************************** */
 namespace Loli\DOM;
@@ -86,6 +86,7 @@ class FilterAttributes {
 		'step' => 'minMaxStep',
 
 
+		'scoped' => 'one',
 		'controls' => 'one',
 		'autoplay' => 'one',
 		'checked' => 'one',

@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-05-26 08:02:29
-/*	Updated: UTC 2015-06-04 13:43:26
+/*	Updated: UTC 2015-06-05 03:47:20
 /*
 /* ************************************************************************** */
 namespace Loli\DOM;
@@ -128,7 +128,6 @@ class Style{
 
 
 
-	/*
 
 	public function selectors() {
 		static $patterns = [
