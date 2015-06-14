@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-05-25 13:03:30
-/*	Updated: UTC 2015-06-05 03:46:09
+/*	Updated: UTC 2015-06-14 08:16:09
 /*
 /* ************************************************************************** */
 namespace Loli\DOM;
@@ -90,7 +90,7 @@ class Attributes implements IteratorAggregate, ArrayAccess, Serializable, Counta
 		ksort($array);
 		$attributes = '';
 		foreach ($array as $name => $value) {
-			$attributes .= ' ' . $name . ($value === true ? '' : '="' . strtr($value, ['"' => '&quot;']) . '"');
+			$attributes .= ' ' . $name . ($value === true ? '' : '="' . str_replace('"', '&quot;', $value) . '"');
 		}
 		return $attributes;
 	}

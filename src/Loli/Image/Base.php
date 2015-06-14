@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-04-09 08:14:54
+/*	Updated: UTC 2015-06-12 08:42:37
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -168,6 +168,7 @@ abstract class Base {
      * @param  string|integer   $top 上下位置 负数 = 下边开始 10% = 百分比
      * @param  string|integer   $left 左右位置 负数 = 右边开始 10% = 百分比
      * @param  string|integer   $angle  倾斜角度
+     * @param  float            $opacity  透明度
      */
 	abstract public function text($text, $font, $size = 12, $color = '#000000', $x = 0, $y = 0, $angle = 0, $opacity = 1.0);
 
@@ -177,7 +178,7 @@ abstract class Base {
      * @param  string  $file   图片地址
      * @param  integer $top 上下位置 负数 = 下边开始
      * @param  integer $left 左右位置 负数 = 右边开始
-     * @param  integer $alpha  透明度
+     * @param  float   $opacity  透明度
      */
    abstract public function insert($file, $x = 0, $y = 0, $opacity = 1.0);
 

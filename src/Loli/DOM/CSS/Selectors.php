@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-06-05 03:10:27
-/*	Updated: UTC 2015-06-08 10:22:26
+/*	Updated: UTC 2015-06-14 08:24:07
 /*
 /* ************************************************************************** */
 namespace Loli\DOM\CSS;
@@ -111,7 +111,7 @@ class Selectors implements IteratorAggregate, ArrayAccess, Countable{
 		while($selectors && $continue) {
 			foreach($this->patterns as $pattern => $type) {
 				// 匹配失败 跳过
-				if (!$continue = preg_match('/^'.strtr($pattern, ['/' => '\\/']).'/i', $selectors, $matches)) {
+				if (!$continue = preg_match('/^'.str_replace('/', '\\/', $pattern).'/i', $selectors, $matches)) {
 					continue;
 				}
 				// 匹配到的长度
@@ -326,19 +326,16 @@ class Selectors implements IteratorAggregate, ArrayAccess, Countable{
 	 */
 	public function __toString() {
 		$selectors = [];
-		foreach ($this as $selector) {
+		foreach ($this as $array) {
 			$selector = '';
-			foreach ($selector as $values) {
+			foreach ($array as $values) {
 				if (is_array($values)) {
 					foreach ($values as $value) {
 						switch ($value[0]) {
-							case '*':
-								$selector .= $value[0];
-								break;
 							case '':
 							case '.':
 							case '#':
-								if (preg_match('/^[a-z_-][a-z0-9_-]*$/i', $value[1])) {
+								if (($value[0] === '' && $value[1] === '*') || preg_match('/^[a-z_-][a-z0-9_-]*$/i', $value[1])) {
 									$selector .= $value[0] . $value[1];
 								}
 								break;
@@ -350,8 +347,9 @@ class Selectors implements IteratorAggregate, ArrayAccess, Countable{
 									}
 								}
 								if ($attributeNames) {
-									$selector .= '['. implode('|', $attributeNames) . ($value[2] ? $value[2] . '"'. strtr($value[3], ['"' => '&quot;']) .'"' : '') .']';
+									$selector .= '['. implode('|', $attributeNames) . ($value[2] ? $value[2] . '"'. str_replace('"', '&quot;', $value[3]) .'"' : '') .']';
 								}
+								break;
 							case ':':
 								switch ($value[1]) {
 									case 'lang':

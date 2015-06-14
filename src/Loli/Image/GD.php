@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-02-16 08:55:06
-/*	Updated: UTC 2015-04-09 13:07:39
+/*	Updated: UTC 2015-06-12 09:55:08
 /*
 /* ************************************************************************** */
 namespace Loli\Image;
@@ -151,7 +151,7 @@ class GD extends Base {
 	}
 
 
-	public function text($text, $font, $size = 12, $color = '#000000', $x = 0, $y = 0, $angle = 0,  $opacity = 1.0) {
+	public function text($text, $font, $size = 12, $color = '#000000', $y = 0, $x = 0, $angle = 0,  $opacity = 1.0) {
 		if (!$this->_im) {
 			throw new Exception('Resource');
 		}
@@ -180,41 +180,41 @@ class GD extends Base {
 		}
 
 
-		$xN = $x < 0 || ($x && is_string($x) && $x{0} == '-');
-		$w = abs(max($info[0], $info[2], $info[4], $info[6]) - min($info[0], $info[2], $info[4], $info[6]));
-		if (is_string($x) && substr($x, -1, 1) == '%') {
-			$x = ($this->width() - $w) * (($xN ? 100 + $x : $x) / 100);
-		} elseif ($xN) {
-			$x += $this->width() - $w;
-		}
-
-		if ($angle <= 90) {
-			$x -= $info[6];
-		} elseif ($angle <= 180) {
-			$x -= $info[4];
-		} elseif ($angle <= 270) {
-			$x -= $info[2];
-		} else {
-			$x -= $info[0];
-		}
-
-
 		$yN = $y < 0 || ($y && is_string($y) && $y{0} == '-');
-		$h = abs(max($info[1], $info[3], $info[5], $info[7]) - min($info[1], $info[3], $info[5], $info[7]));
+		$w = abs(max($info[0], $info[2], $info[4], $info[6]) - min($info[0], $info[2], $info[4], $info[6]));
 		if (is_string($y) && substr($y, -1, 1) == '%') {
-			$y = ($this->height() - $h) * (($yN ? 100 + $y : $y) / 100);
+			$y = ($this->width() - $w) * (($yN ? 100 + $y : $y) / 100);
 		} elseif ($yN) {
-			$y += $this->height() - $h;
+			$y += $this->width() - $w;
 		}
 
 		if ($angle <= 90) {
-			$y -= $info[5];
+			$y -= $info[6];
 		} elseif ($angle <= 180) {
-			$y -= $info[3];
+			$y -= $info[4];
 		} elseif ($angle <= 270) {
-			$y -= $info[1];
+			$y -= $info[2];
 		} else {
-			$y -= $info[7];
+			$y -= $info[0];
+		}
+
+
+		$xN = $x < 0 || ($x && is_string($x) && $x{0} == '-');
+		$h = abs(max($info[1], $info[3], $info[5], $info[7]) - min($info[1], $info[3], $info[5], $info[7]));
+		if (is_string($x) && substr($x, -1, 1) == '%') {
+			$x = ($this->height() - $h) * (($xN ? 100 + $x : $x) / 100);
+		} elseif ($xN) {
+			$x += $this->height() - $h;
+		}
+
+		if ($angle <= 90) {
+			$x -= $info[5];
+		} elseif ($angle <= 180) {
+			$x -= $info[3];
+		} elseif ($angle <= 270) {
+			$x -= $info[1];
+		} else {
+			$x -= $info[7];
 		}
 
 		if (!function_exists('imagettftext')) {
@@ -223,10 +223,13 @@ class GD extends Base {
 
 		imagealphablending($this->_im, true);
 		$color = imagecolorallocatealpha($this->_im, $red, $green, $blue, 127 - $opacity * 127);
-		imagettftext($this->_im, $size, $angle, $x, $y, $color, $font, $text);
+		imagettftext($this->_im, $size, $angle, $y, $x, $color, $font, $text);
 		imagealphablending($this->_im, false);
 		return $this;
 	}
+
+
+
 
 	public function insert($file, $x = 0, $y = 0, $opacity = 1.0) {
 		if (!$this->_im) {

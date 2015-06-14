@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-06-02 01:51:18
+/*	Updated: UTC 2015-06-14 08:25:20
 /*
 /* ************************************************************************** */
 namespace Loli\DOM;
@@ -666,7 +666,7 @@ class Filter{
 	 * @return string
 	 */
 	protected function text($text) {
-		return strtr($text, ['"' => '&quot;', '\'' => '&#039;', '<' => '&lt;', '>' => '&gt;']);
+		return str_replace(['"', '\'', '<', '>'], '&quot;', '&#039;', '&lt;', '&gt;'], $text);
 	}
 
 

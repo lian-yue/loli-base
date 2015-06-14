@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-05-23 11:20:19
-/*	Updated: UTC 2015-06-06 15:20:43
+/*	Updated: UTC 2015-06-14 09:23:06
 /*
 /* ************************************************************************** */
 namespace Loli\DOM;
@@ -379,7 +379,7 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 
 			// CDATA 节点
 			case self::CDATA_SECTION_NODE:
-				$return = '<![CDATA['. strtr($this->nodeValue, [']]>' => ']]&gt;', '<![CDATA[' => '&lt;![CDATA[']) .']]>';
+				$return = '<![CDATA['. str_replace([']]>', '<![CDATA['], [']]&gt;', '&lt;![CDATA['] $this->nodeValue) .']]>';
 				break;
 
 
@@ -1408,7 +1408,7 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 
 
 	public static function escape($string) {
-		return strtr($string, ['"' => '&quot;', '\'' => '&#039;', '<' => '&lt;', '>' => '&gt;']);
+		return str_replace(['"', '\'', '<', '>'], ['&quot;', '&#039;', '&lt;', '&gt;'], $string);
 	}
 
 
@@ -1422,7 +1422,9 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 			case self::DOCUMENT_NODE:
 			case self::ELEMENT_NODE:
 				foreach($this->childNodes as $value) {
-					$value->compact();
+					if (strcasecmp($this->tagName, 'pre') === 0) {
+						$value->compact();
+					}
 				}
 				break;
 			case self::TEXT_NODE:

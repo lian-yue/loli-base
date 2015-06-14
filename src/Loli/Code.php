@@ -8,7 +8,7 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-04-09 12:50:06
+/*	Updated: UTC 2015-06-14 08:09:14
 /*
 /* ************************************************************************** */
 namespace Loli;
@@ -81,7 +81,7 @@ class Code{
 		}
 
 		// base64_encode 随机字符串 和数据
-		$code = strtr(base64_encode(self::_code($type .chr(0). ($ttl? $ttl + time() : 0) .chr(0). ($type == 9 ? serialize($value) :$value), $rand . $password)), ['=' => '', '+' => '-', '/' => '_']);
+		$code = str_replace(['=', '+', '/'], ['', '-', '_'], base64_encode(self::_code($type .chr(0). ($ttl? $ttl + time() : 0) .chr(0). ($type == 9 ? serialize($value) :$value), $rand . $password)));
 
 
 		// 数据完整性
@@ -116,7 +116,7 @@ class Code{
 		}
 
 		// 解密
-		if (count($arrays = explode(chr(0), self::_code(base64_decode(strtr($code, ['-' => '+', '_' => '/'])), $rand . $password), 3)) != 3) {
+		if (count($arrays = explode(chr(0), self::_code(base64_decode(str_replace(['-', '_'], ['+', '/'], $code)), $rand . $password), 3)) != 3) {
 			return false;
 		}
 		list($type, $expire, $value) = $arrays;
