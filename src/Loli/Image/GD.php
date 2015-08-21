@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-06-12 13:48:52
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-02-16 08:55:06
 /*	Updated: UTC 2015-06-12 09:55:08
 /*
@@ -339,7 +350,7 @@ class GD extends Base {
 			throw new Exception('Resource');
 		}
 		$type = $type ? $type : $this->type();
-		headers_sent() || header('Content-Type: ' . (empty($this->mimes[$type]) ? reset($$this->mimes) : $this->mimes[$type]));
+		headers_sent() || header('Content-Type: ' . (empty($this->mimes[$type]) ? reset($this->mimes) : $this->mimes[$type]));
 		if (self::TYPE_WEBP === $type) {
 			if (!imagewebp($this->_im)) {
 				throw new Exception('Show');

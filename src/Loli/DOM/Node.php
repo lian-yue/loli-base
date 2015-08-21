@@ -8,11 +8,11 @@
 /*	Author: Moon
 /*
 /*	Created: UTC 2015-05-23 11:20:19
-/*	Updated: UTC 2015-06-14 09:23:06
+/*	Updated: UTC 2015-07-22 05:31:44
 /*
 /* ************************************************************************** */
 namespace Loli\DOM;
-use ArrayAccess, IteratorAggregate, ArrayIterator, JsonSerializable, Countable;
+use ArrayAccess, IteratorAggregate, ArrayIterator, JsonSerializable, Countable, Loli\DOM\CSS\Selectors;
 class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countable{
 
 	// 元素节点
@@ -132,13 +132,13 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 				break;
 			default:
 				$this->nodeType = self::DOCUMENT_NODE;
-				$this->HTML = trim(mb_convert_encoding((string) $value,'utf-8', 'auto'));
-				$this->length = strlen($this->HTML);
+				$this->string = trim(mb_convert_encoding((string) $value,'utf-8', 'auto'));
+				$this->length = strlen($this->string);
 				$this->offset = 0;
 				$this->buffer = '';
 				$this->prepare($this);
 				$this->compact();
-				unset($this->HTML, $this->length, $this->offset, $this->buffer);
+				unset($this->string, $this->length, $this->offset, $this->buffer);
 		}
 	}
 
@@ -152,12 +152,12 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 		}
 
 		while ($this->pos('<')) {
-			if (!isset($this->HTML{$this->offset})) {
+			if (!isset($this->string{$this->offset})) {
 				$this->buffer .= '<';
 				continue;
 			}
 
-			$char = $this->HTML{$this->offset};
+			$char = $this->string{$this->offset};
 			switch ($char) {
 				case '/':
 					// </ 开头的结束标签
@@ -208,14 +208,14 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 						$this->buffer = '';
 					}
 
-					if (substr($this->HTML, $this->offset, 8) === '![CDATA[') {
+					if (substr($this->string, $this->offset, 8) === '![CDATA[') {
 						// CDATA  文本
 						$this->offset += 8;
 						$this->pos(']]>');
 						$node->appendChild(self::createCDATASection($this->buffer));
 					} else {
 						// 注释
-						if (substr($this->HTML, $this->offset, 3) == '!--') {
+						if (substr($this->string, $this->offset, 3) == '!--') {
 							$this->offset += 3;
 							$this->pos('-->');
 						} else {
@@ -261,12 +261,12 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 									// 遍历
 									do {
 										// 偏移不存在
-										if (!isset($this->HTML{$this->offset})) {
+										if (!isset($this->string{$this->offset})) {
 											break;
 										}
 
 										// 读取一个字节
-										$char = $this->HTML{$this->offset};
+										$char = $this->string{$this->offset};
 
 										// 加偏移
 										++$this->offset;
@@ -320,7 +320,7 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 
 							// 清空缓冲区
 							$this->buffer = '';
-						} else {
+						} elseif (preg_match('/^[a-z_-][a-z0-9_:-]*$/i', $tagName)) {
 							// 其他标签递归
 							++$nesting;
 							$this->prepare($element);
@@ -371,7 +371,7 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 			// 字符串节点
 			case self::TEXT_NODE:
 				if ($this->parentNode && (strcasecmp($this->parentNode->tagName, 'style') === 0 || strcasecmp($this->parentNode->tagName, 'script') === 0)) {
-					$return = preg_replace('/^\s*(\/\/)?\<!\[CDATA\[|(\/\/)?\]\]\>\s*$/i', '', str_ireplace('</' . $this->tagName, '', $this->nodeValue));
+					$return = preg_replace('/^\s*(\/\/)?\<!\[CDATA\[|(\/\/)?\]\]\>\s*$/i', '', str_ireplace('</' . $this->tagName, '&lt;/' . $this->tagName, $this->nodeValue));
 				} else {
 					$return = self::escape($this->nodeValue);
 				}
@@ -379,16 +379,14 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 
 			// CDATA 节点
 			case self::CDATA_SECTION_NODE:
-				$return = '<![CDATA['. str_replace([']]>', '<![CDATA['], [']]&gt;', '&lt;![CDATA['] $this->nodeValue) .']]>';
+				$return = '<![CDATA['. str_replace([']]>', '<![CDATA['], [']]&gt;', '&lt;![CDATA['], $this->nodeValue) .']]>';
 				break;
-
 
 			// 注释节点
 			case self::COMMENT_NODE:
 					// 过滤 防止 可能 的  if ie 属性出来
 					$return = '<!--' . preg_replace('/(endif\s*)\]/i', '$1&#93;', preg_replace('/\[(\s*if|else)/i', '&#91;$1', preg_replace('/\](\s*>)/i', '&#93;$1',$this->nodeValue))) . '-->';
 				break;
-
 			// 根文档
 			case self::DOCUMENT_NODE:
 				$string = '';
@@ -554,21 +552,32 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 				if ($this->parentNode) {
 					if ($value !== false && $value !== '' && $value !== NULL) {
 						$elements = new Node($value);
-						foreach ($elements as $element) {
+						foreach ($elements->childNodes as $element) {
 							$this->parentNode->insertBefore($element, $this);
 						}
 					}
 					$this->parentNode->removeChild($this);
+				} elseif ($this->nodeType === self::DOCUMENT_NODE) {
+					foreach ($this->childNodes as $key => $node) {
+						$node->parentNode = NULL;
+						unset($this->childNodes[$key]);
+					}
+					if ($value !== false && $value !== '' && $value !== NULL) {
+						$elements = new Node($value);
+						foreach ($elements->childNodes as $element) {
+							$this->insertBefore($element);
+						}
+					}
 				}
 				break;
 			case 'innerHTML':
 				foreach ($this->childNodes as $key => $node) {
+					$node->parentNode = NULL;
 					unset($this->childNodes[$key]);
 				}
-				unset($node);
 				if ($value !== false && $value !== '' && $value !== NULL) {
 					$elements = new Node($value);
-					foreach ($elements as $element) {
+					foreach ($elements->childNodes as $element) {
 						$this->appendChild($element);
 					}
 				}
@@ -577,9 +586,8 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 				if ($this->parentNode) {
 					if ($value !== false && $value !== '' && $value !== NULL) {
 						$this->parentNode->insertBefore(self::createTextNode($value), $this);
-					} else {
-						$this->parentNode->removeChild($this);
 					}
+					$this->parentNode->removeChild($this);
 				}
 				break;
 			case 'innerText':
@@ -591,11 +599,11 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 							return NULL;
 						}
 						foreach ($this->childNodes as $key => $node) {
+							$node->parentNode = NULL;
 							unset($this->childNodes[$key]);
 						}
-						unset($node);
 						if ($value !== false && $value !== '' && $value !== NULL) {
-							$this->childNodes = [self::createTextNode($value)];
+							$this->appendChild(self::createTextNode($value));
 						}
 						break;
 					case self::TEXT_NODE:
@@ -664,15 +672,6 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 	}
 
 
-	/**
-	 * hasChildNodes 是否有子节点
-	 * @return boolean
-	 */
-	public function hasChildNodes() {
-		return !empty($this->childNodes);
-	}
-
-
 
 
 	/**
@@ -682,7 +681,8 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 	 * @return Node|false   返回旧节点
 	 */
 	public function replaceChild(Node $new, Node $old) {
-		if (($index = array_search($node, $this->childNodes, true)) !== false) {
+		if (($index = array_search($old, $this->childNodes, true)) !== false) {
+			$new->parentNode && $new->parentNode->removeChild($new);
 			$this->childNodes[$index] = $new;
 			$new->parentNode = $this;
 			$old->parentNode = NULL;
@@ -702,6 +702,7 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 		if ($node->parentNode && ($index = array_search($node, $this->childNodes, true)) !== false) {
 			unset($this->childNodes[$index]);
 			$this->childNodes = array_values($this->childNodes);
+			$node->parentNode = NULL;
 			return $node;
 		}
 		return false;
@@ -710,20 +711,20 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 
 
 	public function getElementById($id) {
-		return $this->querySelector('#' . preg_replace('/[^0-9a-z_\-]/i', '', $id));
+		return $this->querySelector('#' . $id);
 	}
 
 
 	public function getElementsByClassName($class) {
-		return $this->querySelectorAll('.' . preg_replace('/[^0-9a-z_\-]/i', '', $class));
+		return $this->querySelectorAll('.' . $class);
 	}
 
 	public function getElementsByName($name) {
-		return $this->querySelectorAll('[name=\'' . $name. '\']');
+		return $this->querySelectorAll('[name=\'' . $name . '\']');
 	}
 
 	public function getElementsByTagName($tagName) {
-		return $this->querySelectorAll(preg_replace('/[^0-9a-z_\-]/i', '', $tagName));
+		return $this->querySelectorAll($tagName);
 	}
 
 	public function querySelector($selectors) {
@@ -736,7 +737,7 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 	}
 
 	public function querySelectorAll($selectors) {
-		$selectors = new CSS\Selectors($selectors);
+		$selectors = new Selectors($selectors);
 		if (!$selectors->count()) {
 			return [];
 		}
@@ -1178,7 +1179,6 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 							// 倒序的第几个元素
 							$n = $value[2][2];
 							$results = array_reverse($results, true);
-							$n = $value[2][2];
 							foreach ($results as &$result) {
 								++$n;
 								if ($n !== $value[2][0] && (!$value[2][1] || ($n % $value[2][0]) !== 0)) {
@@ -1421,9 +1421,9 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 		switch ($this->nodeType) {
 			case self::DOCUMENT_NODE:
 			case self::ELEMENT_NODE:
-				foreach($this->childNodes as $value) {
-					if (strcasecmp($this->tagName, 'pre') === 0) {
-						$value->compact();
+				foreach($this->childNodes as $node) {
+					if (strcasecmp($node->tagName, 'pre') !== 0) {
+						$node->compact();
 					}
 				}
 				break;
@@ -1455,11 +1455,10 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 	}
 
 
-
-	protected function cspn($mask, $buffer = true) {
-		$result = strcspn($this->HTML, $mask, $this->offset);
+	protected function cspn($search, $buffer = true) {
+		$result = strcspn($this->string, $search, $this->offset);
 		if ($buffer) {
-			$this->buffer .= substr($this->HTML, $this->offset, $result);
+			$this->buffer .= substr($this->string, $this->offset, $result);
 		}
 		$result += $this->offset;
 		if ($result >= $this->length) {
@@ -1467,21 +1466,18 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 			return false;
 		}
 		$this->offset = $result + 1;
-		return $this->HTML{$result};
+		return $this->string{$result};
 	}
 
 
-	protected function pos($needle, $buffer = true, $ipos = false) {
-
-		$result = $ipos ? stripos($this->HTML, $needle, $this->offset) : strpos($this->HTML, $needle, $this->offset);
-		$offset = $result === false ? $this->length : $result + strlen($needle);
+	protected function pos($search, $buffer = true, $ipos = false) {
+		$result = $ipos ? stripos($this->string, $search, $this->offset) : strpos($this->string, $search, $this->offset);
+		$offset = $result === false ? $this->length : $result + strlen($search);
 		if ($buffer) {
-			$this->buffer .= substr($this->HTML, $this->offset, $offset - $this->offset - strlen($needle));
+			$this->buffer .= $result === false ? substr($this->string, $this->offset) : substr($this->string, $this->offset, $offset - $this->offset - strlen($search));
 		}
-
-
 		$this->offset = $offset;
-		return $result === false ? false : $needle;
+		return $result === false ? false : $search;
 	}
 
 

@@ -28,7 +28,7 @@ abstract class Builder{
 	}
 
 	public function __get($name) {
-		return $this->cursor->arg($name);
+		return $this->cursor->$name;
 	}
 
 	/**

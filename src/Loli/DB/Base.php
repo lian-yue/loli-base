@@ -7,12 +7,24 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-05-16 13:32:52
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-04-09 07:56:37
 /*	Updated: UTC 2015-05-16 13:32:51
 /*
 /* ************************************************************************** */
+// ORM
 namespace Loli\DB;
-use Loli\Log;
+use Loli\Log, Loli\Cache\Base as Cache;
 abstract class Base{
 
 
@@ -77,6 +89,7 @@ abstract class Base{
 	// 是否是写入语句
 	public $write = true;
 
+
 	/**
 	 * __construct
 	 * @param array   $servers 服务器
@@ -100,6 +113,7 @@ abstract class Base{
 		$this->database = $this->default['database'];
 		$this->explain = !empty($this->default['explain']);
 		shuffle($this->servers);
+
 	}
 
 	/**
@@ -212,7 +226,7 @@ abstract class Base{
 	 * @return Cursor
 	 */
 	public function cursor($tables = NULL) {
-		return (new Cursor)->tables($tables ? (array) $tables : []);
+		return (new Cursor)->tables($tables ? (array) $tables : [])->DB($this);
 	}
 
 	/**

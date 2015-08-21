@@ -7,57 +7,12 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2014-01-15 13:01:52
-/*	Updated: UTC 2015-05-17 02:27:00
+/*	Created: UTC 2015-08-19 08:59:51
 /*
 /* ************************************************************************** */
 
-/**
- * 数据库查询次数
- * @return integer
- */
-function load_db() {
-	return Loli\DB\Base::$querySum;
-}
-
-/**
- * PHP 载入执行时间
- * @param  integer $decimal 小数点精确
- * @return float
- */
-function load_time($decimal = 4) {
-	return number_format(microtime(true)- $_SERVER['REQUEST_TIME_FLOAT'], $decimal);
-}
 
 
-
-/**
- * PHP 载入最大内存使用率
- * @param  integer $decimal 小数点精确
- * @return float
- */
-function load_ram($decimal = 4) {
-	return number_format((memory_get_peak_usage() / 1024 / 1024), $decimal);
-}
-
-
-/**
- * 载入文件数量
- * @return integer
- */
-function load_file() {
-	return count(get_included_files());
-}
-
-
-
-/**
-*	字符串转换成数组
-*
-*	1 参数 输入GET类型字符串
-*
-*	返回值 GET数组
-**/
 function parse_string($string) {
 	if (is_array($string) || is_object($string)) {
 		$res = (array) $string;
@@ -73,14 +28,6 @@ function parse_string($string) {
 }
 
 
-
-/**
-*	数组转换成字符串
-*
-*	1 参数 数组
-*
-*	返回值 GET字符串
-**/
 function merge_string($a) {
 	if (!is_array($a) && !is_object($a)) {
 		return (string) $a;
@@ -89,13 +36,6 @@ function merge_string($a) {
 }
 
 
-/**
-*	转成数组
-*
-*	1 参数 数组 或者 对象
-*
-*	返回值 数组
-**/
 function to_array($a) {
 	$a = (array) $a;
 	foreach ($a as &$v) {
@@ -104,77 +44,6 @@ function to_array($a) {
 		}
 	}
 	return $a;
-}
-
-
-
-
-
-/**
-*	删除 数组中 的 NULL 值
-*
-*	1 参数 数组
-*	2 参数 是否回调删除多维数组
-*
-*	返回值 数组
-**/
-function array_unnull(array $a, $call = false) {
-	foreach ($a as $k => $v) {
-		if ($call && is_array($a) && $a) {
-			 $a[$k] = array_unnull($a, $call);
-		}
-		if ($v === NULL) {
-			unset($a[$k]);
-		}
-	}
-	return $a;
-}
-
-
-
-/**
-*	判断 某个url 是否是同一域名
-*
-*	1 参数 某个 url
-*	2 参数 某个 url
-*
-*	返回值 true = 是相同 false = 不是
-**/
-function domain_match($match, $domain) {
-	if (!$match || !$domain) {
-		return false;
-	}
-	if (!preg_match('/^(https?|ftp)\:\/\//i', $domain)) {
-		$domain = substr($domain, 0, 2) === '//' ? 'http:' . $domain : 'http://' . $domain;
-	}
-	if (substr($match, 0, 2) === '//') {
-		$match = 'http:' . $match;
-	}
-	if (!($match = parse_url($match)) || empty($match['host']) || !($domain = parse_url($domain)) || empty($domain['host'])) {
-		return false;
-	}
-	return $match['host'] === $domain['host'] || preg_match('/(^|\.)'. preg_quote($domain['host'], '/') .'$/i', $match['host']);
-}
-
-
-
-/**
-*	移除 xml 中的 CDATA
-*
-*	1 参数 xml 数据
-*
-*	返回值 移除后的xml
-**/
-function simplexml_uncdata($xml) {
-	if (preg_match_all("/\<(?<tag>[^<>]+)\>\s*\<\!\[CDATA\s*\[(.*)\]\]\>\s*\<\/\k<tag>\>/isU", $xml, $matches)) {
-		$find = $replace = [];
-		foreach ($matches[0] as $k => $v) {
-			$find[] = $v;
-			$replace[] = '<'. $matches['tag'][$k] .'>' .htmlspecialchars($matches[2][$k], ENT_QUOTES). '</' . $matches['tag'][$k].'>';
-		}
-		$xml = str_replace($find, $replace, $xml);
-	}
-	return $xml;
 }
 
 
@@ -222,75 +91,6 @@ function merge_url(array $parse) {
 	}
 	return $url;
 }
-
-
-
-/**
-*	自动添加 p 标签
-*
-*	1 参数 string
-*
-*	返回值 string
-**/
-function nl2p($string) {
- return str_replace('<p></p>', '', '<p>' . preg_replace('/\n|\r/', '</p>$0<p>', $string) . '</p>');
-}
-
-/**
-*	二维数组 自定义优先级排序
-*
-*	1 参数 引用数组
-*	2 参数 key 字段默认 priority
-*	3 参数 排序方式
-*
-*	无返回值
-**/
-function prioritysort(array &$arrays, $key = 'priority', $asc = true) {
-	$i = 0;
-	$sorts = [];
-	foreach ($arrays as $key => $value) {
-		$sorts[] = [$key, $value, $i, is_object($value) ? (isset($value->$key) ? $value->$key : 0) : (is_array($value) && isset($value[$key]) ? $value[$key] : 0)];
-		++$i;
-	}
-	$function = $asc ? 'uasort' : 'usort';
-	$function($sorts, function($param1, $param2) {
-		if ($param1[3] > $param2[3]) {
-			return 1;
-		}
-		if ($param1[3] < $param2[3]) {
-			return -1;
-		}
-		if ($param1[2] > $param2[2]) {
-			return 1;
-		}
-		if ($param1[2] < $param2[2]) {
-			return -1;
-		}
-		return 0;
-	});
-	$arrays = [];
-	foreach ($sorts as $sort) {
-		$arrays[$sort[0]] = $sort[1];
-	}
-	return true;
-}
-
-
-
-
-function mb_rand($length, $string = false) {
-	if (!$string) {
-		$string = '0123456789abcdefghijklmnopqrstuvwxyz';
-	}
-	$strlen = mb_strlen($string) - 1;
-	$r = '';
-	for ($i = 0; $i < $length; ++$i) {
-		$r .= mb_substr($string, mt_rand(0, $strlen), 1);
-	}
-	return $r;
-}
-
-
 
 
 

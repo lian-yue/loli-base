@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-03-11 15:55:37
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-04-09 20:41:33
 /*	Updated: UTC 2015-01-19 07:05:16
 /*
@@ -23,7 +34,6 @@ class Lock{
 		if (!empty(self::$_all[$key])) {
 			return false;
 		}
-
 
 		// 打开文件
 		self::$_all[$key]['file'] = self::$dir .'/'. md5($key);

@@ -7,12 +7,24 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2015-06-01 10:31:52
-/*	Updated: UTC 2015-06-06 10:30:35
+/*	Created: UTC 2015-07-21 15:13:21
 /*
 /* ************************************************************************** */
-namespace Loli\DOM;
-class FilterAttributes {
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
+/*	Created: UTC 2015-06-01 10:31:52
+/*	Updated: UTC 2015-07-21 15:13:21
+/*
+/* ************************************************************************** */
+namespace Loli\DOM\Filter;
+use Loli\DOM\CSS\Media, Loli\DOM\CSS\Rule, Loli\DOM\Node;
+class Attributes {
 	// url 允许的协议
 	protected $schemes = ['http', 'https', 'ftp', 'gopher', 'news', 'telnet', 'rtsp', 'mms', 'callto', 'bctp', 'synacast', 'thunder', 'flashget', 'qqid', 'magnet', 'ed2k'];
 
@@ -20,8 +32,37 @@ class FilterAttributes {
 	protected $targets = ['_blank'];
 
 	// 允许的类型
-	protected $types = ['text', 'hidden', 'file', 'password', 'email', 'url', 'search', 'number', 'color', 'range', 'tel', 'datetime-local', 'image', 'datetime', 'date', 'month', 'week', 'time', 'submit', 'reset', 'button', 'textarea', 'select', 'radio', 'checkbox', 'application/x-shockwave-flash', 'text/plain'];
-
+	protected $types = [
+		'text' => true,
+		'hidden' => true,
+		'file' => true,
+		'password' => true,
+		'email' => true,
+		'url' => true,
+		'search' => true,
+		'number' => true,
+		'color' => true,
+		'range' => true,
+		'tel' => true,
+		'datetime-local' => true,
+		'image' => true,
+		'datetime' => true,
+		'date' => true,
+		'month' => true,
+		'week' => true,
+		'time' => true,
+		'submit' => true,
+		'reset' => true,
+		'button' => true,
+		'textarea' => true,
+		'select' => true,
+		'radio' => true,
+		'checkbox' => true,
+		'text/plain' => true,
+		'text/css' => ['link', 'style'],
+		'text/javascript' => ['script'],
+		'application/x-shockwave-flash' => ['embed'],
+	];
 
 	// 允许匹配的 id  数组
 	protected $id = [];
@@ -35,9 +76,6 @@ class FilterAttributes {
 
 	// name 允许的值
 	protected $name = [];
-
-	// 允许匹配的 class name id 前缀
-	protected $prefix;
 
 	// classid 允许的值 ie 控件的
 	protected $classID = ['clsid:d27cdb6e-ae6d-11cf-96b8-444553540000'];
@@ -140,9 +178,20 @@ class FilterAttributes {
 	// 当前标签名
 	protected $tagName;
 
+	protected $style;
 
-	public function __construct($style = NULL) {
-		$this->style = $style;
+	// 允许匹配的 class name id 前缀
+	protected $prefix = 'content-';
+
+	public function __construct(Style $style = NULL) {
+		if ($style) {
+			$this->style = $style;
+			$this->prefix =& $style->prefix;
+		}
+	}
+
+	public function __invoke() {
+		call_user_func_array([$this, 'filters'], func_get_args());
 	}
 
 	public function filters(Node $nodes) {
@@ -151,12 +200,10 @@ class FilterAttributes {
 				$this->tagName = $node->tagName;
 				if (strcasecmp($this->tagName, 'param') === 0) {
 					// 变量
-					$name = $node->attributes['name'];
-					$value = $node->attributes['value'];
-					$value = $this->filter($name, $value);
+					$value = $this->filter($name = $node->attributes['name'], $node->attributes['value']);
 
 					// 删除所有属性
-					foreach ($node->attributes[$name] as $attributeName => $attributeValue) {
+					foreach ($node->attributes as $attributeName => $attributeValue) {
 						unset($node->attributes[$attributeName]);
 					}
 
@@ -172,6 +219,7 @@ class FilterAttributes {
 				}
 			}
 		}
+		gc_collect_cycles();
 	}
 
 	/**
@@ -224,7 +272,17 @@ class FilterAttributes {
 	 * @return string|null
 	 */
 	protected function url($value) {
-		if (!$value || !($parse = parse_url($value))) {
+		if (!$value) {
+			return NULL;
+		}
+		if (preg_match('/^data\:image\/[a-z]+;\s*base64/i', $value)) {
+			return $value;
+		}
+
+		if (!$parse = parse_url($value)) {
+			return NULL;
+		}
+		if (empty($parse['scheme']) && (strpos($value, ':') !== false || strpos($value, '&#') !== false || strpos($value, '\\') !== false || strpos($value, ';') !== false)) {
 			return NULL;
 		}
 		if (!empty($parse['scheme']) && !in_array(strtolower($parse['scheme']), $this->schemes)) {
@@ -243,7 +301,7 @@ class FilterAttributes {
 			return NULL;
 		}
 		$results = [];
-		foreach (explode(' ', trim($value)) as $class) {
+		foreach (preg_split('/\s+/', $value, -1, PREG_SPLIT_NO_EMPTY) as $class) {
 			if (!($class = trim($class)) || (!in_array($class, $this->class, true) && $this->prefix && substr($class, 0, strlen($this->prefix)) !== $this->prefix) || !preg_match('/^[0-9a-z_-]+$/i', $class)) {
 				continue;
 			}
@@ -295,7 +353,8 @@ class FilterAttributes {
 
 	protected function type($value) {
 		// 其他允许的标签
-		if (in_array($value = strtolower($value), $this->types, true)) {
+		$value = strtolower($value);
+		if (!empty($this->types[$value]) && ($this->types[$value] === true || in_array($this->tagName, $this->types[$value], true))) {
 			return $value;
 		}
 
@@ -499,7 +558,21 @@ class FilterAttributes {
 
 
 	protected function style($value) {
-		return $value && $this->style ? $this->style->values($value) : NULL;
+		if ($this->style) {
+			$rule = new Rule('div{'. $value .'}');
+			$result = '';
+			if ($rule->cssRules && reset($rule->cssRules)->type === Rule::STYLE_RULE) {
+				foreach (reset($rule->cssRules)->cssRules as $value) {
+					if ($value->type === Rule::PROPERTY_RULE && $this->style->filrer($value->name, $value->value)) {
+						$result .= $value;
+					}
+				}
+			}
+			if ($result) {
+				return $result;
+			}
+		}
+		return NULL;
 	}
 
 
@@ -512,7 +585,7 @@ class FilterAttributes {
 		if (strcasecmp($this->tagName, 'style') !== 0 || !$this->style) {
 			return NULL;
 		}
-		return $this->style->media($value);
+		return new Media($value);
 	}
 	/**
 	 * kind 属性规定轨道的种类

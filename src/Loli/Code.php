@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-06-14 08:09:14
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-01-15 13:01:52
 /*	Updated: UTC 2015-06-14 08:09:14
 /*
@@ -37,6 +48,32 @@ class Code{
 		}
 		return substr($r, 0, $len);
 	}
+
+
+
+
+
+	/**
+	 * rand 随机字符串
+	 * @param  [type]  $length [description]
+	 * @param  boolean $string [description]
+	 * @return [type]          [description]
+	 */
+	public static function rand($length, $string = false) {
+		if (!$string) {
+			$string = '0123456789abcdefghijklmnopqrstuvwxyz';
+		}
+		$strlen = mb_strlen($string) - 1;
+		$r = '';
+		for ($i = 0; $i < $length; ++$i) {
+			$r .= mb_substr($string, mt_rand(0, $strlen), 1);
+		}
+		return $r;
+	}
+
+
+
+
 
 	/**
 	*	加密解密 KEY 算法
@@ -71,17 +108,18 @@ class Code{
 	public static function en($value, $password = '', $ttl = 0) {
 
 		// 随机
-		$rand = mb_rand(6, '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM_-');
+		$rand = self::rand(6, '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM_-');
 
 		$type = 9;
 		foreach (['is_null', 'is_bool', 'is_int', 'is_float', 'is_string'] as $key => $function) {
 			if ($function($value)) {
 				$type = $key;
+				break;
 			}
 		}
 
 		// base64_encode 随机字符串 和数据
-		$code = str_replace(['=', '+', '/'], ['', '-', '_'], base64_encode(self::_code($type .chr(0). ($ttl? $ttl + time() : 0) .chr(0). ($type == 9 ? serialize($value) :$value), $rand . $password)));
+		$code = str_replace(['=', '+', '/'], ['', '-', '_'], base64_encode(self::_code($type .chr(0). ($ttl? $ttl + time() : 0) .chr(0). ($type === 9 ? serialize($value) :$value), $rand . $password)));
 
 
 		// 数据完整性
@@ -132,22 +170,25 @@ class Code{
 			return false;
 		}
 
-		if ($type == 0) {
-			return NULL;
+		switch ($type) {
+			case 0:
+				return NULL;
+				break;
+			case 1:
+				return (bool) $value;
+				break;
+			case 2:
+				return (int) $value;
+				break;
+			case 3:
+				return (float) $value;
+				break;
+			case 4:
+				return (string) $value;
+				break;
+			default:
+				return ($un = @unserialize($value)) ? $un : false;
 		}
-		if ($type == 1) {
-			return (bool) $value;
-		}
-		if ($type == 2) {
-			return (int) $value;
-		}
-		if ($type == 3) {
-			return (float) $value;
-		}
-		if ($type == 4) {
-			return (string) $value;
-		}
-		return ($un = @unserialize($value)) ? $un : false;
 	}
 }
 

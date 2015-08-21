@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-05-23 11:48:42
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-03-10 08:00:28
 /*	Updated: UTC 2015-05-23 11:48:42
 /*
@@ -73,7 +84,7 @@ class Cursor{
 	 * @param  string $name
 	 * @return mixed
 	 */
-	public function arg($name) {
+	public function __get($name) {
 		return $this->$name;
 	}
 
