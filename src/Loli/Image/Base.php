@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-01-15 13:01:52
 /*	Updated: UTC 2015-06-12 08:42:37
 /*
@@ -77,12 +88,6 @@ abstract class Base {
 	 */
 	public $quality = 90;
 
-	/**
-	 * $memory 处理图片内存限制
-	 * @var string
-	 */
-	public $memory = '512M';
-
 	// 文件后缀
 	public $types = [1 => ['jpg', 'jpeg', 'jpe', 'jfif', 'jif'], 2 => ['gif'], 3 => ['png'], 4 => ['webp']];
 
@@ -95,7 +100,6 @@ abstract class Base {
 	 * @param boolean|string $type
 	 */
 	public function __construct($file = '', $type = false) {
-		@ini_set('memory_limit', $this->memory);
 		$file && $this->create($file, $type);
 	}
 

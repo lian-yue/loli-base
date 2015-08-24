@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-12-31 15:46:54
 /*	Updated: UTC 2015-05-23 11:23:04
 /*
@@ -25,6 +36,12 @@ mb_internal_encoding('UTF-8');
 // 禁用 XML 外部实体
 libxml_disable_entity_loader(true);
 
+// 内存限制
+@ini_set('memory_limit', empty($_SERVER['LOLI']['limit']) ? '256M' : $_SERVER['LOLI']['limit']);
+
+// 激活引用计数器
+@gc_enable();
+
 // 关闭缓冲区
 while(ob_get_level()) {
 	ob_end_flush();
@@ -37,6 +54,7 @@ const VERSION = '0.0.2';
 const POWERED_BY = 'Loli.Net';
 
 
+
 if (!headers_sent()) {
 	// 默认 编码
 	header('Content-Type: text/html; charset=UTF-8');
@@ -47,4 +65,3 @@ if (!headers_sent()) {
 	// 版权信息
 	header('X-Powered-By: ' . POWERED_BY);
 }
-

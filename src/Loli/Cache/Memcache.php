@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-02-17 08:46:33
 /*	Updated: UTC 2015-04-07 14:31:59
 /*
@@ -197,7 +208,7 @@ class Memcache extends Base{
 				$this->_mem[$group] = new Memcached;
 				$this->_mem[$group]->setOptions([Memcached::OPT_COMPRESSION => true, Memcached::OPT_POLL_TIMEOUT => 1000, Memcached::OPT_RETRY_TIMEOUT => $this->retry]);
 			}
-			$this->_mem[$group]->addServers($v[0], $servers);
+			$this->_mem[$group]->addServers($servers);
 		} else {
 			if (empty($this->_mem[$group])) {
 				$this->_mem[$group] =  new \Memcache;

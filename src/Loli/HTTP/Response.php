@@ -22,8 +22,7 @@
 /*	Updated: UTC 2015-04-03 06:35:38
 /*
 /* ************************************************************************** */
-namespace Loli\HTML;
-
+namespace Loli\HTTP;
 class Response{
 
 	protected $status = 200;
@@ -40,9 +39,6 @@ class Response{
 	protected $request;
 
 
-	public $ajaxJS = false;
-
-
 	public $cookiePath = '/';
 
 	public $cookieDomain = false;
@@ -53,7 +49,6 @@ class Response{
 
 	public function __construct(Request &$request) {
 		$this->request = &$request;
-		$this->ajaxJS = $request->getToken() === $request->getParam('_token');
 	}
 
 	public function getStatus() {
@@ -166,11 +161,15 @@ class Response{
 		return $this;
 	}
 
-	public function setHeader($name, $values) {
+	public function setHeader($name, $values, $unique = false) {
 		unset($this->headers[$name]);
 		if ($values !== NULL) {
 			foreach ((array)$values as $value) {
-				$this->headers[$name][] = (string) $value;
+				if ($unique) {
+					$this->headers[$name] = [(string) $value];
+				} else {
+					$this->headers[$name][] = (string) $value;
+				}
 			}
 		}
 		return $this;
@@ -184,12 +183,12 @@ class Response{
 		return $this->content;
 	}
 
-	public function setContent(callback $content = NULL) {
+	public function setContent($content = NULL) {
 		$this->content = $content;
 		return $this;
 	}
 
-	public function addContent(callback $content) {
+	public function addContent($content) {
 		if ($this->content === NULL) {
 			$this->content = $content;
 		}
@@ -207,8 +206,6 @@ class Response{
 		$request = $this->request;
 
 		$this->addHeader('Content-Type', 'text/html', false);
-
-
 		if ($request->isNewToken()) {
 			$this->setCookie($request::TOKEN_COOKIE, $request->getToken(true), -1);
 			$this->setHeader($request::TOKEN_HEADER, $request->getToken(true));
@@ -270,6 +267,11 @@ class Response{
 							$value = implode('; ', array_filter($value));
 						}
 						break;
+					case 'Location':
+						if (substr($value, 0, 2) === '//') {
+							$value = $request->getScheme() . ':'. $value;
+						}
+						break;
 				}
 				header($name . ': '. $value, $replace);
 				$replace = false;
@@ -322,8 +324,9 @@ class Response{
 			return $this;
 		}
 
+		if (!$this->content) {
 
-		if (is_resource($this->content)) {
+		} elseif (is_resource($this->content)) {
 			fpassthru($this->content);
 		} else {
 			echo call_user_func($this->content);
@@ -396,5 +399,10 @@ class Response{
 		$this->status = 200;
 		$this->content = NULL;
 		return $this;
+	}
+
+
+	public function __destruct() {
+		unset($this->request);
 	}
 }

@@ -10,37 +10,55 @@
 /*	Created: UTC 2015-08-19 08:59:51
 /*
 /* ************************************************************************** */
-
-
-
 function parse_string($string) {
 	if (is_array($string) || is_object($string)) {
-		$res = (array) $string;
-		foreach ($res as &$value) {
+		$results = (array) $string;
+		foreach ($results as &$value) {
 			if (is_array($value) || is_object($value)) {
 				$value = parse_string($value);
 			}
 		}
 	} else {
-		parse_str($string, $res);
+		parse_str($string, $results);
 	}
-	return $res;
+	return $results;
 }
 
 
-function merge_string($a) {
-	if (!is_array($a) && !is_object($a)) {
-		return (string) $a;
+function merge_string($array) {
+	if (!is_array($array) && !is_object($array)) {
+		return (string) $array;
 	}
-	return http_build_query(to_array($a), NULL, '&');
+	return http_build_query(to_array($array), NULL, '&');
 }
 
 
-function to_array($a) {
-	$a = (array) $a;
+function to_array($array) {
+	$results = [];
+	foreach ((is_array($array) || is_object($array) ? $array : (array)  $array) as $key => $value) {
+		if (is_array($value) || is_object($value)) {
+			$results[$key] = to_array($value);
+		} else {
+			$results[$key] = $value;
+		}
+	}
+	return $results;
+}
+
+
+
+/**
+*	转成对象
+*
+*	1 参数 数组 或者 对象
+*
+*	返回值 对象
+**/
+function to_object($a) {
+	$a = (object) $a;
 	foreach ($a as &$v) {
 		if (is_array($v) || is_object($v)) {
-			$v = to_array($v);
+			$v = to_object($v);
 		}
 	}
 	return $a;
@@ -95,3 +113,25 @@ function merge_url(array $parse) {
 
 
 
+
+
+/**
+*	移除 xml 中的 CDATA
+*
+*	1 参数 xml 数据
+*
+*	返回值 移除后的xml
+**/
+function simplexml_uncdata($xml) {
+	if (preg_match_all("/\<(?<tag>[^<>]+)\>\s*\<\!\[CDATA\s*\[(.*)\]\]\>\s*\<\/\k<tag>\>/isU", $xml, $matches)) {
+		$find = $replace = [];
+		foreach ($matches[0] as $k => $v) {
+			$find[] = $v;
+			$replace[] = '<'. $matches['tag'][$k] .'>' .htmlspecialchars($matches[2][$k], ENT_QUOTES). '</' . $matches['tag'][$k].'>';
+		}
+
+		$xml = str_replace($find, $replace, $xml);
+	}
+
+	return $xml;
+}

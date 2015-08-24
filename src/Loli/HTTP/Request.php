@@ -37,7 +37,7 @@ class Request{
 
 	protected static $schemesList = ['http', 'https'];
 
-	protected static $methodsList = ['OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'CONNECT'];
+	protected static $methodsList = ['OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH'];
 
 	protected static $defaultHost = 'localhost';
 
@@ -92,12 +92,12 @@ class Request{
 
 	protected $ajax = NULL;
 
-
-
+	protected $time;
 
 
 	public function __construct($method = NULL, $URI = NULL, array $headers = NULL, array $posts = NULL, array $files = NULL) {
 
+		$this->time = empty($_SERVER['REQUEST_TIME_FLOAT']) ? microtime(true) : $_SERVER['REQUEST_TIME_FLOAT'];
 
 		// addr
 		$addr = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 0;
@@ -139,6 +139,8 @@ class Request{
 		// 方法
 		$method = $method === NULL ? (isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET') : $method;
 
+
+
 		// URI
 		if ($URI === NULL) {
 			if (!empty($_SERVER['UNENCODED_URL'])) {
@@ -158,6 +160,9 @@ class Request{
 			}
 		}
 
+
+		// 版本
+		$version = !empty($_SERVER['SERVER_PROTOCOL']) && $_SERVER['SERVER_PROTOCOL'] === 'HTTP/1.0' ? 1.0 : ($_SERVER['SERVER_PROTOCOL'] === 'HTTP/2.0' ? 2.0 : 1.1);
 
 
 		if ($headers !== NULL) {
@@ -248,6 +253,22 @@ class Request{
 	}
 
 
+
+	public function getTime() {
+		return $this->time;
+	}
+
+	public function setTime() {
+		$this->time = microtime(true);
+		return true;
+	}
+
+	public function processing($decimal = 4) {
+		return number_format(microtime(true) - $this->time, $decimal);
+	}
+
+
+
 	public function getIP() {
 		return $this->IP;
 	}
@@ -312,7 +333,7 @@ class Request{
 
 	public function setScheme($scheme) {
 		if (!in_array($scheme, self::$schemesList, true)) {
-			throw new Exception('The scheme does not allow');
+			throw new Exception('The scheme does not allow', 400);
 		}
 		$this->scheme = $scheme;
 		return $this;
@@ -339,7 +360,7 @@ class Request{
 
 	public function setMethod($method) {
 		if (!in_array($method, self::$methodsList, true)) {
-			throw new Exception('The method does not allow');
+			throw new Exception('The method does not allow', 501);
 		}
 		$this->method = $method;
 		return $this;
@@ -368,7 +389,16 @@ class Request{
 	}
 
 	public function getQuery($name, $defaultValue = NULL) {
-		return isset($this->querys[$name]) ? ($defaultValue === NULL ? $this->querys[$name] : settype($this->querys[$name], gettype($defaultValue))) : $defaultValue;
+		if (isset($this->querys[$name])) {
+			if ($defaultValue === NULL) {
+				return $this->querys[$name];
+			}
+			$value = $this->querys[$name];
+			settype($value, gettype($defaultValue));
+			return $value;
+		} else {
+			return $defaultValue;
+		}
 	}
 
 	public function setQuerys(array $querys) {
@@ -437,6 +467,9 @@ class Request{
 			switch ($name) {
 				case 'Host':
 					$value = $value ? strtolower($value) : self::$defaultHost;
+					if (!preg_match('/^([0-9a-z_-]+\.)*[0-9a-z_-]+$/', $value)) {
+						throw new Exception('Host name error', 400);
+					}
 					break;
 				case 'Content-Length':
 					$value = (string) abs((int) $value);
@@ -474,7 +507,16 @@ class Request{
 	}
 
 	public function getCookie($name, $defaultValue = NULL) {
-		return isset($this->cookies[$name]) ? ($defaultValue === NULL ? $this->cookies[$name] : settype($this->cookies[$name], gettype($defaultValue))) : $defaultValue;
+		if (isset($this->cookies[$name])) {
+			if ($defaultValue === NULL) {
+				return $this->cookies[$name];
+			}
+			$value = $this->cookies[$name];
+			settype($value, gettype($defaultValue));
+			return $value;
+		} else {
+			return $defaultValue;
+		}
 	}
 
 
@@ -527,7 +569,16 @@ class Request{
 	}
 
 	public function getPost($name, $defaultValue = NULL) {
-		return isset($this->posts[$name]) ? ($defaultValue === NULL ? $this->posts[$name] : settype($this->posts[$name], gettype($defaultValue))) : $defaultValue;
+		if (isset($this->posts[$name])) {
+			if ($defaultValue === NULL) {
+				return $this->posts[$name];
+			}
+			$value = $this->posts[$name];
+			settype($value, gettype($defaultValue));
+			return $value;
+		} else {
+			return $defaultValue;
+		}
 	}
 
 	public function setPosts(array $requests) {
@@ -572,7 +623,16 @@ class Request{
 
 
 	public function getParam($name, $defaultValue = NULL) {
-		return isset($this->params[$name]) ? ($defaultValue === NULL ? $this->params[$name] : settype($this->params[$name], gettype($defaultValue))) : $defaultValue;
+		if (isset($this->params[$name])) {
+			if ($defaultValue === NULL) {
+				return $this->params[$name];
+			}
+			$value = $this->params[$name];
+			settype($value, gettype($defaultValue));
+			return $value;
+		} else {
+			return $defaultValue;
+		}
 	}
 
 
@@ -735,16 +795,20 @@ class Request{
 
 
 
-	public function getToken($isKey = false) {
+	public function getToken($isKey = false, $isNew = true) {
 		if ($this->token === NULL) {
 			($token = $this->getHeader(self::TOKEN_HEADER)) || ($token = $this->getCookie(self::TOKEN_COOKIE));
-			try {
-				$this->setToken($this->token);
-			} catch (Exception $e) {
-				$this->setToken($this->newToken(), true);
+			if ($token === NULl) {
+				$isNew && $this->setToken($this->newToken(), true);
+			} else {
+				try {
+					$this->setToken($token);
+				} catch (Exception $e) {
+					$isNew && $this->setToken($this->newToken(), true);
+				}
 			}
 		}
-		return $isKey ? $this->token : substr($this->token, 0, 16);
+		return $this->token ? ($isKey ? $this->token : substr($this->token, 0, 16)) : $this->token;
 	}
 
 	public function setToken($token, $newToken = false) {
@@ -752,7 +816,7 @@ class Request{
 			$this->token = NULL;
 		} else {
 			if (!is_string($token) || strlen($token) != 32 || Code::key(__CLASS__ . self::TOKEN_HEADER . substr($token, 0, 16), 16) !== substr($token, 16)) {
-				throw new Exception('Access token is invalid');
+				throw new Exception('Access token is invalid', 403);
 			}
 			$this->token = $token;
 		}
@@ -818,7 +882,7 @@ class Request{
 
 
 	public function getAcceptLanguages() {
-		$this->parseAccept('Access-Language', '/^([a-z]{2})(?:[_-]([a-z]{3-4}))?(?:[_-]([a-z]{2}))?$/', function($arg1, $arg2, $arg3, $arg4) {
+		return $this->parseAccept('Access-Language', '/^([a-z]{2})(?:[_-]([a-z]{3-4}))?(?:[_-]([a-z]{2}))?$/', function($arg1, $arg2, $arg3, $arg4) {
 			$array[] = strtolower($arg2);
 			if ($arg3) {
 				$array[] = ucwords($arg3);
@@ -830,7 +894,7 @@ class Request{
 		});
 	}
 
-	protected function parseAccept($name, $pattern, callback $callback = NULL) {
+	protected function parseAccept($name, $pattern, $callback = NULL) {
 		$arrays = [];
 		foreach (explode(',', $this->getHeader($name)) as $value) {
 			if (!$value) {
@@ -880,6 +944,7 @@ class Request{
 		$this->newToken = false;
 		$this->token = NULL;
 		$this->ajax = NULL;
+		$this->time = microtime(true);
 		return $this;
 	}
 
