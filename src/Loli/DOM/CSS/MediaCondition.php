@@ -7,12 +7,24 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-06-10 15:05:52
 /*	Updated: UTC 2015-07-21 15:34:53
 /*
 /* ************************************************************************** */
 namespace Loli\DOM\CSS;
 use IteratorAggregate, ArrayIterator, Countable;
+class_exists('Loli\DOM\CSS\Base') || exit;
 class MediaCondition extends Base implements IteratorAggregate, Countable{
 
 	const TYPE_ROOT = 1;

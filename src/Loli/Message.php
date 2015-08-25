@@ -11,22 +11,23 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-use ArrayIterator, IteratorAggregate,JsonSerializable;
+use ArrayIterator, IteratorAggregate,JsonSerializable, Loli\RouteInterface;
 interface_exists('Loli\RouteInterface') || exit;
 /*
 消息模块
 1000 以前是系统预留的
 
-001	- 099 系统错误代码
+1	- 99 系统错误代码(%s)
 
-001 ＝ 基本错误
-002 ＝ HTTP错误
-003 ＝ 权限错误(文件权限什么的)
-004 ＝ 缓存错误
-005 ＝ 数据库错误
-006 ＝ 储存错误
-007 ＝ 通讯错误
-099 ＝ Exception错误
+1 ＝ 基本错误(%s)
+2 ＝ HTTP错误(%s)
+3 ＝ 权限错误(文件权限什么的)(%s)
+4 ＝ 缓存错误(%s)
+5 ＝ 数据库错误(%s)
+6 ＝ 储存错误(%s)
+7 ＝ 通讯错误(%s)
+90 ＝ 无权限(%s)
+99 ＝ Exception错误(%s)
 
 
 200 － 399 执行成功 并且要设置http状态码的
@@ -104,7 +105,9 @@ class Message extends Exception implements IteratorAggregate, RouteInterface, Js
 	}
 
 	public function route(Route &$route) {
-		$this->message = $route->localize->translate([$this->code] + $this->args, ['messages']);
+		$previous = $this->getPrevious();
+		$previous && $previous->route($route);
+		$this->message = $route->localize->translate([$this->code] + $this->args, ['message']);
 		$whiteList = !isset($this->data['redirect']);
 		if ($this->redirect) {
 			if ($this->redirect !== true) {

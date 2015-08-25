@@ -21,7 +21,7 @@ class Localize{
 
 	protected static $languageGroups = [];
 
-	protected static $languageFiles = [];
+	protected static $languageFile = [];
 
 	protected static $loadLanguage = [];
 
@@ -45,6 +45,9 @@ class Localize{
 			}
 			if (!empty($_SERVER['LOLI']['LOCALIZE']['replaceLanguage'])) {
 				self::$replaceLanguage = $_SERVER['LOLI']['LOCALIZE']['replaceLanguage'];
+			}
+			if (!empty($_SERVER['LOLI']['LOCALIZE']['file'])) {
+				self::$languageFile = $_SERVER['LOLI']['LOCALIZE']['file'];
 			}
 		}
 
@@ -164,18 +167,23 @@ class Localize{
 			return strtr($this->translate(reset($text), $groups, $original), $replace);
 		}
 
+
 		foreach ((array) $groups as $group) {
 			// 如果已经有了直接返回
 			if (isset(self::$languageGroups[$this->language][$group][$text])) {
 				return self::$languageGroups[$this->language][$group][$text];
 			}
 
-			if (self::$languageFiles && !isset(self::$languageGroups[$this->language][$group])) {
-				foreach (self::$languageFiles as $file) {
-					self::loadLanguage($file, $this->language, $group);
+			if (self::$languageFile && !isset(self::$languageGroups[$this->language][$group]) && !in_array($file = sprintf(self::$languageFile, $this->language, $group), self::$loadLanguage, true)) {
+				self::$loadLanguage[] = $file;
+				if (!isset(self::$languageGroups[$this->language][$group])) {
+					self::$languageGroups[$this->language][$group] = [];
 				}
-				if (isset(self::$languageGroups[$this->language][$group][$text])) {
-					return self::$languageGroups[$this->language][$group][$text];
+				if (is_file($file)) {
+					self::$languageGroups[$this->language][$group] = ((array) require $file) + self::$languageGroups[$this->language][$group];
+					if (isset(self::$languageGroups[$this->language][$group][$text])) {
+						return self::$languageGroups[$this->language][$group][$text];
+					}
 				}
 			}
 		}

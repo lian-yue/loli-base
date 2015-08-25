@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-04-09 07:56:37
 /*	Updated: UTC 2015-05-23 11:48:58
 /*
@@ -104,7 +115,7 @@ class MySQLi extends Base{
 		$this->inTransaction = true;
 		$link = $this->link(true);
 		if (!$link->autoCommit(false) && $link->errno) {
-			throw new Exception('this.beginTransaction()', '', , $link->error, $link->errno);
+			throw new Exception('this.beginTransaction()', $link->error, '', $link->errno);
 		}
 		return $this;
 	}
@@ -118,7 +129,7 @@ class MySQLi extends Base{
 		$link = $this->link(true);
 		$link->commit();
 		if (!$link->commit() && $link->errno) {
-			throw new Exception('this.commit()', $link->error, $link->errno);
+			throw new Exception('this.commit()', $link->error, '', $link->errno);
 		}
 		return $this;
 	}
@@ -132,7 +143,7 @@ class MySQLi extends Base{
 		$link = $this->link(true);
 		$rollback = $link->rollBack();
 		if (!$link->rollBack() && $link->errno) {
-			throw new Exception('this.rollBack()', $link->error, $link->errno);
+			throw new Exception('this.rollBack()', $link->error, '', $link->errno);
 		}
 		return $this;
 	}

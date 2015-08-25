@@ -834,7 +834,7 @@ class Request{
 
 		} elseif ($header = $this->getHeader(self::AJAX_HEADER)) {
 			$this->ajax = $header;
-		} elseif ($param = $this->getParam(self::AJAX_PARAM, '')) {
+		} elseif (($param = $this->getParam(self::AJAX_PARAM, '')) && !in_array(strtolower($param), ['false', 'null', 'html', 'html5'], true)) {
 			$this->ajax = $param;
 		} elseif (in_array($extension = strtolower(pathinfo($this->getPath(), PATHINFO_EXTENSION)), ['json', 'xml'])) {
 			$this->ajax = $extension;

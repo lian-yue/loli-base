@@ -31,6 +31,7 @@ class Route{
 		'response' => 'Loli\\Route::load',
 		'localize' => 'Loli\\Route::load',
 		'cache' => 'Loli\\Route::load',
+		'session' => 'Loli\\Route::load',
 		'storage' => 'Loli\\Route::load',
 		'DB' => 'Loli\\Route::load',
 	];
@@ -45,9 +46,11 @@ class Route{
 		if ($response) {
 			$this->response = $response;
 		}
+
 		foreach ($args as $name => $value) {
 			$this->$name = $value;
 		}
+
 		if (!self::$routes) {
 			if (!empty($_SERVER['LOLI']['ROUTE']['host'])) {
 				$defaultHost = '/^' . preg_quote($this->request->getHeader('Host'), '/') . '$/';
@@ -83,13 +86,16 @@ class Route{
 					$path = '/' . $route[1];
 				}
 				$path = '/^'. str_replace('/', '\\/', $path) . '$/';
-
-				if (is_array($controller)) {
-					$controller = array_values($controller);
+				if (is_object($controller)) {
+				} elseif (is_array($controller)) {
+					if (is_string($controller[0])) {
+						$controller[0] = str_replace('/', '\\', $controller[0]);
+					}
+					$controller += [1=> 'index'];
 				} else {
-					$controller = preg_split('/(\:\:|-\>)/', $controller, 2, PREG_SPLIT_NO_EMPTY);
+					$controller = preg_split('/(\s+|\:+|-\>|@|\>)/', $controller, 2, PREG_SPLIT_NO_EMPTY) + [1 => 'index'];
+					$controller[0] = str_replace('/', '\\', $controller[0]);
 				}
-				$controller += [1=> 'index'];
 				self::$routes[] = ['method' => $method, 'path' => $path, 'host' => $host, 'controller' => $controller];
 			}
 		}
@@ -118,8 +124,6 @@ class Route{
 		}
 	}
 
-
-
 	public function __invoke() {
 		try {
 			$path = $this->request->getPath();
@@ -136,26 +140,65 @@ class Route{
 					continue;
 				}
 				$matches += $matches2;
-				$replace = [];
 				foreach($matches as $key => $value) {
 					if (is_int($key)) {
 						unset($matches[$key]);
 						continue;
 					}
-					$replace['$' . $key] = $value;
 				}
 				$controller = $route['controller'];
-				foreach ($controller as &$mom) {
-					$mom = strtr($mom, $replace);
+				if (is_object($controller) && is_object($controller[0])) {
+					if ($controller = call_user_func($controller, $matches, $this)) {
+						continue;
+					}
+					if (is_string($controller)) {
+						$controller = preg_split('/(\s+|\:+|-\>|@|\>)/', $controller, 2, PREG_SPLIT_NO_EMPTY);
+					}
+					$controller[0] = str_replace('/', '\\', $controller[0]);
+					$controller += [1 => 'index'];
 				}
+
+				$replace = [];
+				foreach ($matches as $key => $value) {
+					$replace['$'.$key] = $value;
+				}
+				foreach ($controller as &$mom) {
+					if (is_string($mom)) {
+						$mom = strtr($mom, $replace);
+					}
+				}
+				break;
 			}
-			if (empty($controller) || !class_exists($class = 'Controller\\'. $controller[0])) {
-				$view = new Message(404, Message::ERROR);
+
+
+			if (empty($controller)) {
+				throw new Message(404, Message::ERROR);
+			}
+
+			if (is_object($controller[0])) {
+				if (substr($class = get_class($controller[0]), 0, 11) !== 'Controller\\') {
+					throw new Message(500, Message::ERROR, new Message([1, 'Class object not controller'], Message::ERROR));
+				}
+				$this->controller = substr($class, 11);
 			} else {
-				$class = new $class($this);
-				$view = $class->$controller[1]($matches);
+				if (!class_exists($class = 'Controller\\' . $controller[0])) {
+					throw new Message(404, Message::ERROR, new Message([1, 'Controller not exists'], Message::ERROR));
+				}
+				$this->controller = substr($class, 11);
+				$controller[0] = new $class($this);
 			}
-			// xxxxxxxxxxxx
+			$this->method = $controller[1];
+
+			// RBAC 权限
+			if ($this->RBAC && !$this->RBAC->has($this->controller, $name)) {
+				$this->response->setStatus(403);
+				throw new Message([90, 'RBAC'], Message::ERROR);
+			}
+
+			// 执行方法
+			$view = call_user_func($controller, $matches);
+
+			// 返回的是 RouteInterface
 			if ($view instanceof RouteInterface) {
 				$view->route($this);
 			}
@@ -164,27 +207,27 @@ class Route{
 			$view->route($this);
 		} catch (HTTP\Exception $e) {
 			// HTTP
-			$view = new Message([002, $e->getMessage()], Message::ERROR);
+			$view = new Message([2, $e->getMessage()], Message::ERROR);
 			$view->route($this);
 			$this->response->setStatus($e->getCode());
 		} catch (Cache\Exception $e) {
 			// Cache
-			$view = new Message([004, $e->getMessage()], Message::ERROR);
+			$view = new Message([4, $e->getMessage()], Message::ERROR);
 			$view->route($this);
 			$this->response->setStatus(500);
 		} catch (DB\Exception $e) {
 			// DB
-			$view = new Message([005, $e->getMessage()], Message::ERROR);
+			$view = new Message([5, $e->getMessage()], Message::ERROR);
 			$view->route($this);
 			$this->response->setStatus(500);
 		} catch (Storage\Exception $e) {
 			// Storage
-			$view = new Message([006, $e->getMessage()], Message::ERROR);
+			$view = new Message([6, $e->getMessage()], Message::ERROR);
 			$view->route($this);
 			$this->response->setStatus(500);
 		} catch (\Exception $e) {
 			// 其他
-			$view = new Message([099, $e->getMessage()], Message::ERROR);
+			$view = new Message([99, $e->getMessage()], Message::ERROR);
 			$view->route($this);
 			$this->response->setStatus(500);
 		}
@@ -268,6 +311,10 @@ class Route{
 				// 缓存模块
 				$class = __NAMESPACE__ . '\Cache\\' . (empty($_SERVER['LOLI']['CACHE']['type']) ? 'File' : $_SERVER['LOLI']['CACHE']['type']);
 				$result = new $class(empty($_SERVER['LOLI']['CACHE']['args']) ? [] : $_SERVER['LOLI']['CACHE']['args'], empty($_SERVER['LOLI']['CACHE']['key']) ? '' : $_SERVER['LOLI']['CACHE']['key']);
+				break;
+			case 'session':
+				// 缓存模块
+				$result = new Session($this->cache, $route->request);
 				break;
 			case 'DB':
 				// 数据库模块

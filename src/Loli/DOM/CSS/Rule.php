@@ -7,12 +7,24 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-06-18 07:58:07
 /*	Updated: UTC 2015-07-21 10:19:41
 /*
 /* ************************************************************************** */
 namespace Loli\DOM\CSS;
 use ArrayAccess, Countable, IteratorAggregate, ArrayIterator;
+class_exists('Loli\DOM\CSS\Base') || exit;
 class Rule extends Base implements ArrayAccess, IteratorAggregate, Countable{
 	const STYLE_RULE = 1;
 	const CHARSET_RULE = 2;

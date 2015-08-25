@@ -7,11 +7,23 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-02-25 13:37:57
 /*	Updated: UTC 2015-03-23 10:12:19
 /*
 /* ************************************************************************** */
 namespace Loli;
+class_exists('Loli\Exception') || exit;
 class LogException extends Exception{
 
 	protected $level = 1;

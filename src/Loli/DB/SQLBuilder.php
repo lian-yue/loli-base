@@ -7,12 +7,24 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-05-21 06:25:27
 /*	Updated: UTC 2015-05-23 08:18:19
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
 use Loli\Cache;
+class_exists('Loli\Cache') || exit;
 class SQLBuilder extends Builder{
 
 
@@ -489,7 +501,7 @@ class SQLBuilder extends Builder{
 					}
 				} elseif ($name === 'order' && is_array($option)) {
 					foreach((array)$option as $column => $value) {
-						if ($column && ($column = $this->DB->key($column)) {
+						if ($column && ($column = $this->DB->key($column))) {
 							$order[$column] = $value;
 						}
 					}

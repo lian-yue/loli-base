@@ -7,12 +7,24 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-06-05 03:10:27
 /*	Updated: UTC 2015-07-21 03:49:46
 /*
 /* ************************************************************************** */
 namespace Loli\DOM\CSS;
 use IteratorAggregate, Countable, ArrayIterator;
+class_exists('Loli\DOM\CSS\Base') || exit;
 class Selectors extends Base implements IteratorAggregate, Countable{
 
 	// 嵌套层次限制

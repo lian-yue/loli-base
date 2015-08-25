@@ -7,11 +7,23 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-04-24 02:47:43
 /*	Updated: UTC 2015-05-23 10:35:18
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
+class_exists('Loli\DB\Cursor') || exit;
 abstract class Builder{
 	protected $cursor;
 
@@ -36,7 +48,8 @@ abstract class Builder{
 	 * @return boolean
 	 */
 	protected function getWrite() {
-		if ($this->->write === NULL) {
+		if ($this->write === NULL) {
+			// log...........................   不知道改了什么
 			$this->write = $this->DB->write;
 		}
 		if (!$this->write) {

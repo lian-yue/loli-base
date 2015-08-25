@@ -7,11 +7,23 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-04-12 09:43:36
 /*	Updated: UTC 2015-05-23 11:57:00
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
+class_exists('Loli\DB\Cursor') || exit;
 abstract class Table extends Cursor{
 
 	// 过滤

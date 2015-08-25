@@ -14,11 +14,11 @@ namespace Loli;
 interface_exists('Loli\RouteInterface') || exit;
 class File implements RouteInterface{
 
-	private $_stream
+	private $_stream;
 
-	private $_fileSize
+	private $_fileSize;
 
-	private $_offset
+	private $_offset;
 
 	private $_length;
 

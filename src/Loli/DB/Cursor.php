@@ -553,7 +553,7 @@ class Cursor{
 
 		// 构造器
 		if (empty($this->data['builder'])) {
-			$builderName = __NAMESPACE__ '\\'. (isset($this->builders[$this->DB->protocol()]) ? $this->builders[$this->DB->protocol()] : 'SQLBuilder');
+			$builderName = __NAMESPACE__ .'\\'. (isset($this->builders[$this->DB->protocol()]) ? $this->builders[$this->DB->protocol()] : 'SQLBuilder');
 			$this->data['builder'] = new $builderName($this);
 		}
 

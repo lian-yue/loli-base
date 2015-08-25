@@ -7,13 +7,24 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-06-19 11:57:03
 /*	Updated: UTC 2015-07-13 09:24:58
 /*
 /* ************************************************************************** */
 namespace Loli\DOM\CSS;
 use IteratorAggregate, ArrayIterator, Countable;
-
+class_exists('Loli\DOM\CSS\Base') || exit;
 class Supports extends Base implements IteratorAggregate, Countable{
 
 	const NESTING = 10;

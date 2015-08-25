@@ -7,12 +7,24 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-06-19 09:46:35
 /*	Updated: UTC 2015-07-21 09:47:27
 /*
 /* ************************************************************************** */
 namespace Loli\DOM\CSS;
 use Countable, IteratorAggregate, ArrayIterator;
+class_exists('Loli\DOM\CSS\Base') || exit;
 class Document extends Base implements IteratorAggregate, Countable{
 
 	protected $conditions = [];
@@ -31,7 +43,7 @@ class Document extends Base implements IteratorAggregate, Countable{
 			}
 			if (strcasecmp($condition[1], 'regexp') === 0) {
 				if (!$this->_regexp($string)) {
-					continue
+					continue;
 				}
 			} else {
 				$condition[1] = str_replace(['"', '\\'], '', $condition[1]);

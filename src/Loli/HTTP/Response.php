@@ -148,8 +148,8 @@ class Response{
 		return $this;
 	}
 
-	public function getHeader($name) {
-		return isset($this->headers[$name]) ? $this->headers[$name] : [];
+	public function getHeader($name, $first = false) {
+		return $first ? (empty($this->headers[$name]) ? NULL : reset($this->headers[$name])) : (isset($this->headers[$name]) ? $this->headers[$name] : []);
 	}
 
 	public function addHeader($name, $values, $exists = true) {
@@ -161,15 +161,10 @@ class Response{
 		return $this;
 	}
 
-	public function setHeader($name, $values, $unique = false) {
-		unset($this->headers[$name]);
+	public function setHeader($name, $values) {
 		if ($values !== NULL) {
 			foreach ((array)$values as $value) {
-				if ($unique) {
-					$this->headers[$name] = [(string) $value];
-				} else {
-					$this->headers[$name][] = (string) $value;
-				}
+				$this->headers[$name][] = (string) $value;
 			}
 		}
 		return $this;
@@ -217,11 +212,9 @@ class Response{
 			if (substr($name, 0, 3) === 'no-') {
 				// no-cache no-store
 				$values[] = $value ? $name . '=' . $value : $name;
-				$name === 'no-cache' && !$value && $this->setHeader('Expires', gmdate('D, d M Y H:i:s \G\M\T', 0));
 			} elseif ($name == 'max-age') {
 				// max-age
 				$values[] = $name . '=' . $value;
-				$name === 'max-age' && $this->setHeader('Expires', $value ? gmdate('D, d M Y H:i:s \G\M\T', time() + $value) : NULL);
 			} elseif (in_array($name, ['public', 'private']) && in_array($values, ['public', 'private'])) {
 				// public  和 private 只能选一个
 			} elseif ($value) {
@@ -345,15 +338,14 @@ class Response{
 			return $this->status;
 		}
 
-		$etag = $this->getHeader('Etag', '');
-		$modified = $this->getHeader('Last-Modified', '');
+		$etag = $this->getHeader('Etag', true);
+		$modified = $this->getHeader('Last-Modified', true);
 
 
 		// 没匹配到 412 文件已被改变
 		if (($ifMatch = $this->request->getHeader('If-Match')) && $etag !== $ifMatch) {
 			return 412;
 		}
-
 		// 没匹配到 412 文件已被改变
 		if (($ifUnmodifiedSince = $this->request->getHeader('If-Unmodified-Since')) && $ifUnmodifiedSince !== $modified) {
 			return 412;
