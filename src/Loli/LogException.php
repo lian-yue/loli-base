@@ -31,13 +31,13 @@ class LogException extends Exception{
 
 	public function __construct($message = '', $code = 0, $level = -1, Exception $previous = NULL) {
 		parent::__construct($message, $code, $previous);
-		if ($level < 0) {
+		if ($level > 0) {
 			$this->level = $level;
 		}
 		if (!$this->log) {
 			$this->log = $message;
 		}
-		Log::write($this->log, $level);
+		Log::write($this->log, $this->level);
 	}
 
 	final public function getLevel() {

@@ -11,17 +11,200 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-class Model{
+use Loli\DB\Cursor, Loli\DB\Param, Loli\DB\Iterator;
+class_exists('Loli\Route') || exit;
+class Model extends Cursor{
+	protected $route;
+
+	protected $callback = true;
+
+	protected $options = [
+		'limit' => 10,
+	];
+
+	// 表单验证
+	protected $form = [
+		/*[
+			'title' => '',				//  表单标题
+			'name' => '',				//  表单 name
+			'type' => 'email',			//  表单类型
+			'pattern' => '',			// 正则验证
+			'value' => '',				// 默认值
+			'required' => true,			// 是否允许空
+			'option' => [],				// 允许的 isset()
+			'min' => -1,				// 允许的最小值
+			'max' => 10,				// 允许的最大值
+			'step' => 3,				// 合法的数字间隔
+			'placeholder' => 3,			// 表单的输入提示
+			'maxlength' => 1,			// 最小字符串长度
+			'errormessage' => '',		// 错误消息
+		],*/
+	];
+
+	public function __construct(Route &$route) {
+		$this->route = &$route;
+		$this->DB = $route->DB;
+	}
+
+	public function getForm() {
+		return $this->form;
+	}
 
 
+	protected function model($model) {
+		$class = get_class($this) . '\\' . str_replace('/', '\\', $model);
+		return new $class($this->route);
+	}
+
+	protected function write(Iterator $value = NULL) {
+		if ($this->values) {
+			$this->documents[] = $this->values;
+			$this->values = [];
+		}
+
+		if (!$value) {
+			// 添加默认值
+			$defaults = [];
+			foreach ($this->form as $input) {
+				if (isset($input['value'])) {
+					$defaults[$input['name']] = $input['value'];
+				}
+			}
+			foreach ($this->documents as &$document) {
+				$addDefaults = $defaults;
+				foreach ($document as $name => &$value) {
+					if (!$value instanceof Param) {
+						$value = new Param(['name' => $name, 'value' => $value]);
+					}
+					if (is_string($value->name)) {
+						unset($addDefaults[$value->name]);
+					}
+				}
+				unset($value);
+				foreach ($addDefaults as $name => $value) {
+					$document[] = new Param(['name' => $name, 'value' => $value]);
+				}
+			}
+			unset($document);
+		}
+
+		// 表单验证
+		$form = [];
+		foreach ($this->form as $input) {
+			if (empty($input['errormessage'])) {
+				$input['errormessage'] = 1009;
+			}
+			$form[$input['name']] = $input;
+		}
+		foreach ($this->documents as &$document) {
+			$message = NULL;
+			foreach ($document as $name => &$value) {
+				if (!$value instanceof Param) {
+					$value = new Param(['name' => $name, 'value' => $value]);
+				}
+				if (!is_string($value->name)) {
+					continue;
+				}
+				if (empty($form[$value->name])) {
+					continue;
+				}
+				if (is_object($value->value)) {
+					continue;
+				}
+				if ($value->value === NULL) {
+					continue;
+				}
+
+				// 设置数据类型
+				$input = $form[$value->name];
+				if (isset($input['value'])) {
+					settype($value->value, gettype($input['value']));
+				}
+
+				// 空检查
+				$empty = empty($value->value) && $value->value !== '0' && $value->value !== 0;
+				if (!empty($input['required']) && $empty) {
+					$message = new Message([1000, $input['name'], isset($input['title']) ? $this->route->localize($input['title']) : ''], Message::ERROR, $message);
+					continue;
+				}
 
 
+				// 表单类型检查
+				$continue = false;
+				switch ($input['type']) {
+					case 'text':
+					case 'password':
+						$value->value = (string) $value->value;
+						break;
+					case 'email':
+						$continue = !$empty && !filter_var($value->value, FILTER_VALIDATE_EMAIL);
+						break;
+					case 'number':
+					case 'range':
+						$value->value = (int) $value->value;
+						break;
+					case 'search':
+						$value->value = is_array($value->value) ? implode(' ', $value->value) : (string) $value->value;
+						break;
+					case 'url':
+						$continue = !$empty && !preg_match('/^[a-z]+\:\/\/\w+/i', $value->value);
+					case 'tel':
+						$continue = !$empty && !preg_match('/^\+?[0-9]+(\s[0-9]+)*$/i', $value->value);
+					case 'color':
+						$continue = !$empty && !preg_match('/^\#([0-9a-f]{3}|[0-9a-f]{6})$/i', $value->value = strtolower($value->value));
+						break;
+					case 'year':
+						$continue = !$empty && preg_match('/^\d{4}$/', $value->value);
+						break;
+					case 'month':
+						$continue = !$empty && preg_match('/^\d{4}\-(?:0\d|1[0-2])$/', $value->value);
+						break;
+					case 'week':
+						$continue = !$empty && preg_match('/^\d{4}\-W(?:0\d|1[0-2])$/', $value->value = strtoupper($value->value));
+						break;
+					case 'date':
+						if (!$empty) {
+							if (preg_match('/^\d{4}\-(\d{2})\-(\d{2})$/', $value->value) && ($time = strtotime($value->value))) {
+								$value->value = @date('Y-m-d', $value->value);
+							} else {
+								$continue = true;
+							}
+						}
+						break;
+					case 'datetime':
+						if (!$empty) {
+							if ($time = strtotime($value->value)) {
+								$value->value = @date('Y-m-d h:i:s', $value->value);
+							} else {
+								$continue = true;
+							}
+						}
+						break;
+					case 'datetime-local':
+						break;
+				}
 
+				// 表单类型错误
+				if ($continue) {
+					$message = new Message([$input['errormessage'], $input['name'], isset($input['title']) ? $this->route->localize($input['title']) : $input['name']], Message::ERROR, $message);
+					continue;
+				}
 
+				// 最大长度
+				if (!empty($input['maxlength']) && strlen($value->value) > $input['maxlength']) {
+					$message = new Message([1001, $input['name'], isset($input['title']) ? $this->route->localize($input['title']) : $input['name']], Message::ERROR, $message);
+					continue;
+				}
 
-
-
-
-
-
+				// 正则
+				if ((isset($input['pattern']) && preg_match('/'. str_replace('/', '\\/', $input['pattern']) .'/', $value->value)) || (!isset($input['min']) && $input['min'] > $value->value) || (!isset($input['max']) && $input['max'] < $value->value) || (!empty($input['step']) && ($value->value % $input['step']) !== 0) || (!empty($input['option']) && count((array)$value->value) === count(array_intersect((array)$value->value, array_values($input['option']))))) {
+					$message = new Message([$input['errormessage'], $input['name'], isset($input['title']) ? $this->route->localize($input['title'] ) : $input['name']], Message::ERROR, $message);
+					continue;
+				}
+			}
+			if ($message) {
+				throw new $message;
+			}
+		}
+	}
 }

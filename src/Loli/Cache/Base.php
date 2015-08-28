@@ -26,7 +26,7 @@ namespace Loli\Cache;
 abstract class Base{
 
 	// 记录使用次数
-	public $count = ['get' => 0, 'add' => 0, 'set' => 0, 'incr' => 0, 'decr' => 0, 'delete' => 0, 'ttl' => 0];
+	protected $statistics = ['get' => 0, 'add' => 0, 'set' => 0, 'incr' => 0, 'decr' => 0, 'delete' => 0, 'ttl' => 0];
 
 	// KEY
 	protected $key = '';
@@ -117,6 +117,10 @@ abstract class Base{
 	 */
 	abstract public function addServers($group, array $servers);
 
+
+	public function statistics($key = false) {
+		return $key === false ? $this->statistics : (isset($this->statistics[$key]) ? $this->statistics[$key] : false);
+	}
 }
 
 

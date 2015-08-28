@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-02-12 15:00:16
 /*	Updated: UTC 2015-06-12 13:47:02
 /*
@@ -28,22 +39,7 @@ class Imagick extends Base{
 
 		try {
 			$this->_im = new \Imagick($file);
-			$type = $type ? $type : $this->_im->getImageFormat();
-			if (empty($this->types[$type])) {
-				$type = strtolower($type);
-				reset($this->types);
-				$this->_type = key($this->types);
-				foreach ($this->types as $key => $extensions) {
-					if (in_array($type, $extensions)) {
-						$this->_type = $key;
-						break;
-					}
-				}
-			} else {
-				$this->_type = (int) $type;
-			}
-			$this->_im->getImageFormat() == 'GIF' && $this->_type != self::TYPE_GIF && $this->_im->flattenImages();
-			$this->_im->setImageFormat(reset($this->types[$this->_type]));
+			$this->type($type ? $type : $this->_im->getImageFormat());
 		} catch(ImagickException $e) {
 			$this->_type = $this->_im = false;
 			throw new Exception($e->getMessage());
@@ -75,9 +71,14 @@ class Imagick extends Base{
 		return $a['height'];
 	}
 
-	public function type() {
+	public function type($type = false) {
 		if (!$this->_im) {
 			throw new Exception('Resource');
+		}
+		if ($type) {
+			$this->_type = $this->getType($type, $this->_type ? $this->_type : self::TYPE_JPEG);
+			$this->_im->getImageFormat() === 'GIF' && $this->_type !== self::TYPE_GIF && $this->_im->flattenImages();
+			$this->_im->setImageFormat(reset($this->types[$this->_type]));
 		}
 		return $this->_type;
 	}
@@ -86,7 +87,7 @@ class Imagick extends Base{
 		if (!$this->_im) {
 			throw new Exception('Resource');
 		}
-		if ($this->type() != self::TYPE_GIF) {
+		if ($this->type() !== self::TYPE_GIF) {
 			return 1;
 		}
 		$i = 0;
@@ -101,7 +102,7 @@ class Imagick extends Base{
 		if (!$this->_im) {
 			throw new Exception('Resource');
 		}
-		if ($this->type() != self::TYPE_GIF) {
+		if ($this->type() !== self::TYPE_GIF) {
 			return 0;
 		}
 		$length = 0;
@@ -118,7 +119,7 @@ class Imagick extends Base{
 		}
 		try {
 			$bg = new ImagickPixel('transparent');
-			if ($this->type() == self::TYPE_GIF) {
+			if ($this->type() === self::TYPE_GIF) {
 				$im = $this->_im->coalesceImages();
 				$this->_im->destroy();
 				do {
@@ -141,7 +142,7 @@ class Imagick extends Base{
 			throw new Exception('Resource');
 		}
 		try {
-			if ($this->type() == self::TYPE_GIF) {
+			if ($this->type() === self::TYPE_GIF) {
 				$im = $this->_im->coalesceImages();
 				$this->_im->destroy();
 				do {
@@ -190,8 +191,8 @@ class Imagick extends Base{
 			$metrics = $this->_im->queryFontMetrics($draw, $text);
 			$w = $metrics['textWidth'];
 	        $h = $metrics['textHeight'];
-			$xN = $x < 0 || ($x && is_string($x) && $x{0} == '-');
-	        if (is_string($x) && substr($x, -1, 1) == '%') {
+			$xN = $x < 0 || ($x && is_string($x) && $x{0} === '-');
+	        if (is_string($x) && substr($x, -1, 1) === '%') {
 				$x = ($this->width() - $w) * (($xN ? 100 + $x : $x) / 100);
 			} elseif ($xN) {
 				$x += $this->width() - $w;
@@ -199,8 +200,8 @@ class Imagick extends Base{
 
 
 
-			$yN = $y < 0 || ($y && is_string($y) && $y{0} == '-');
-			if (is_string($y) && substr($y, -1, 1) == '%') {
+			$yN = $y < 0 || ($y && is_string($y) && $y{0} === '-');
+			if (is_string($y) && substr($y, -1, 1) === '%') {
 				$y = ($this->height() - $h) * (($yN ? 100 + $y : $y) / 100);
 			} elseif ($yN) {
 				$y += $this->height() - $h;
@@ -208,7 +209,7 @@ class Imagick extends Base{
 			$y += $metrics['ascender'];
 
 
-			if ($this->type() == self::TYPE_GIF) {
+			if ($this->type() === self::TYPE_GIF) {
 				$im = $this->_im->coalesceImages();
 				$this->_im->destroy();
 				do {
@@ -238,15 +239,15 @@ class Imagick extends Base{
 			$src->setImageOpacity($opacity);
 			$info = $src->getImagePage();
 
-			$xN = $x < 0 || ($x && is_string($x) && $x{0} == '-');
-			if (is_string($x) && substr($x, -1, 1) == '%') {
+			$xN = $x < 0 || ($x && is_string($x) && $x{0} === '-');
+			if (is_string($x) && substr($x, -1, 1) === '%') {
 				$x = ($this->width() - $info['width']) * (($xN ? 100 + $x : $x) / 100);
 			} elseif ($xN) {
 				$x += $this->width() - $info['width'];
 			}
 
-			$yN = $y < 0 || ($y && is_string($y) && $y{0} == '-');
-			if (is_string($y) && substr($y, -1, 1) == '%') {
+			$yN = $y < 0 || ($y && is_string($y) && $y{0} === '-');
+			if (is_string($y) && substr($y, -1, 1) === '%') {
 				$y = ($this->height() - $info['height']) * (($yN ? 100 + $y : $y) / 100);
 			} elseif ($yN) {
 				$y += $this->height() - $info['height'];
@@ -255,7 +256,7 @@ class Imagick extends Base{
 
 			$draw = new ImagickDraw();
 			$draw->composite($src->getImageCompose(), $x, $y, $info['width'], $info['height'], $src);
-			if ($this->type() == self::TYPE_GIF) {
+			if ($this->type() === self::TYPE_GIF) {
 				$im = $this->_im->coalesceImages();
 				$this->_im->destroy();
 				do{
@@ -281,7 +282,7 @@ class Imagick extends Base{
 			throw new Exception('Resource');
 		}
 		try {
-			if ($this->type() == self::TYPE_GIF) {
+			if ($this->type() === self::TYPE_GIF) {
 				$im = $this->_im->coalesceImages();
 				$this->_im->destroy();
 				do {
@@ -335,34 +336,28 @@ class Imagick extends Base{
 			throw new Exception('Path');
 		}
 
-		$info = pathinfo($save);
-		if (!empty($info['extension'])) {
-			foreach ($this->types as $k => $v) {
-				if (in_array($info['extension'], $v)) {
-					$type = $k;
-					break;
-				}
-			}
+		if ($type) {
+			$this->type($type);
+		} elseif ($extension = pathinfo($save, PATHINFO_EXTENSION)) {
+			$this->type($extension);
 		}
 
 		try {
-			reset($this->types);
-			$this->_type = $type ? $type : $this->type();
-			$this->_type = empty($this->types[$this->_type]) ? key($this->types) : $this->_type;
-			$this->_type == self::TYPE_JPEG && $this->_im->borderImage(new ImagickPixel("white") ,0 ,0);
+			$this->_type === self::TYPE_JPEG && $this->_im->borderImage(new ImagickPixel("white") ,0 ,0);
+
 			$this->_im->setImageFormat(reset($this->types[$this->_type]));
 
-			if ($this->_type == self::TYPE_JPEG) {
+			if ($this->_type === self::TYPE_JPEG) {
 				$this->_im->setImageCompressionQuality($this->quality);
 				$this->_im->setImageInterlaceScheme(true);
 			}
+
 			$this->_im->stripImage();
-			if (self::TYPE_GIF == $this->_type) {
+			if (self::TYPE_GIF === $this->_type) {
 				$this->_im->writeImages($save, true);
 			} else {
 				$this->_im->writeImage($save);
 			}
-
 			$stat = stat(dirname($save));
 			$perms = $stat['mode'] & 0000666;
 			@chmod($save, $perms);
@@ -380,23 +375,18 @@ class Imagick extends Base{
 			throw new Exception('Resource');
 		}
 		try {
-			reset($this->types);
-			$this->_type = $type ? $type : $this->type();
-			$this->_type = empty($this->types[$this->_type]) ? key($this->types) : $this->_type;
-
-			$this->_type == self::TYPE_JPEG && $this->_im->borderImage(new ImagickPixel("white") ,0 ,0);
+			$this->type($type);
+			$this->_type === self::TYPE_JPEG && $this->_im->borderImage(new ImagickPixel("white") ,0 ,0);
 			$this->_im->setImageFormat(reset($this->types[$this->_type]));
 
-			if ($this->_type == self::TYPE_JPEG) {
+			if ($this->_type === self::TYPE_JPEG) {
 				$this->_im->setImageCompressionQuality($this->quality);
 				$this->_im->setImageInterlaceScheme(true);
 			}
-			headers_sent() || header('Content-Type: ' . (empty($this->mimes[$this->_type]) ? reset($this->mimes) : $this->mimes[$this->_type]));
-			echo $this->_type == self::TYPE_GIF ? $this->_im->getImagesBlob() : $this->_im->getImage();
+			echo $this->_type === self::TYPE_GIF ? $this->_im->getImagesBlob() : $this->_im->getImage();
 		} catch (ImagickException $e) {
 			throw new Exception($e->getMessage());
 		}
 		return $this;
 	}
-
 }

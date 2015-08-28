@@ -20,8 +20,21 @@ class Controller{
 		$this->route = &$route;
 	}
 
-	public function __call($name, $args) {
+	public function __call($name, array $args) {
 		throw new Message(404, Message::ERROR);
+	}
+
+	public function __invoke($model) {
+		return $this->model($model);
+	}
+
+	protected function model($model) {
+		$class = 'Model\\' . str_replace('/', '\\', $model);
+		return new $class($this->route);
+	}
+
+	protected function view($files, array $data = [], $cache = false) {
+		return new View($files, $data, $cache);
 	}
 
 	protected function token() {

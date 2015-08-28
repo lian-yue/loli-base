@@ -10,18 +10,6 @@
 /*	Created: UTC 2015-04-15 03:40:04
 /*
 /* ************************************************************************** */
-/* ************************************************************************** */
-/*
-/*	Lian Yue
-/*
-/*	Url: www.lianyue.org
-/*	Email: admin@lianyue.org
-/*	Author: Moon
-/*
-/*	Created: UTC 2015-04-06 12:01:29
-/*	Updated: UTC 2015-04-15 03:40:04
-/*
-/* ************************************************************************** */
 namespace Loli;
 class_exists('Loli\HTTP\Request') || exit;
 class Route{
@@ -30,10 +18,10 @@ class Route{
 		'request' => 'Loli\\Route::load',
 		'response' => 'Loli\\Route::load',
 		'localize' => 'Loli\\Route::load',
-		'cache' => 'Loli\\Route::load',
 		'session' => 'Loli\\Route::load',
 		'storage' => 'Loli\\Route::load',
 		'DB' => 'Loli\\Route::load',
+		'RBAC' => 'Loli\\Route::load',
 	];
 
 	protected static $routes = [];
@@ -117,7 +105,6 @@ class Route{
 	}
 
 
-
 	public function __destruct() {
 		foreach ($this as $name => $value) {
 			unset($this->$name);
@@ -187,10 +174,13 @@ class Route{
 				$this->controller = substr($class, 11);
 				$controller[0] = new $class($this);
 			}
+			if (!$controller[1] || $controller[1]{0} === '_') {
+				throw new Message(404, Message::ERROR, new Message([1, 'Controller not exists'], Message::ERROR));
+			}
 			$this->method = $controller[1];
 
 			// RBAC 权限
-			if ($this->RBAC && !$this->RBAC->has($this->controller, $name)) {
+			if ($this->RBAC && !$this->RBAC->has($this->controller)) {
 				$this->response->setStatus(403);
 				throw new Message([90, 'RBAC'], Message::ERROR);
 			}
@@ -210,19 +200,14 @@ class Route{
 			$view = new Message([2, $e->getMessage()], Message::ERROR);
 			$view->route($this);
 			$this->response->setStatus($e->getCode());
-		} catch (Cache\Exception $e) {
-			// Cache
-			$view = new Message([4, $e->getMessage()], Message::ERROR);
+		} catch (Storage\Exception $e) {
+			// Storage
+			$view = new Message([6, $e->getMessage()], Message::ERROR);
 			$view->route($this);
 			$this->response->setStatus(500);
 		} catch (DB\Exception $e) {
 			// DB
-			$view = new Message([5, $e->getMessage()], Message::ERROR);
-			$view->route($this);
-			$this->response->setStatus(500);
-		} catch (Storage\Exception $e) {
-			// Storage
-			$view = new Message([6, $e->getMessage()], Message::ERROR);
+			$view = new Message([8, $e->getMessage()], Message::ERROR);
 			$view->route($this);
 			$this->response->setStatus(500);
 		} catch (\Exception $e) {
@@ -283,7 +268,7 @@ class Route{
 	}
 
 
-	protected static function load($route, $name) {
+	protected static function load(Route $route, $name) {
 		switch ($name) {
 			case 'request':
 				// 请求对象
@@ -294,30 +279,38 @@ class Route{
 				$result = new HTTP\Response($route->request);
 				break;
 			case 'localize':
-				// 本地化模块
+				// 本地化
 				$result = new Localize(empty($_SERVER['LOLI']['LOCALIZE']['language']) ? false : $_SERVER['LOLI']['LOCALIZE']['language'], empty($_SERVER['LOLI']['LOCALIZE']['timezone']) ? false : $_SERVER['LOLI']['LOCALIZE']['timezone']);
 				foreach ($route->request->getAcceptLanguages() as $language) {
 					if ($result->setLanguage($language)) {
 						break;
 					}
 				}
+				if ($route->request->getCookie('language')) {
+					$result->setLanguage($route->request->getCookie('language', ''));
+				}
+				if ($route->request->getParam('language')) {
+					$result->setLanguage($route->request->getParam('language', ''));
+				}
+
+				if ($route->request->getCookie('timezone')) {
+					$result->setLanguage($route->request->getCookie('timezone', ''));
+				}
+				if ($route->request->getParam('timezone')) {
+					$result->setLanguage($route->request->getParam('timezone', ''));
+				}
 				break;
 			case 'storage':
-				// 储存模块
+				// 储存
 				$class = __NAMESPACE__ . '\Storage\\' . (empty($_SERVER['LOLI']['STORAGE']['type']) ? 'Local' : $_SERVER['LOLI']['STORAGE']['type']);
 				$result = new $class($_SERVER['LOLI']['STORAGE']);
 				break;
-			case 'cache':
-				// 缓存模块
-				$class = __NAMESPACE__ . '\Cache\\' . (empty($_SERVER['LOLI']['CACHE']['type']) ? 'File' : $_SERVER['LOLI']['CACHE']['type']);
-				$result = new $class(empty($_SERVER['LOLI']['CACHE']['args']) ? [] : $_SERVER['LOLI']['CACHE']['args'], empty($_SERVER['LOLI']['CACHE']['key']) ? '' : $_SERVER['LOLI']['CACHE']['key']);
-				break;
 			case 'session':
-				// 缓存模块
-				$result = new Session($this->cache, $route->request);
+				// Session
+				$result = new Session($route->request);
 				break;
 			case 'DB':
-				// 数据库模块
+				// 数据库
 				static $protocol = [
 					'mysql' => ['mysql', 'MySQLi'],
 					'maria' => ['mysql', 'MySQLi'],
@@ -340,19 +333,28 @@ class Route{
 
 					'odbc' => ['odbc', 'ODBC'],
 				];
-				// $servers
+
+				$servers = empty($_SERVER['LOLI']['DB']) ? [] : $_SERVER['LOLI']['DB'];
+				$server = reset($servers);
 				if (empty($server['protocol'])) {
 					$server['protocol'] = 'mysql';
 				}
-				$class = __NAMESPACE__.'\\DB';
-				if (class_exists('PDO') && in_array($servers['protocol'], \PDO::getAvailableDrivers())) {
+				$class = __NAMESPACE__.'\\DB\\';
+				if (class_exists('PDO') && in_array($server['protocol'], \PDO::getAvailableDrivers())) {
 					$class .= 'PDO';
-				} elseif (isset($protocol[$servers['protocol']])) {
-					$class .= $protocol[$servers['protocol']];
+				} elseif (isset($protocol[$server['protocol']])) {
+					$class .= $protocol[$server['protocol']];
 				} else {
-					$class .= ucwords($servers['protocol']);
+					$class .= ucwords($server['protocol']);
 				}
-				$result = new $class($servers, $route->cache);
+				$result = new $class($servers);
+				break;
+			case 'RBAC':
+				if (class_exists('Model\RBAC')) {
+					$result = new \Model\RBAC($route);
+				} else {
+					$result = false;
+				}
 				break;
 			default:
 				$result = false;

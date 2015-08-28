@@ -20,9 +20,9 @@ class View implements RouteInterface{
 
 	protected $route;
 
-	protected $cache = false;
+	protected $expire = false;
 
-	public function __construct($files, array $data = [], $cache = false) {
+	public function __construct($files, array $data = [], $expire = false) {
 		$this->files = (array) $files;
 
 		foreach ($data as $key => $value) {
@@ -30,14 +30,14 @@ class View implements RouteInterface{
 				unset($data[$key]);
 			}
 		}
-		$this->cache = $cache;
+		$this->expire = $expire;
 		$this->data = $data;
 		$this->dir = empty($_SERVER['LOLI']['VIEW']['dir']) ? './' : $_SERVER['LOLI']['VIEW']['dir'];
 	}
 
 	public function route(Route &$route) {
 		$this->route = &$route;
-		$this->cache && $route->response->addCache('public', true)->addCache('max-age', $this->cache === true ? 1800 : $this->cache);
+		$this->expire && $route->response->addCache('public', true)->addCache('max-age', $this->expire === true ? 1800 : $this->expire);
 		if ($ajax = $route->request->getAjax()) {
 			$route->response->setHeader('X-Ajax', 'true');
 			switch ($type = strtolower($ajax)) {
@@ -73,12 +73,12 @@ class View implements RouteInterface{
 			$route->response->addHeader('X-Processing', $route->request->processing());
 			$route->response->addHeader('X-Memory', number_format((memory_get_peak_usage() / 1024 / 1024), 4));
 			$route->response->addHeader('X-Files', count(get_included_files()));
-			if ($this->cache) {
+			if ($this->expire) {
 				$route->response->getHeader('Etag') || $route->response->addHeader('Etag', '"' . substr(hash('md4', $this->data), 0, 16) .'"');
 				$route->response->setStatus($route->response->getCacheStatus());
 			}
 		} else {
-			if ($this->cache) {
+			if ($this->expire) {
 				$data = json_encode($this->data);
 				$route->response->getHeader('Etag') || $route->response->addHeader('Etag', '"' . substr(hash('md4', $data), 0, 16) .'"');
 				$route->response->setStatus($route->response->getCacheStatus());
@@ -106,7 +106,7 @@ class View implements RouteInterface{
 	}
 
 	protected function processing() {
-		return '<!--Processing:' . $this->route->request->processing() .' Memory:' .number_format((memory_get_peak_usage() / 1024 / 1024), 4) .' Files:' .count(get_included_files()) .'-->';
+		return '<!--Processing:' . $this->route->request->processing() .' Memory:' .number_format((memory_get_peak_usage() / 1024 / 1024), 4) .' Files:' .count(get_included_files()) .' Query: '. $this->route->DB->statistics() .'-->';
 	}
 
 	public function __invoke() {
@@ -115,5 +115,4 @@ class View implements RouteInterface{
 		}
 		$this->load($this->files);
 	}
-
 }

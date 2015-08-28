@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-02-17 11:37:04
 /*	Updated: UTC 2015-04-07 14:31:37
 /*
@@ -14,12 +25,9 @@
 namespace Loli\Cache;
 class_exists('Loli\Cache\Base') || exit;
 class File extends Base{
+	private $_groups = [];
 
 	private $_data = [];
-
-	private $_ttl = [];
-
-	private $_groups = [];
 
 	private $_dir = './';
 
@@ -31,129 +39,131 @@ class File extends Base{
 	}
 
 	public function get($key, $group = 'default') {
-		++$this->count['get'];
+		++$this->statistics['get'];
+		if (isset($this->_data[$group][$key])) {
+			if (is_object($this->_data[$group][$key])) {
+				return clone $this->_data[$group][$key];
+			}
+			return $this->_data[$group][$key];
+		}
 
-		if (!isset($this->_data[$group][$key])) {
-			$this->_data[$group][$key] = false;
-			$this->_get($key, $group);
+		if (($data = $this->_get($key, $group)) && ($data['expire'] === -1 || $data['expire'] >= time())) {
+			return $data['value'];
 		}
-		if (is_object($this->_data[$group][$key])) {
-			return clone $this->_data[$group][$key];
-		}
-		return $this->_data[$group][$key];
+		return false;
 	}
 
 	public function add($value, $key, $group = 'default', $ttl = 0) {
-		++$this->count['add'];
-		if ($value === NULL || $value === false || ($ttl = intval($ttl)) < -1 || $this->get($key, $group) !== false) {
+		++$this->statistics['add'];
+		if ($value === NULL || $value === false) {
 			return false;
 		}
-		if (is_object($value)) {
-			$value = clone $value;
+		if ($ttl) {
+			if (($data = $this->_get($key, $group)) && ($data['expire'] === -1 || $data['expire'] >= time())) {
+				return false;
+			}
+			unset($this->_data[$group][$key]);
+			$this->_set($value, $key, $group, $ttl == -1 ? -1 : time() + $ttl);
+		} else {
+			if (!isset($this->_data[$group][$key])) {
+				return false;
+			}
+			if (is_object($value)) {
+				$value = clone $value;
+			}
+			$this->_data[$group][$key] = $value;
 		}
-		$this->_data[$group][$key] = $value;
-		$this->_ttl[$group][$key] = $ttl == -1 ? -1 : time() + $ttl;
-		return $this->_set($key, $group);
+		return true;
 	}
 
 	public function set($value, $key, $group = 'default', $ttl = 0) {
-		++$this->count['set'];
-		if ($value === NULL || $value === false || ($ttl = intval($ttl)) < -1) {
+		++$this->statistics['set'];
+		if ($value === NULL || $value === false) {
 			return false;
 		}
-		if (is_object($value)) {
-			$value = clone $value;
+		if ($ttl) {
+			unset($this->_data[$group][$key]);
+			$this->delete($key, $group);
+			return $this->_set($value, $key, $group, $ttl == -1 ? -1 : time() + $ttl);
+		} else {
+			if (is_object($value)) {
+				$value = clone $value;
+			}
+			$this->_data[$group][$key] = $value;
+			return true;
 		}
-		$this->_data[$group][$key] = $value;
-		$this->_ttl[$group][$key] = $ttl == -1 ? -1 : time() + $ttl;
-		return $this->_set($key, $group);
+		return false;
 	}
 
 
 	public function incr($n, $key, $group = 'default') {
-		++$this->count['incr'];
+		++$this->statistics['incr'];
 		if (($n = intval($n)) < 1) {
 			return false;
 		}
-		$r = false;
-		if (isset($this->_ttl[$group][$key]) && $this->_ttl[$group][$key] === 0) {
-			if (isset($this->_data[$group][$key]) && $this->_data[$group][$key] !== false) {
-				$this->_data[$group][$key] += $n;
-				return true;
-			}
-			return false;
-		}
-
-		if ($this->_get($key, $group)) {
+		if (isset($this->_data[$group][$key])) {
 			$this->_data[$group][$key] += $n;
-			$this->_set($key, $group);
 			return true;
+		} elseif (($data = $this->_get($key, $group)) && ($data['expire'] === -1 || $data['expire'] >= time())) {
+			return $this->_set($data['value'] + $n, $key, $group, $data['expire']);
 		}
 		return false;
 	}
 
 
 	public function decr($n, $key, $group = 'default') {
-		++$this->count['decr'];
+		++$this->statistics['decr'];
 		if (($n = intval($n)) < 1) {
 			return false;
 		}
-		$r = false;
-		if (isset($this->_ttl[$group][$key]) && $this->_ttl[$group][$key] === 0) {
-			if (isset($this->_data[$group][$key]) && $this->_data[$group][$key] !== false) {
-				$this->_data[$group][$key] -= $n;
-				return true;
-			}
-			return false;
-		}
-
-		if ($this->_get($key, $group)) {
+		if (isset($this->_data[$group][$key])) {
 			$this->_data[$group][$key] -= $n;
-			$this->_set($key, $group);
 			return true;
+		} elseif (($data = $this->_get($key, $group)) && ($data['expire'] === -1 || $data['expire'] >= time())) {
+			return $this->_set($data['value'] - $n, $key, $group, $data['expire']);
 		}
 		return false;
 	}
 
 
 	public function delete($key, $group = 'default', $ttl = 0) {
-		++$this->count['delete'];
+		++$this->statistics['delete'];
 		if ($ttl > 0) {
-			$this->_get($key, $group);
-			if (!isset($this->_ttl[$group][$key])) {
+			if (isset($this->_data[$group][$key])) {
+				unset($this->_data[$group][$key]);
+				$value = $this->_data[$group][$key];
+				$ttl += time();
+			} elseif (($data = $this->_get($key, $group)) && ($data['expire'] === -1 || $data['expire'] >= time())) {
+				$value = $data['value'];
+				$ttl += time();
+				if ($ttl > $data['expire']) {
+					$ttl = $data['expire'];
+				}
+			} else {
 				return false;
 			}
-			if ($this->_ttl[$group][$key] === 0) {
-				return true;
-			}
-			if ( $this->_ttl[$group][$key] == -1 || ($this->_ttl[$group][$key] <= ($ttl += time()))) {
-				$this->_ttl[$group][$key] = $ttl;
-				return $this->_set($key, $group);
-			}
-			return true;
+			return $this->_set($value, $key, $group, $ttl);
 		}
-		if (isset($this->_ttl[$group][$key]) && $this->_ttl[$group][$key] === 0) {
-			unset($this->_ttl[$group][$key], $this->_data[$group][$key]);
-			return true;
-		}
-		unset($this->_ttl[$group][$key], $this->_data[$group][$key]);
-		return is_file($file = $this->_file($key, $group)) && @unlink($file);
+
+		$isset = isset($this->_data[$group][$key]);
+		unset($this->_data[$group][$key]);
+		$file = is_file($file = $this->_file($key, $group)) && @unlink($file);
+		return $file || $isset;
 	}
 
 
 	public function ttl($key, $group = 'default') {
-		++$this->count['ttl'];
-		if (!isset($this->_ttl[$group][$key])) {
-			$this->_ttl[$group][$key] = false;
-			$this->_get($key, $group);
+		++$this->statistics['ttl'];
+		if (isset($this->_data[$group][$key])) {
+			return 0;
 		}
-		if (!$this->_ttl[$group][$key] || $this->_ttl[$group][$key] == -1) {
-			return $this->_ttl[$group][$key];
+		if ($data = $this->_get($key, $group)) {
+			if ($data['expire'] === -1) {
+				return $data['expire'];
+			}
+			return ($ttl = $data['expire'] - time()) >= 0 ? $ttl : false;
 		}
-		if (($ttl = $this->_ttl[$group][$key] - time()) < 0) {
-			return $this->_ttl[$group][$key] = false;
-		}
-		return $ttl;
+		return false;
 	}
 
 	public function flush($mem = false) {
@@ -169,10 +179,8 @@ class File extends Base{
 
 	private function _get($key, $group) {
 		if (is_file($file = $this->_file($key, $group))) {
-			if (($a = @unserialize(fread(fopen($file, 'rb'), filesize($file)))) && ($a['ttl'] >= time() || $a['ttl'] == -1)) {
-				$this->_data[$group][$key] = $a['data'];
-				$this->_ttl[$group][$key] = $a['ttl'];
-				return true;
+			if ($a = @unserialize(fread(fopen($file, 'rb'), filesize($file)))) {
+				return $a;
 			} else {
 				@unlink($file);
 			}
@@ -180,11 +188,8 @@ class File extends Base{
 		return false;
 	}
 
-	private function _set($key, $group) {
-		if (!empty($this->_ttl[$group][$key]) && isset($this->_data[$group][$key]) && $this->_data[$group][$key] !== false) {
-			return (bool) fwrite(fopen($this->_file($key, $group), 'wb'), serialize(['data' => $this->_data[$group][$key], 'ttl' => $this->_ttl[$group][$key]]));
-		}
-		return isset($this->_ttl[$group][$key]) && !$this->_ttl[$group][$key] && $this->_ttl[$group][$key] !== false;
+	private function _set($value, $key, $group, $expire) {
+		return (bool) fwrite(fopen($this->_file($key, $group), 'wb'), serialize(['value' => $value, 'expire' => $expire]));
 	}
 
 

@@ -61,7 +61,7 @@ class MySQLi extends Base{
 
 
 
-	public function command($query, $write = NULL) {
+	public function command($query, $readonly = NULL) {
 		// 查询不是字符串
 		if (!is_string($query)) {
 			throw new Exception($query, 'Query is not a string');
@@ -74,12 +74,12 @@ class MySQLi extends Base{
 		$query = trim($query, ';') . ';';
 
 
-		// 是否是写入
-		$write = !$this->inTransaction && preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query) ? $write : true;
+		// 是否是只读
+		$readonly = !$this->inTransaction && preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query) ? $readonly : false;
 
 		// 链接
-		$link = $this->link($write);
-		++self::$querySum;
+		$link = $this->link($readonly);
+		$this->statistics['sum'];
 		// 查询
 		$result = $link->query($query);
 		if ($result === false) {
@@ -93,7 +93,7 @@ class MySQLi extends Base{
 		} elseif (preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query)) {
 			$results = [];
 			while ($fetch = $result->fetch_assoc()) {
-				++self::$queryRow;
+				++$this->statistics['row'];
 				$results[] = new Row($fetch);
 			}
 			$results && $result->free_result();
@@ -111,9 +111,9 @@ class MySQLi extends Base{
 		if ($this->inTransaction) {
 			throw new Exception('this.beginTransaction()', 'There is already an active transaction');
 		}
-		++self::$querySum;
+		$this->statistics['sum'];
 		$this->inTransaction = true;
-		$link = $this->link(true);
+		$link = $this->link(false);
 		if (!$link->autoCommit(false) && $link->errno) {
 			throw new Exception('this.beginTransaction()', $link->error, '', $link->errno);
 		}
@@ -124,9 +124,9 @@ class MySQLi extends Base{
 		if (!$this->inTransaction) {
 			throw new Exception('this.commit()', 'There is no active transaction');
 		}
-		++self::$querySum;
+		$this->statistics['sum'];
 		$this->inTransaction = false;
-		$link = $this->link(true);
+		$link = $this->link(false);
 		$link->commit();
 		if (!$link->commit() && $link->errno) {
 			throw new Exception('this.commit()', $link->error, '', $link->errno);
@@ -138,9 +138,9 @@ class MySQLi extends Base{
 		if (!$this->inTransaction) {
 			throw new Exception('this.rollBack()', 'There is no active transaction');
 		}
-		++self::$querySum;
+		$this->statistics['sum'];
 		$this->inTransaction = false;
-		$link = $this->link(true);
+		$link = $this->link(false);
 		$rollback = $link->rollBack();
 		if (!$link->rollBack() && $link->errno) {
 			throw new Exception('this.rollBack()', $link->error, '', $link->errno);
@@ -150,14 +150,14 @@ class MySQLi extends Base{
 
 
 	public function lastInsertID() {
-		++self::$querySum;
-		return $this->link(true)->insert_id;
+		$this->statistics['sum'];
+		return $this->link(false)->insert_id;
 	}
 
 
-	public function ping($write = NULL) {
-		$link = $this->link($write);
-		++self::$querySum;
+	public function ping() {
+		$link = $this->link();
+		$this->statistics['sum'];
 		if (!$link->ping()) {
 			throw new ConnectException('this.ping()', $link->error, '', $link->errno);
 		}

@@ -38,6 +38,7 @@ class Log{
 		if (empty($link)) {
 			$class = __NAMESPACE__ . '\Log\\' . (empty($_SERVER['LOLI']['LOG']['type']) ? 'File' : $_SERVER['LOLI']['LOG']['type']);
 			$args = empty($_SERVER['LOLI']['LOG']) ? [] : $_SERVER['LOLI']['LOG'];
+			$args['writes'] = isset($args['writes']) ? $args['writes'] : [];
 			$link = new $class($args);
 		}
 		return call_user_func_array([$link, $method], $params);

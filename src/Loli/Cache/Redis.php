@@ -7,19 +7,27 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-27 09:13:47
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-10-24 10:41:06
 /*	Updated: UTC 2015-04-07 14:32:33
 /*
 /* ************************************************************************** */
 namespace Loli\Cache;
 use RedisException;
-
 class_exists('Loli\Cache\Base') || exit;
 class Redis extends Base{
 
 	private $_data = [];
-
-	private $_ttl = [];
 
 	private $_servers = [];
 
@@ -39,183 +47,168 @@ class Redis extends Base{
 
 
 	public function get($key, $group = 'default') {
-		++$this->count['get'];
-		if (!isset($this->_data[$group][$key])) {
-			$this->_data[$group][$key] = false;
-			try {
-				if (($value = $this->_obj($key, $group)->get($this->_key($key, $group))) !== false) {
-					$this->_data[$group][$key] = is_numeric($value) ? (int) $value : @unserialize($value);
-				}
-			} catch (RedisException $e) {
-				new Exception($e->getMessage(), $e->getCode());
+		++$this->statistics['get'];
+		if (isset($this->_data[$group][$key])) {
+			if (is_object($this->_data[$group][$key])) {
+				return clone $this->_data[$group][$key];
 			}
+			return $this->_data[$group][$key];
 		}
-		if (is_object($this->_data[$group][$key])) {
-			return clone $this->_data[$group][$key];
+
+		try {
+			if (($value = $this->_obj($key, $group)->get($this->_key($key, $group))) !== false) {
+				return is_numeric($value) ? (int) $value : @unserialize($value);
+			}
+		} catch (RedisException $e) {
+			new Exception($e->getMessage(), $e->getCode());
 		}
-		return $this->_data[$group][$key];
+		return false;
 	}
 
 
 	public function add($value, $key, $group = 'default', $ttl = 0) {
-		++$this->count['add'];
-		if ($value === NULL || $value === false || ($ttl = intval($ttl)) < -1 || (!$ttl && $this->get($key, $group, true) !== false)) {
+		++$this->statistics['add'];
+		if ($value === NULL || $value === false) {
 			return false;
 		}
-		if (is_object($value)) {
-			$value = clone $value;
-		}
 
-		if (!$ttl) {
-			$this->_ttl[$group][$key] = 0;
-			$this->_data[$group][$key] = $value;
-			return true;
-		}
-		$r = false;
-		try {
-			$obj = $this->_obj($key, $group);
-			if ($obj->setnx($k = $this->_key($key, $group), is_int($value) ? $value : serialize($value))) {
-				$ttl == -1 || $obj->expire($k, $ttl);
-				$this->_data[$group][$key] = $value;
-				$this->_ttl[$group][$key] = NULL;
-				$r = true;
+		if ($ttl) {
+			try {
+				$obj = $this->_obj($key, $group);
+				if ($obj->setnx($k = $this->_key($key, $group), is_int($value) ? $value : serialize($value))) {
+					$ttl == -1 || $obj->expire($k, $ttl);
+				}
+			} catch (RedisException $e) {
+				new Exception($e->getMessage(), $e->getCode());
+				return false;
 			}
-		} catch (RedisException $e) {
-			new Exception($e->getMessage(), $e->getCode());
+		} else {
+			if (isset($this->_data[$group][$key])) {
+				return false;
+			}
+			if (is_object($value)) {
+				$value = clone $value;
+			}
+			$this->_data[$group][$key] = $value;
 		}
-		return $r;
+		return true;
 	}
 
 
 	public function set($value, $key, $group = 'default', $ttl = 0) {
-		++$this->count['set'];
-		if ($value === NULL || $value === false || ($ttl = intval($ttl)) < -1) {
+		++$this->statistics['set'];
+		if ($value === NULL || $value === false) {
 			return false;
 		}
-		if (is_object($value)) {
-			$value = clone $value;
-		}
-		if (!$ttl) {
-			$this->_ttl[$group][$key] = 0;
-			$this->_data[$group][$key] = $value;
-			return true;
-		}
-		$r = false;
-		try {
-			$obj = $this->_obj($key, $group);
-			if ($obj->set($k = $this->_key($key, $group), is_int($value) ? $value : serialize($value))) {
-				$ttl == -1 || $obj->expire($k, $ttl);
-				$this->_data[$group][$key] = $value;
-				$this->_ttl[$group][$key] = NULL;
-				$r = true;
+
+		if ($ttl) {
+			try {
+				$obj = $this->_obj($key, $group);
+				if ($obj->set($k = $this->_key($key, $group), is_int($value) ? $value : serialize($value))) {
+					$ttl == -1 || $obj->expire($k, $ttl);
+				}
+			} catch (RedisException $e) {
+				new Exception($e->getMessage(), $e->getCode());
+				return false;
 			}
-		} catch (RedisException $e) {
-			new Exception($e->getMessage(), $e->getCode());
+		} else {
+			if (is_object($value)) {
+				$value = clone $value;
+			}
+			$this->_data[$group][$key] = $value;
 		}
-		return $r;
+		return true;
 	}
 
 	public function incr($n, $key, $group = 'default') {
-		++$this->count['incr'];
+		++$this->statistics['incr'];
 		if (($n = intval($n)) < 1) {
 			return false;
 		}
-		$r = false;
-		if (isset($this->_ttl[$group][$key]) && $this->_ttl[$group][$key] === 0) {
-			if (isset($this->_data[$group][$key]) && $this->_data[$group][$key] !== false) {
-				$this->_data[$group][$key] += $n;
-				return true;
-			}
-			return false;
+		if (isset($this->_data[$group][$key])) {
+			$this->_data[$group][$key] += $n;
+			return true;
 		}
 
-
-		$this->_ttl[$group][$key] = $this->_data[$group][$key] = NULL;
 		try {
 			$obj = $this->_obj($key, $group);
-			$r = $obj->exists($k = $this->_key($key, $group)) && $obj->incrby($k, $n);
+			return $obj->exists($k = $this->_key($key, $group)) && $obj->incrby($k, $n);
 		} catch (RedisException $e) {
 			new Exception($e->getMessage(), $e->getCode());
 		}
-		return $r;
+		return false;
 	}
 
 
 	public function decr($n, $key, $group = 'default') {
-		++$this->count['decr'];
+		++$this->statistics['decr'];
 		if (($n = intval($n)) < 1) {
 			return false;
 		}
-		$r = false;
-		if (isset($this->_ttl[$group][$key]) && $this->_ttl[$group][$key] === 0) {
-			if (isset($this->_data[$group][$key]) && $this->_data[$group][$key] !== false) {
-				$this->_data[$group][$key] -= $n;
-				return true;
-			}
-			return false;
+		if (isset($this->_data[$group][$key])) {
+			$this->_data[$group][$key] -= $n;
+			return true;
 		}
 
-
-		$this->_ttl[$group][$key] = $this->_data[$group][$key] = NULL;
 		try {
 			$obj = $this->_obj($key, $group);
-			$r = $obj->exists($k = $this->_key($key, $group)) && $obj->decrby($k, $n);
+			return $obj->exists($k = $this->_key($key, $group)) && $obj->decrby($k, $n);
 		} catch (RedisException $e) {
 			new Exception($e->getMessage(), $e->getCode());
 		}
-		return $r;
+		return false;
 	}
 
 
 	public function delete($key, $group = 'default', $ttl = 0) {
-		++$this->count['delete'];
+		++$this->statistics['delete'];
 		if ($ttl > 0) {
 			$obj = $this->_obj($key, $group);
-			if (($ttl = $obj->ttl($k = $this->_key($key, $group))) == -2 || $ttl === false) {
-				return isset($this->_data[$group][$key]) && $this->_data[$group][$key] !== false;
-			}
-			if ($ttl == -1 || $ttl > $ttl) {
-				return $obj->expire($k, $ttl);
-			}
-			return true;
-		}
-		if (isset($this->_ttl[$group][$key]) && $this->_ttl[$group][$key] === 0) {
-			unset($this->_ttl[$group][$key], $this->_data[$group][$key]);
-			return true;
-		}
-
-		unset($this->_ttl[$group][$key], $this->_data[$group][$key]);
-		try {
-			$r = $this->_obj($key, $group)->del($this->_key($key, $group));
-		} catch (RedisException $e) {
-			new Exception($e->getMessage(), $e->getCode());
-		}
-		return $r;
-	}
-
-	public function ttl($key, $group = 'default') {
-		++$this->count['ttl'];
-		if (!isset($this->_ttl[$group][$key])) {
 			try {
-				if (($ttl = $this->_obj($key, $group)->ttl($this->_key($key, $group))) == -2) {
-					$this->_ttl[$group][$key] = false;
-				} elseif ($ttl == -1 || $ttl === false) {
-					$this->_ttl[$group][$key] = $ttl;
-				} else {
-					$this->_ttl[$group][$key] = $ttl + time();
+				if (isset($this->_data[$group][$key])) {
+					$value = $this->_data[$group][$key];
+					$obj->set($k = $this->_key($key, $group), is_int($value) ? $value : serialize($value));
+					$obj->expire($k, $ttl);
+					return true;
+				}
+				if (($objTtl = $obj->ttl($k = $this->_key($key, $group))) == -2 || $ttl === false) {
+					return false;
+				}
+				if ($objTtl == -1 || $objTtl > $ttl) {
+					return $obj->expire($k, $ttl);
 				}
 			} catch (RedisException $e) {
 				new Exception($e->getMessage(), $e->getCode());
 			}
+			return true;
 		}
 
-		if (!$this->_ttl[$group][$key] || $this->_ttl[$group][$key] == -1) {
-			return $this->_ttl[$group][$key];
+		$isset = isset($this->_data[$group][$key]);
+		unset($this->_data[$group][$key]);
+		try {
+			$del = $this->_obj($key, $group)->del($this->_key($key, $group));
+		} catch (RedisException $e) {
+			new Exception($e->getMessage(), $e->getCode());
 		}
-		if (($ttl = $this->_ttl[$group][$key] - time()) < 0) {
-			return $this->_ttl[$group][$key] = false;
+		return $isset || !empty($del);
+	}
+
+	public function ttl($key, $group = 'default') {
+		++$this->statistics['ttl'];
+		if (isset($this->_data[$group][$key])) {
+			return 0;
 		}
-		return $ttl;
+
+		try {
+			if (($ttl = $this->_obj($key, $group)->ttl($this->_key($key, $group))) == -2) {
+				return false;
+			} else {
+				return $ttl;
+			}
+		} catch (RedisException $e) {
+			new Exception($e->getMessage(), $e->getCode());
+		}
+		return false;
 	}
 
 

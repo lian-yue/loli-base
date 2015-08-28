@@ -23,6 +23,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli\DB;
+class_exists('Loli\DB\Base') || exit;
 class Cursor{
 
 	// 数据库对象
@@ -32,7 +33,7 @@ class Cursor{
 	protected $execute = true;
 
 	// 是否用从据库
-	protected $write;
+	protected $readonly;
 
 	// indexs 索引 重命名 键信息的
 	protected $indexs = [];
@@ -67,6 +68,14 @@ class Cursor{
 	// 自动递增id
 	protected $insertID;
 
+	// 主键
+	protected $primary = [];
+
+	// 主键
+	protected $primaryCache = 0;
+
+	// 过滤
+	protected $callback = false;
 
 	// 构造器对象
 	protected $builders = [
@@ -104,13 +113,13 @@ class Cursor{
 
 
 	/**
-	 * write 主从设置
-	 * @param  boolean|null $write
+	 * readonly 主从设置
+	 * @param  boolean|null $readonly
 	 * @return this
 	 */
-	public function write($write) {
+	public function readonly($readonly) {
 		$this->data = [];
-		$this->write = $write;
+		$this->readonly = $readonly;
 		return $this;
 	}
 
@@ -133,7 +142,7 @@ class Cursor{
 	 * @param  integer $refresh
 	 * @return this
 	 */
-	public function cache($ttl, $refresh = 0) {
+	public function cache($ttl = 0, $refresh = 0) {
 		$this->data = [];
 		$this->cache = [$ttl, $refresh];
 		return $this;
@@ -511,6 +520,45 @@ class Cursor{
 		return $this;
 	}
 
+
+	public function primary(array $primary) {
+		$this->primary = $primary;
+	}
+
+
+	/**
+	 * callback 设置回调
+	 * @param  boolean   $callback
+	 * @return this
+	 */
+	public function callback($callback) {
+		$this->callback = $callback;
+		return $this;
+	}
+
+
+
+
+	protected function read(Row &$value) {
+
+	}
+
+	protected function write(Iterator $value = NULL) {
+
+	}
+
+	protected function success($name, Iterator $value = NULL) {
+
+	}
+
+	public function getUseTables() {
+		if (empty($this->data['builder'])) {
+			return [];
+		}
+		return $this->data['builder']->getUseTables();
+	}
+
+
 	/**
 	 * __invoke
 	 * @param  string $name
@@ -521,25 +569,15 @@ class Cursor{
 		return $this->__call('select', $args);
 	}
 
-	public function getUseTables() {
-		if (empty($this->data['builder'])) {
-			return [];
-		}
-		return $this->data['builder']->getUseTables();
-	}
 
-	/**
-	 * __call
-	 * @param  string $name
-	 * @param  array  $args
-	 * @return array|integer|boolean|object
-	 */
-	public function __call($name, $args) {
+	public function __call($name, array $args) {
+		$name = strtolower($name);
 
 		if ($this->values) {
 			$this->documents[] = $this->values;
 			$this->values = [];
 		}
+
 
 		// 私有变量
 		if ($name{0} === '_') {
@@ -551,18 +589,77 @@ class Cursor{
 			throw new Exception('this.DB', 'No database objects');
 		}
 
+		// 主键设定
+		if ($args) {
+			if (count($args) !== count($this->primary)) {
+				throw new Exception('this.' . $name, 'The primary key is not the same number of parameters');
+			}
+			$i = 0;
+			foreach($this->primary as $primary) {
+				$this->query($primary, $args[$i], '=');
+				++$i;
+			}
+			$this->offset(0)->limit(1)->cache($this->primaryCache);
+		}
+
+
 		// 构造器
 		if (empty($this->data['builder'])) {
 			$builderName = __NAMESPACE__ .'\\'. (isset($this->builders[$this->DB->protocol()]) ? $this->builders[$this->DB->protocol()] : 'SQLBuilder');
 			$this->data['builder'] = new $builderName($this);
 		}
 
-
 		// 无效的方法
 		if (!method_exists($this->data['builder'], $name)) {
 			throw new Exception('this.' . $name, 'The method is not registered');
 		}
 
-		return $this->data['builder']->$name();
+		if ($this->callback) {
+			switch ($name) {
+				case 'insert':
+					// 插入
+					$this->write();
+					$result = $this->data['builder']->insert();
+					$this->success($name);
+					break;
+				case 'update':
+					// 更新
+					$execute = $this->execute;
+					$this->execute = true;
+					$select = $this->data['builder']->select();
+					$this->execute = $execute;
+					$this->write($select);
+					$result = $this->data['builder']->update();
+					$this->data['builder']->deleteCacheSelect();
+					$this->data['builder']->deleteCacheCount();
+					$this->success($name, $select);
+					break;
+				case 'delete':
+					// 删除
+					$execute = $this->execute;
+					$this->execute = true;
+					$select = $this->data['builder']->select();
+					$this->execute = $execute;
+					$result = $this->data['builder']->delete();
+					$this->data['builder']->deleteCacheSelect();
+					$this->data['builder']->deleteCacheCount();
+					$this->success($name, $select);
+					break;
+				case 'select':
+					$result = $this->data['builder']->select();
+					if (!is_string($result)) {
+						foreach($result as &$value) {
+							$this->read($value);
+						}
+					}
+				default:
+					$result = $this->data['builder']->$name();
+			}
+		} else {
+			$result = $this->data['builder']->$name();
+		}
+		return $result;
 	}
+
+
 }

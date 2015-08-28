@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-01-07 05:50:20
 /*	Updated: UTC 2015-04-07 15:05:50
 /*
@@ -67,6 +78,7 @@ abstract class Base {
 	 * display
 	 * @return boolean
 	 */
+	abstract public function mime();
 	abstract public function display();
 
 

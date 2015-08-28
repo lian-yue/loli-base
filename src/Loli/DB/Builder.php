@@ -44,32 +44,28 @@ abstract class Builder{
 	}
 
 	/**
-	 * getWrite  读取使用主从
+	 * getReadonly  读取是否用只读模式
 	 * @return boolean
 	 */
-	protected function getWrite() {
-		if ($this->write === NULL) {
-			// log...........................   不知道改了什么
-			$this->write = $this->DB->write;
-		}
-		if (!$this->write) {
-			return false;
-		}
-		if (!empty(self::$_logs[$this->DB->database()]) && $this->useTables) {
-			foreach (self::$_logs[$this->DB->database()] as $table => $time) {
-				if (in_array($table, $this->useTables) && $time > time()) {
-					return false;
+	protected function getReadonly() {
+		if ($this->readonly === NULL) {
+			if (!empty(self::$_logs[$this->DB->database()]) && $this->useTables) {
+				foreach (self::$_logs[$this->DB->database()] as $table => $time) {
+					if (in_array($table, $this->useTables, true) && $time > time()) {
+						return false;
+					}
 				}
 			}
+			return true;
 		}
-		return true;
+		return $this->readonly;
 	}
 
 	/**
-	 * setWrite 设置主从
+	 * setReadonly 设置主从
 	 * @param  integer $ttl
 	 */
-	protected function setWrite($ttl = 2) {
+	protected function setReadonly($ttl = 2) {
 		if ($this->useTables) {
 			foreach ($this->useTables as $table) {
 				self::$_logs[$this->DB->database()][$table] = time() + ($ttl < 2 ? 2 : $ttl);

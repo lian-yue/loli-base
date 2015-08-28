@@ -105,7 +105,7 @@ class Code{
 	*
 	*	返回值  0-9 a-z A-Z - _
 	**/
-	public static function en($value, $password = '', $ttl = 0) {
+	public static function encode($value, $password = '', $ttl = 0) {
 
 		// 随机
 		$rand = self::rand(6, '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM_-');
@@ -139,7 +139,7 @@ class Code{
 	*
 	*	返回值  你存入的数据
 	**/
-	public static function de($string, $password = '') {
+	public static function decode($string, $password = '') {
 		self::$expire = false;
 		if (!is_string($string) || strlen($string) < 14) {
 			return false;

@@ -24,7 +24,7 @@
 /* ************************************************************************** */
 // ORM
 namespace Loli\DB;
-use Loli\Log, Loli\Cache\Base as Cache;
+use Loli\Log;
 abstract class Base{
 
 
@@ -77,17 +77,12 @@ abstract class Base{
 
 
 
-
-	// 查询次数
-	public static $querySum = 0;
-
-	// 查询行数
-	public static $queryROW = 0;
+	// 统计
+	protected $statistics = ['row' => 0, 'sum' => 0];
 
 
-
-	// 是否是写入语句
-	public $write = true;
+	// 只读模式
+	protected $readonly = false;
 
 
 	/**
@@ -112,8 +107,9 @@ abstract class Base{
 		}
 		$this->database = $this->default['database'];
 		$this->explain = !empty($this->default['explain']);
-		shuffle($this->servers);
+		$this->servers = $servers;
 
+		shuffle($this->servers);
 	}
 
 	/**
@@ -126,17 +122,17 @@ abstract class Base{
 
 	/**
 	 * link
-	 * @param  null|boolean $write 使用链接类型
+	 * @param  null|boolean $readonly 使用链接类型
 	 * @return
 	 */
-	public function link($write = NULL) {
-		if ($write !== NULL) {
-			$this->write = $write;
+	public function link($readonly = NULL) {
+		if ($readonly !== NULL) {
+			$this->readonly = $readonly;
 		}
 
 
 		// 读取的服务器
-		if (!$this->write && !$this->inTransaction) {
+		if ($this->readonly && !$this->inTransaction) {
 			// 连接到读取服务器
 			if ($this->_readLink === NULL) {
 				$this->_readLink = false;
@@ -217,6 +213,7 @@ abstract class Base{
 			$this->_writePingTime = time();
 			$this->ping();
 		}
+		return $this->_writeLink;
 	}
 
 
@@ -260,6 +257,21 @@ abstract class Base{
 	}
 
 	/**
+	 * database 返回链接的数据库 or 文件名 or ID
+	 * @return string
+	 */
+	public function readonly($readonly = NULL) {
+		if ($readonly !== NULL) {
+			$this->readonly = (bool) $readonly;
+		}
+		return $this->readonly;
+	}
+
+	public function statistics($key = 'sum') {
+		return $key === false ? $this->statistics : (isset($this->statistics[$key]) ? $this->statistics[$key] : false);
+	}
+
+	/**
 	 * inTransaction 是否在执行事务
 	 * @return boolean
 	 */
@@ -277,7 +289,6 @@ abstract class Base{
 
 	/**
 	 * ping
-	 * @param  null|boolean $write
 	 * @return this
 	 */
 	abstract protected function ping();
@@ -285,10 +296,10 @@ abstract class Base{
 	/**
 	 * command
 	 * @param  string|array|object    $command
-	 * @param  null|boolean           $write
+	 * @param  null|boolean           $readonly
 	 * @return array|boolean|integer
 	 */
-	abstract public function command($command, $write = NULL);
+	abstract public function command($command, $readonly = NULL);
 
 	/**
 	 * beginTransaction 开始事务

@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-03-05 09:48:17
 /*	Updated: UTC 2015-05-23 11:49:14
 /*
@@ -51,7 +62,7 @@ class PDO extends Base{
 	}
 
 	protected function ping() {
-		++self::$querySum;
+		++$this->statistics['sum'];
 		try {
 			if (!($status = $this->link()->getAttribute(\PDO::ATTR_CONNECTION_STATUS)) || stripos($status, 'has gone away')) {
 				throw new ConnectException('this.ping()', $status);
@@ -63,7 +74,7 @@ class PDO extends Base{
 	}
 
 
-	public function command($query, $write = NULL, $type = NULL) {
+	public function command($query, $readonly = NULL, $type = NULL) {
 		// 查询不是字符串
 		if (!is_string($query)) {
 			throw new Exception($query, 'Query is not a string');
@@ -73,21 +84,21 @@ class PDO extends Base{
 		if (!$query = trim($query)) {
 			throw new Exception('Query', 'Query is empty');
 		}
-		++self::$querySum;
+		++$this->statistics['sum'];
 		$query = trim($query, ';') . ';';
 		try {
 			if (preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query) && in_array($type, [NULL, 0])) {
-				$results = new Iterator($this->link($write)->query($query)->fetchAll(\PDO::FETCH_CLASS, __NAMESPACE__ . '\\Row'));
+				$results = new Iterator($this->link($readonly)->query($query)->fetchAll(\PDO::FETCH_CLASS, __NAMESPACE__ . '\\Row'));
 				if ($this->explain && preg_match('/^\s*(SELECT)\s+/i', $query)) {
-					$this->command('EXPLAIN ' . $query, $write, $type);
+					$this->command('EXPLAIN ' . $query, $readonly, $type);
 				}
-				self::$queryRow += count($results);
+				$this->statistics['row'] += count($results);
 			} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE)\s+/i', $query) && in_array($type, [NULL, 1], true)) {
-				$results = $this->link(true)->exec($query);
+				$results = $this->link(false)->exec($query);
 			} elseif (in_array($type, [NULL, 2], true)) {
-				$results = $this->link(true)->query($query)->execute();
+				$results = $this->link(false)->query($query)->execute();
 			} else {
-				$results = $this->link(true)->query($query);
+				$results = $this->link(false)->query($query);
 			}
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
@@ -103,10 +114,10 @@ class PDO extends Base{
 		if ($this->inTransaction) {
 			throw new Exception('this.beginTransaction()', 'There is already an active transaction');
 		}
-		++self::$querySum;
+		++$this->statistics['sum'];
 		try {
 			$this->inTransaction = true;
-			$this->link(true)->beginTransaction();
+			$this->link(false)->beginTransaction();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
 			throw new Exception('this.beginTransaction()', $e->getMessage(), $info[0], $info[1]);
@@ -118,10 +129,10 @@ class PDO extends Base{
 		if (!$this->inTransaction) {
 			throw new Exception('this.commit()', 'There is no active transaction');
 		}
-		++self::$querySum;
+		++$this->statistics['sum'];
 		try {
 			$this->inTransaction = false;
-			$this->link(true)->commit();
+			$this->link(false)->commit();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
 			throw new Exception('this.commit()', $e->getMessage(), $info[0], $info[1]);
@@ -133,10 +144,10 @@ class PDO extends Base{
 		if (!$this->inTransaction) {
 			throw new Exception('this.rollBack()', 'There is no active transaction');
 		}
-		++self::$querySum;
+		++$this->statistics['sum'];
 		try {
 			$this->inTransaction = false;
-			$this->link(true)->rollBack();
+			$this->link(false)->rollBack();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
 			throw new Exception('this.rollBack()', $e->getMessage(), $info[0], $info[1]);
@@ -147,9 +158,9 @@ class PDO extends Base{
 
 
 	public function lastInsertID() {
-		++self::$querySum;
+		++$this->statistics['sum'];
 		try {
-			return call_user_func_array([$this->link(true), 'lastInsertId'], func_get_args());
+			return call_user_func_array([$this->link(false), 'lastInsertId'], func_get_args());
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['IM001', 0];
 			throw new Exception('this.lastInsertID()', $e->getMessage(), $info[0], $info[1]);

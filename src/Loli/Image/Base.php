@@ -53,46 +53,31 @@ abstract class Base {
 	 * $maxWidth 处理 图片 最大宽度 0 = 不限制
 	 * @var integer
 	 */
-	public $maxWidth = 8192;
+	protected $maxWidth = 8192;
 
 	/**
 	 * $maxHeight 处理 图片 最大高度 0 = 不限制
 	 * @var integer
 	 */
-	public $maxHeight = 8192;
+	protected $maxHeight = 8192;
 
 	/**
 	 * $maxPixels 处理 图片 最大像素 0 = 不限制
 	 * @var integer
 	 */
-	public $maxPixels = 16777216;
-
-
-
-
-	/**
-	 * $minWidth 处理 图片 最小宽度 0 = 不限制
-	 * @var integer
-	 */
-	public $minWidth = 0;
-
-	/**
-	 * $minHeight 处理 图片 最小高度 0 = 不限制
-	 * @var integer
-	 */
-	public $minHeight = 0;
+	protected $maxPixels = 16777216;
 
 	/**
 	 * $quality jpeg 处理质量
 	 * @var integer
 	 */
-	public $quality = 90;
+	protected $quality = 90;
 
 	// 文件后缀
-	public $types = [1 => ['jpg', 'jpeg', 'jpe', 'jfif', 'jif'], 2 => ['gif'], 3 => ['png'], 4 => ['webp']];
+	protected $types = [1 => ['jpg', 'jpeg', 'jpe', 'jfif', 'jif'], 2 => ['gif'], 3 => ['png'], 4 => ['webp']];
 
 	// mime类型
-	public $mimes = [1 => 'image/jpeg', 2 => 'image/gif', 3 => 'image/png', 4 => 'image/webp'];
+	protected $mimes = [1 => 'image/jpeg', 2 => 'image/gif', 3 => 'image/png', 4 => 'image/webp'];
 
 	/**
 	 * __construct
@@ -134,7 +119,7 @@ abstract class Base {
 	 * type
 	 * @return const
 	 */
-	abstract public function type();
+	abstract public function type($type = false);
 
 	/**
 	 * frames 帧数量
@@ -219,6 +204,29 @@ abstract class Base {
 	 * @return this
 	 */
 	abstract public function show($type = false);
+
+
+
+	public function mime() {
+		return $this->mimes[$this->type()];
+	}
+
+	protected function getType($type, $default = self::TYPE_JPEG) {
+		if (isset($this->types[$type])) {
+			return (int) $type;
+		}
+		$type = strtolower($type);
+		if (strpos($mimetype'/') === false) {
+			foreach($this->types as $key => $extensions) {
+				if (in_array($type, $extensions, true)) {
+					return $key;
+				}
+			}
+		} elseif ($type = array_search($type, $this->mimes, true)) {
+			return $type;
+		}
+		return $default;
+	}
 
 	/**
 	 * resize 剪切
@@ -425,16 +433,6 @@ abstract class Base {
 		// 最大高度检测
 		if ($maxHeight && $this->maxHeight && $this->maxHeight < $maxHeight) {
 			$maxHeight = $this->maxHeight;
-		}
-
-		// 最小宽度检测
-		if ($maxWidth && $this->minWidth && $this->minWidth < $maxWidth) {
-			$maxWidth = $this->minWidth;
-		}
-
-		// 最小高度检测
-		if ($maxHeight && $this->minHeight && $this->minHeight < $maxHeight) {
-			$maxHeight = $this->minHeight;
 		}
 
 		// 最大像素

@@ -40,24 +40,11 @@ class GD extends Base {
 		}
 		unset($contents);
 
+
 		imagealphablending($this->_im, false);
 		imagesavealpha($this->_im, true);
 
-
-		// 设置类型
-		$type = $type ? $type : image_type_to_extension($info[2], false);
-		if (empty($this->types[$type])) {
-			reset($this->types);
-			$this->_type = key($this->types);
-			foreach ($this->types as $key => $extensions) {
-				if (in_array($type, $extensions)) {
-					$this->_type = $key;
-					break;
-				}
-			}
-		} else {
-			$this->_type = (int) $type;
-		}
+		$this->type($type ? $type : image_type_to_extension($info[2], false));
 
 		return $this;
 	}
@@ -84,9 +71,12 @@ class GD extends Base {
 		return imagesy($this->_im);
 	}
 
-	public function type() {
+	public function type($type = false) {
 		if (!$this->_im) {
 			throw new Exception('Resource');
+		}
+		if ($type) {
+			$this->_type = $this->getType($type, $this->_type ? $this->_type : self::TYPE_JPEG);
 		}
 		return $this->_type;
 	}
@@ -180,7 +170,7 @@ class GD extends Base {
 				$$v = empty($color[$v]) ? 0 : $color[$v];
 			}
 		} elseif ($color && is_string($color) && strlen($color) >= 6) {
-			if ($color{0} == '#') {
+			if ($color{0} === '#') {
 				$color =  substr($color, 1);
 			}
 			$red = hexdec(substr($color, 0, 2));
@@ -191,9 +181,9 @@ class GD extends Base {
 		}
 
 
-		$yN = $y < 0 || ($y && is_string($y) && $y{0} == '-');
+		$yN = $y < 0 || ($y && is_string($y) && $y{0} === '-');
 		$w = abs(max($info[0], $info[2], $info[4], $info[6]) - min($info[0], $info[2], $info[4], $info[6]));
-		if (is_string($y) && substr($y, -1, 1) == '%') {
+		if (is_string($y) && substr($y, -1, 1) === '%') {
 			$y = ($this->width() - $w) * (($yN ? 100 + $y : $y) / 100);
 		} elseif ($yN) {
 			$y += $this->width() - $w;
@@ -210,9 +200,9 @@ class GD extends Base {
 		}
 
 
-		$xN = $x < 0 || ($x && is_string($x) && $x{0} == '-');
+		$xN = $x < 0 || ($x && is_string($x) && $x{0} === '-');
 		$h = abs(max($info[1], $info[3], $info[5], $info[7]) - min($info[1], $info[3], $info[5], $info[7]));
-		if (is_string($x) && substr($x, -1, 1) == '%') {
+		if (is_string($x) && substr($x, -1, 1) === '%') {
 			$x = ($this->height() - $h) * (($xN ? 100 + $x : $x) / 100);
 		} elseif ($xN) {
 			$x += $this->height() - $h;
@@ -254,15 +244,15 @@ class GD extends Base {
 		}
 		unset($data);
 
-		$xN = $x < 0 || ($x && is_string($x) && $x{0} == '-');
-		if (is_string($x) && substr($x, -1, 1) == '%') {
+		$xN = $x < 0 || ($x && is_string($x) && $x{0} === '-');
+		if (is_string($x) && substr($x, -1, 1) === '%') {
 			$x = ($this->width() - $info[0]) * (($xN ? 100 + $x : $x) / 100);
 		} elseif ($xN) {
 			$x += $this->width() - $info[0];
 		}
 
-		$yN = $y < 0 || ($y && is_string($y) && $y{0} == '-');
-		if (is_string($y) && substr($y, -1, 1) == '%') {
+		$yN = $y < 0 || ($y && is_string($y) && $y{0} === '-');
+		if (is_string($y) && substr($y, -1, 1) === '%') {
 			$y = ($this->height() - $info[1]) * (($yN ? 100 + $y : $y) / 100);
 		} elseif ($yN) {
 			$y += $this->height() - $info[1];
@@ -304,34 +294,36 @@ class GD extends Base {
 			throw new Exception('Path');
 		}
 
-		$info = pathinfo($save);
-		if (!empty($info['extension'])) {
-			foreach ($this->types as $k => $v) {
-				if (in_array($info['extension'], $v)) {
-					$type = $k;
-				}
-			}
+
+		if ($type) {
+			$this->type($type);
+		} elseif ($extension = pathinfo($save, PATHINFO_EXTENSION)) {
+			$this->type($extension);
 		}
 
-		if (self::TYPE_WEBP == $type) {
-			if (!imagewebp($this->_im, $save)) {
-				throw new Exception('Save');
-			}
-		} elseif (self::TYPE_GIF == $type) {
-			$this->_stotal();
-			if (!imagegif($this->_im, $save)) {
-				throw new Exception('Save');
-			}
-		} elseif (self::TYPE_PNG == $type) {
-			$this->_stotal();
-			if (!imagepng($this->_im, $save)) {
-				throw new Exception('Save');
-			}
-		} else {
-			imageinterlace($this->_im, true);
-			if (!imagejpeg($this->_im, $save, $this->quality)) {
-				throw new Exception('Save');
-			}
+		switch ($this->type()) {
+			case self::TYPE_WEBP:
+				if (!imagewebp($this->_im, $save)) {
+					throw new Exception('Save');
+				}
+				break;
+			case self::TYPE_GIF:
+				$this->_stotal();
+				if (!imagegif($this->_im, $save)) {
+					throw new Exception('Save');
+				}
+				break;
+			case self::TYPE_PNG:
+				$this->_stotal();
+				if (!imagepng($this->_im, $save)) {
+					throw new Exception('Save');
+				}
+				break;
+			default:
+				imageinterlace($this->_im, true);
+				if (!imagejpeg($this->_im, $save, $this->quality)) {
+					throw new Exception('Save');
+				}
 		}
 
 		// 权限
@@ -344,30 +336,34 @@ class GD extends Base {
 
 
 
-
 	public function show($type = false) {
 		if (!$this->_im) {
 			throw new Exception('Resource');
 		}
-		$type = $type ? $type : $this->type();
-		headers_sent() || header('Content-Type: ' . (empty($this->mimes[$type]) ? reset($this->mimes) : $this->mimes[$type]));
-		if (self::TYPE_WEBP === $type) {
-			if (!imagewebp($this->_im)) {
-				throw new Exception('Show');
-			}
-		} elseif (self::TYPE_GIF === $type) {
-			$this->_stotal();
-			if (!imagegif($this->_im)) {
-				throw new Exception('Show');
-			}
-		} elseif (self::TYPE_PNG === $type) {
-			$this->_stotal();
-			imagepng($this->_im);
-		} else {
-			imageinterlace($this->_im, true);
-			if (!imagejpeg($this->_im, NULL, $this->quality)) {
-				throw new Exception('Show');
-			}
+
+		switch ($this->type($type)) {
+			case self::TYPE_WEBP:
+				if (!imagewebp($this->_im)) {
+					throw new Exception('Show');
+				}
+				break;
+			case self::TYPE_GIF:
+				$this->_stotal();
+				if (!imagegif($this->_im)) {
+					throw new Exception('Show');
+				}
+				break;
+			case self::TYPE_PNG:
+				$this->_stotal();
+				if (!imagepng($this->_im)) {
+					throw new Exception('Show');
+				}
+				break;
+			default:
+				imageinterlace($this->_im, true);
+				if (!imagejpeg($this->_im, NULL, $this->quality)) {
+					throw new Exception('Show');
+				}
 		}
 		return $this;
 	}

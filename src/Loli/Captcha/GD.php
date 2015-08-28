@@ -28,15 +28,19 @@ class_exists('Loli\Captcha\Base') || exit;
 
 class GD extends Base{
 
-
+	public function mime() {
+		if (function_exists('imagepng')) {
+			return 'image/png';
+		} else {
+			return 'image/jpeg';
+		}
+	}
 	public function display() {
 		$this->_background();
 		$this->_ttftext();
-		if (function_exists('imagepng')) {
-			header('Content-type: image/png');
+		if ($this->mime() === 'image/png') {
 			imagepng($this->im);
 		} else {
-			header('Content-type: image/jpeg');
 			imagejpeg($this->im, false, 100);
 		}
 	}
