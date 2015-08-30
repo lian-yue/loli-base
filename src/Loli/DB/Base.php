@@ -78,7 +78,7 @@ abstract class Base{
 
 
 	// 统计
-	protected $statistics = ['row' => 0, 'sum' => 0];
+	protected $statistics = [];
 
 
 	// 只读模式
@@ -267,8 +267,8 @@ abstract class Base{
 		return $this->readonly;
 	}
 
-	public function statistics($key = 'sum') {
-		return $key === false ? $this->statistics : (isset($this->statistics[$key]) ? $this->statistics[$key] : false);
+	public function statistics() {
+		return $this->statistics;
 	}
 
 	/**

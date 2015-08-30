@@ -28,10 +28,6 @@ class Code{
 	// 生成 字符串 KEY
 	public static $key = '';
 
-	// 解密是否过期
-	public static $expire = false;
-
-
 	/**
 	* 加密 key (不可解密的 只能用来判断) 请勿加密重要数据
 	*
@@ -139,8 +135,8 @@ class Code{
 	*
 	*	返回值  你存入的数据
 	**/
-	public static function decode($string, $password = '') {
-		self::$expire = false;
+	public static function decode($string, $password = '', &$expire = false) {
+		$expire = false;
 		if (!is_string($string) || strlen($string) < 14) {
 			return false;
 		}
@@ -157,7 +153,7 @@ class Code{
 		if (count($arrays = explode(chr(0), self::_code(base64_decode(str_replace(['-', '_'], ['+', '/'], $code)), $rand . $password), 3)) != 3) {
 			return false;
 		}
-		list($type, $expire, $value) = $arrays;
+		list($type, $time, $value) = $arrays;
 
 		// type
 		if (!is_numeric($type)) {
@@ -165,8 +161,8 @@ class Code{
 		}
 
 		// 检查过期
-		if (!is_numeric($expire) || ($expire && $expire < time())) {
-			self::$expire = true;
+		if (!is_numeric($time) || ($time && $time < time())) {
+			$expire = true;
 			return false;
 		}
 

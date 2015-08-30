@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-01-15 13:01:52
 /*	Updated: UTC 2015-04-03 07:16:17
 /*
@@ -164,10 +175,7 @@ abstract class Base{
 
 
 	public function mime($file) {
-		static $info;
-		if (!isset($info)) {
-			$info = new finfo();
-		}
+		$info = new finfo();
 		if (!is_file($file)) {
 			throw new Exception('File does not exist', 2);
 		}

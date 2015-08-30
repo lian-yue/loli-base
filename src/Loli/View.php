@@ -106,7 +106,7 @@ class View implements RouteInterface{
 	}
 
 	protected function processing() {
-		return '<!--Processing:' . $this->route->request->processing() .' Memory:' .number_format((memory_get_peak_usage() / 1024 / 1024), 4) .' Files:' .count(get_included_files()) .' Query: '. $this->route->DB->statistics() .'-->';
+		return '<!--Processing:' . $this->route->request->processing() .' Memory:' .number_format((memory_get_peak_usage() / 1024 / 1024), 4) .' Files:' .count(get_included_files()) .' Query: '. count($this->route->DB->statistics()) .'-->';
 	}
 
 	public function __invoke() {

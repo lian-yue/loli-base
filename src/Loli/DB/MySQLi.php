@@ -53,7 +53,8 @@ class MySQLi extends Base{
 		if ($link->error) {
 			throw new ConnectException('this.MySQLi().select_db()', $link->error, '', $link->errno);
 		}
-
+		$link->set_charset('utf8');
+		$link->query("SET TIME_ZONE = `+0:00`");
 		return $link;
 	}
 
@@ -72,14 +73,15 @@ class MySQLi extends Base{
 			throw new Exception('Query', 'Query is empty');
 		}
 		$query = trim($query, ';') . ';';
-
+		$this->statistics[] = $query;
 
 		// 是否是只读
 		$readonly = !$this->inTransaction && preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query) ? $readonly : false;
 
 		// 链接
 		$link = $this->link($readonly);
-		$this->statistics['sum'];
+
+
 		// 查询
 		$result = $link->query($query);
 		if ($result === false) {
@@ -93,7 +95,6 @@ class MySQLi extends Base{
 		} elseif (preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query)) {
 			$results = [];
 			while ($fetch = $result->fetch_assoc()) {
-				++$this->statistics['row'];
 				$results[] = new Row($fetch);
 			}
 			$results && $result->free_result();
@@ -101,6 +102,8 @@ class MySQLi extends Base{
 			if ($this->explain && preg_match('/^\s*(SELECT)\s+/i', $query)) {
 				$this->command('EXPLAIN ' . $query, $slave);
 			}
+		} else {
+			$results = $result;
 		}
 		$this->log($query, $results);
 		return $results;
@@ -111,7 +114,7 @@ class MySQLi extends Base{
 		if ($this->inTransaction) {
 			throw new Exception('this.beginTransaction()', 'There is already an active transaction');
 		}
-		$this->statistics['sum'];
+		$this->statistics[] = 'beginTransaction;';
 		$this->inTransaction = true;
 		$link = $this->link(false);
 		if (!$link->autoCommit(false) && $link->errno) {
@@ -124,7 +127,7 @@ class MySQLi extends Base{
 		if (!$this->inTransaction) {
 			throw new Exception('this.commit()', 'There is no active transaction');
 		}
-		$this->statistics['sum'];
+		$this->statistics[] = 'commit;';
 		$this->inTransaction = false;
 		$link = $this->link(false);
 		$link->commit();
@@ -138,7 +141,7 @@ class MySQLi extends Base{
 		if (!$this->inTransaction) {
 			throw new Exception('this.rollBack()', 'There is no active transaction');
 		}
-		$this->statistics['sum'];
+		$this->statistics[] = 'rollBack;';
 		$this->inTransaction = false;
 		$link = $this->link(false);
 		$rollback = $link->rollBack();
@@ -150,14 +153,14 @@ class MySQLi extends Base{
 
 
 	public function lastInsertID() {
-		$this->statistics['sum'];
+		$this->statistics[] = 'lastInsertID;';
 		return $this->link(false)->insert_id;
 	}
 
 
 	public function ping() {
 		$link = $this->link();
-		$this->statistics['sum'];
+		$this->statistics[] = 'Ping;';
 		if (!$link->ping()) {
 			throw new ConnectException('this.ping()', $link->error, '', $link->errno);
 		}

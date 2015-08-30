@@ -42,7 +42,7 @@ class PDO extends Base{
 				case 'mysql':
 					$dsnQuery = 'this.PDO(mysql:host='. $hostname[0] . (empty($hostname[1]) ? '' : ';port=' . $hostname[1]) . ')';
 					$link = new \PDO('mysql:host='. $hostname[0] . (empty($hostname[1]) ? '' : ';port=' . $hostname[1]) .';dbname='.  $server['database'] . ';charset=UTF8', $server['username'], $server['password'], [\PDO::ATTR_PERSISTENT => true, \PDO::ATTR_AUTOCOMMIT => true, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
-					$link->query('SET TIME_ZONE = `+0:00`')->execute();
+					$link->exec('SET TIME_ZONE = `+0:00`');
 					break;
 				case 'sqlite':
 					// sqlite 需要当前 文件目录的写入权限
@@ -62,7 +62,7 @@ class PDO extends Base{
 	}
 
 	protected function ping() {
-		++$this->statistics['sum'];
+		$this->statistics[] = 'Ping';
 		try {
 			if (!($status = $this->link()->getAttribute(\PDO::ATTR_CONNECTION_STATUS)) || stripos($status, 'has gone away')) {
 				throw new ConnectException('this.ping()', $status);
@@ -84,19 +84,18 @@ class PDO extends Base{
 		if (!$query = trim($query)) {
 			throw new Exception('Query', 'Query is empty');
 		}
-		++$this->statistics['sum'];
 		$query = trim($query, ';') . ';';
+		$this->statistics[] = $query;
 		try {
 			if (preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query) && in_array($type, [NULL, 0])) {
 				$results = new Iterator($this->link($readonly)->query($query)->fetchAll(\PDO::FETCH_CLASS, __NAMESPACE__ . '\\Row'));
 				if ($this->explain && preg_match('/^\s*(SELECT)\s+/i', $query)) {
 					$this->command('EXPLAIN ' . $query, $readonly, $type);
 				}
-				$this->statistics['row'] += count($results);
 			} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE)\s+/i', $query) && in_array($type, [NULL, 1], true)) {
 				$results = $this->link(false)->exec($query);
 			} elseif (in_array($type, [NULL, 2], true)) {
-				$results = $this->link(false)->query($query)->execute();
+				$results = $this->link(false)->exec($query);
 			} else {
 				$results = $this->link(false)->query($query);
 			}
@@ -114,7 +113,7 @@ class PDO extends Base{
 		if ($this->inTransaction) {
 			throw new Exception('this.beginTransaction()', 'There is already an active transaction');
 		}
-		++$this->statistics['sum'];
+		$this->statistics[] = 'beginTransaction;';
 		try {
 			$this->inTransaction = true;
 			$this->link(false)->beginTransaction();
@@ -129,7 +128,7 @@ class PDO extends Base{
 		if (!$this->inTransaction) {
 			throw new Exception('this.commit()', 'There is no active transaction');
 		}
-		++$this->statistics['sum'];
+		$this->statistics[] = 'commit;';
 		try {
 			$this->inTransaction = false;
 			$this->link(false)->commit();
@@ -144,7 +143,7 @@ class PDO extends Base{
 		if (!$this->inTransaction) {
 			throw new Exception('this.rollBack()', 'There is no active transaction');
 		}
-		++$this->statistics['sum'];
+		$this->statistics[] = 'rollBack;';
 		try {
 			$this->inTransaction = false;
 			$this->link(false)->rollBack();
@@ -158,7 +157,7 @@ class PDO extends Base{
 
 
 	public function lastInsertID() {
-		++$this->statistics['sum'];
+		$this->statistics[] = 'lastInsertID;';
 		try {
 			return call_user_func_array([$this->link(false), 'lastInsertId'], func_get_args());
 		} catch (PDOException $e) {
@@ -184,8 +183,10 @@ class PDO extends Base{
 
 
 	public function value($value) {
-		if (is_array($value) || is_object($value)) {
+		if (is_array($value)) {
 			$value = json_encode($value);
+		} elseif (is_object($value)) {
+			$value = method_exists($value, '__toString') ? $value->__toString() : json_encode($value);
 		}
 		if ($value === NULL) {
 			return 'NULL';

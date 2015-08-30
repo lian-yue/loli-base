@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-05-23 11:20:19
 /*	Updated: UTC 2015-07-22 05:31:44
 /*
@@ -81,6 +92,9 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 	protected $format = false;
 
 
+	private $_nesting = 0;
+
+
 	// 所有 单标签 无结束标签的
 	protected static $singleTags = [
 		'base' => true,
@@ -145,9 +159,8 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 
 	//  预处理
 	protected function prepare(Node $node) {
-		static $nesting = 0;
 		// 限制嵌套层次
-		if ($nesting >= self::NESTING) {
+		if ($this->_nesting >= self::NESTING) {
 			return;
 		}
 
@@ -322,9 +335,9 @@ class Node implements ArrayAccess, IteratorAggregate, JsonSerializable, Countabl
 							$this->buffer = '';
 						} elseif (preg_match('/^[a-z_-][a-z0-9_:-]*$/i', $tagName)) {
 							// 其他标签递归
-							++$nesting;
+							++$this->_nesting;
 							$this->prepare($element);
-							--$nesting;
+							--$this->_nesting;
 						}
 					}
 			}

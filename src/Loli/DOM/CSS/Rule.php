@@ -84,6 +84,8 @@ class Rule extends Base implements ArrayAccess, IteratorAggregate, Countable{
 	// css 子规则
 	public $cssRules = [];
 
+	private $_nesting = 0;
+
 
 
 	// @font-face 字体文件属性名字等
@@ -562,9 +564,8 @@ class Rule extends Base implements ArrayAccess, IteratorAggregate, Countable{
 	 * @param  Rule   $rule
 	 */
 	protected function prepare($rule) {
-		static $nesting = 0;
 		// 限制嵌套层次
-		if ($nesting >= self::NESTING) {
+		if ($this->_nesting >= self::NESTING) {
 			return;
 		}
 
@@ -723,9 +724,9 @@ class Rule extends Base implements ArrayAccess, IteratorAggregate, Countable{
 									$rule->insertRule($rule2 = new Rule($this->buffer,  $types[$name]));
 									$rule2->privatePrefix = $privatePrefix;
 									$this->buffer = '';
-									++$nesting;
+									++$this->_nesting;
 									$this->prepare($rule2);
-									--$nesting;
+									--$this->_nesting;
 									break;
 								case 'custom-media':
 									// 编码

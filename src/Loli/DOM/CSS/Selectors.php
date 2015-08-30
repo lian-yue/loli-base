@@ -40,6 +40,8 @@ class Selectors extends Base implements IteratorAggregate, Countable{
 	 */
 	protected $selectors = [];
 
+	private $_stack = [];
+
 
 	public function __construct($selectors = false) {
 		$selectors && $this->process($selectors);
@@ -103,9 +105,8 @@ class Selectors extends Base implements IteratorAggregate, Countable{
 
 
 	protected function prepare($selectors) {
-		static $stack = [];
 		// 限制嵌套层次
-		if (count($stack) >= self::NESTING) {
+		if (count($this->_stack) >= self::NESTING) {
 			return;
 		}
 
@@ -131,7 +132,7 @@ class Selectors extends Base implements IteratorAggregate, Countable{
 					break 2;
 				case ')':
 					$this->buffer = '';
-					if ($stack) {
+					if ($this->_stack) {
 						break 2;
 					}
 					break;
@@ -328,10 +329,10 @@ class Selectors extends Base implements IteratorAggregate, Countable{
 							// 没匹配到 开始括号
 							if (!empty($buffer[1])) {
 								$selectors2 = new Selectors;
-								$stack[] = $buffer[0];
+								$this->_stack[] = $buffer[0];
 								$this->process($buffer[1], $selectors2);
-								array_pop($stack);
-								if ((!$stack || (reset($stack) !== 'matches' && $buffer[0] !== 'matches')) && $selectors2->count()) {
+								array_pop($this->_stack);
+								if ((!$this->_stack || (reset($this->_stack) !== 'matches' && $buffer[0] !== 'matches')) && $selectors2->count()) {
 									$single[] = [':', $buffer[0], $selectors2];
 								}
 							}

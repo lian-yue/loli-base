@@ -174,6 +174,10 @@ abstract class Builder{
 	abstract public function count();
 
 
+
+	abstract public function flush();
+
+
 	/**
 	 * deleteCacheSelect 删除读取缓存
 	 * @param  integer $refresh 延迟刷新时间

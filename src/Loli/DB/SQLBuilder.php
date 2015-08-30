@@ -29,7 +29,7 @@ class SQLBuilder extends Builder{
 
 
 	// 逻辑运算符
-	private $_logicals = [
+	private static $_logicals = [
 		'AND' => 'AND',
 		'&&' => 'AND',
 
@@ -42,7 +42,7 @@ class SQLBuilder extends Builder{
 
 
 	// 计算运算符
-	private $_assignments = [
+	private static $_assignments = [
 		'INC' => '+',
 		'+' => '+',
 
@@ -53,7 +53,7 @@ class SQLBuilder extends Builder{
 
 
 	// 比较运算符
-	private $_compares = [
+	private static $_compares = [
 
 
 		'EQ' => '=',
@@ -88,7 +88,7 @@ class SQLBuilder extends Builder{
 	];
 
 	// 比较运算符 加上not 的
-	private $_notCompares = [
+	private static $_notCompares = [
 
 
 		'EQ' => '!=',
@@ -121,11 +121,11 @@ class SQLBuilder extends Builder{
 	];
 
 	// 聚合函数
-	private $_havings = ['SUM','MIN','MAX','AVG','COUNT'];
+	private static $_havings = ['SUM','MIN','MAX','AVG','COUNT'];
 
 
 	// 全部函数
-	private $_functions = [
+	private static $_functions = [
 		'SUM' => 'MIN',
 		'MAX' => 'MAX',
 		'AVG' => 'AVG',
@@ -135,33 +135,78 @@ class SQLBuilder extends Builder{
 		'LAST' => 'LAST',
 	];
 
+
+
+
+
+	// 全部函数
+	private static $_types = [
+		'bool' => ['bit' => true, 'bool' => true],
+		'json' => ['array' => true, 'json' => true],
+
+		//  长度, 有符号, 无符号
+		'integer' => ['tinyint' => [1, 3, 4], 'smallint' => [2, 5, 6], 'mediumint' => [3, 8, 9], 'int' => [4, 10, 11], 'bigint' => [8, 20, 20]],
+
+		// 直接是值
+		'float' => ['real' => true, 'double' => true, 'float' => true, 'decimal' => true],
+
+		// 索引, 默认, 最大, 最小
+		'string' => ['varchar' => [true, 255, 4096, 0], 'text' => [false, false, 65535, 255], 'mediumtext' => [false, false, 16777215, 65535], 'longtext' => [false, false, 0, 0], 'char' => [true, 255, 4096, 0]],
+		'binary' => ['binary' => [true, 255, 4096, 0], 'varbinary' => [true, 255, 4096, 0], 'blob' => [false, false, 65535, 255], 'mediumblob' => [false, false, 16777215, 65535], 'logngblob' => [false, false, 0, 0]],
+
+		// date 默认值
+		'date' => ['datetime' => '0000-00-00 00:00:00', 'year' => '0000', 'date' => '0000-00-00', 'time' => '00:00:00', 'timestamp' => NULL],
+	];
+
+
 	// 是否缓存
 	private $_isCache = true;
 
-	// select 查询的结果
-	private $_select = false;
 
-	// count 查询的数量
-	private $_count = false;
-
-
+	private $_data = [];
 
 	private function _columnsType() {
-		static $types;
-		if (!isset($types)) {
-			$types = [];
+		if (!isset($this->_data['columnsType'])) {
+			$columnsType = [];
 			foreach ($this->columns as $name => $column) {
+				$type = false;
 				if ($column instanceof Param) {
-					$types[empty($column['name']) ? $name : $column['name']] = empty($value['type']) ? 'string' : $value['type'];
+					if ($column->name && is_scalar($column->name)) {
+						$name = $column->name;
+					}
+					if ($column->type) {
+						$type = $column->type;
+					}
 				} else {
-					$types[$column->name] = empty($value['type']) ? 'string' : $value['type'];
-					empty($value['type']) ? 'string' : $value['type'];
-					$name = empty($column['name']) ? $name : $column['name'];
-					$type = empty($value['type']) ? 'string' : $value['type'];
+					if (!empty($column['name'])) {
+						$name = $column['name'];
+					}
+					if (!empty($column['type'])) {
+						$type = $column['type'];
+					}
 				}
+				if ($type) {
+					if (!isset(self::$_types[$type])) {
+						$break = false;
+						foreach(self::$_types as $key => $value) {
+							if (isset($value[$type])) {
+								$type = $key;
+								$break = true;
+								break;
+							}
+						}
+						if (!$break) {
+							$type = 'string';
+						}
+					}
+				} else {
+					$type = 'string';
+				}
+				$columnsType[$name] = $type;
 			}
+			$this->_data['columnsType'] = $columnsType;
 		}
-		return $types;
+		return $this->_data['columnsType'];
 	}
 
 	/**
@@ -175,7 +220,7 @@ class SQLBuilder extends Builder{
 			return $command;
 		}
 		$results = $this->DB->command($command, false);
-		$this->getReadonly($ttl);
+		$this->setReadonly($ttl);
 		return $results;
 	}
 
@@ -187,8 +232,7 @@ class SQLBuilder extends Builder{
 	 * @return Param
 	 */
 	private function _table() {
-		static $table;
-		if (empty($table)) {
+		if (!isset($this->_data['table'])) {
 			$tables = (array) $this->tables;
 			// 没有表
 			if (!$tables) {
@@ -206,9 +250,10 @@ class SQLBuilder extends Builder{
 				$table = empty($table['value']) ? NULL : $table['value'];
 			}
 			$this->DB->key($table, true);
+			$this->_data['table'] = $table;
 		}
-		$this->useTables = [$table];
-		return $table;
+		$this->useTables = [$this->_data['table']];
+		return $this->_data['table'];
 	}
 
 
@@ -223,9 +268,8 @@ class SQLBuilder extends Builder{
 	 * @return string
 	 */
 	private function _from($type) {
-		static $form, $using, $useTables;
 
-		if (empty($form)) {
+		if (!isset($this->_data['from'])) {
 			// 没有表
 			if (!$this->tables) {
 				throw new Exception('', 'Unselected table');
@@ -268,7 +312,7 @@ class SQLBuilder extends Builder{
 				}
 
 
-				$join = $tables ? (in_array($join = strtoupper($table->join), ['INNER', 'LEFT', 'RIGHT', 'FULL']) ? $join : 'INNER') : '';
+				$join = $tables ? (in_array($join = strtoupper($table->join), ['INNER', 'LEFT', 'RIGHT', 'FULL'], true) ? $join : 'INNER') : '';
 
 
 				$on = '';
@@ -305,8 +349,9 @@ class SQLBuilder extends Builder{
 					$form[] = 'ON '. $table['on'];
 				}
 			}
-			$form = implode(',', $form);
-			$using = implode(',', $using);
+			$this->_data['form'] = implode(',', $form);
+			$this->_data['formUsing'] = implode(',', $using);
+			$this->_data['formUseTables'] = $useTables;
 		}
 
 
@@ -325,8 +370,8 @@ class SQLBuilder extends Builder{
 				throw new Exception($type, 'Unknown table structure type');
 		}
 
-		$this->useTables = $useTables;
-		return strtr($command, [':using' => $using, ':form' => $form]);
+		$this->useTables = $this->_data['formUseTables'];
+		return strtr($command, [':using' => $this->_data['formUsing'], ':form' => $this->_data['form']]);
 	}
 
 
@@ -337,8 +382,7 @@ class SQLBuilder extends Builder{
 	 * @return string
 	 */
 	private function _fields() {
-		static $fields;
-		if (empty($fields) || is_array($fields)) {
+		if (!isset($this->_data['fields'])) {
 			$fields = [];
 			foreach ($this->fields as $alias => $field) {
 				if (!$field instanceof Param) {
@@ -352,7 +396,7 @@ class SQLBuilder extends Builder{
 					continue;
 				}
 				$alias = $field->alias ? $this->DB->key($field->alias) : false;
-				$function = $field->function ? (empty($this->_functions[$function = strtoupper($field->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : false;
+				$function = $field->function ? (empty(self::$_functions[$function = strtoupper($field->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : false;
 				if ($function) {
 					$value = $function. '('.$value .')';
 				}
@@ -361,9 +405,9 @@ class SQLBuilder extends Builder{
 			if (!$fields) {
 				$fields[] = '*';
 			}
-			$fields = implode(', ', $fields);
+			$this->_data['fields'] = implode(', ', $fields);
 		}
-		return $fields;
+		return $this->_data['fields'];
 	}
 
 
@@ -375,8 +419,7 @@ class SQLBuilder extends Builder{
 	 * @return string
 	 */
 	private function _ignore() {
-		static $ignore;
-		if (!isset($ignore)) {
+		if (!isset($this->_data['ignore'])) {
 			$ignore = '';
 			foreach ($this->options as $name => $option) {
 				if ($option instanceof Param) {
@@ -387,9 +430,9 @@ class SQLBuilder extends Builder{
 					$ignore = $option;
 				}
 			}
-			$ignore = $ignore ? 'IGNORE' : '';
+			$this->_data['ignore'] = $ignore ? 'IGNORE' : '';
 		}
-		return $ignore;
+		return $this->_data['ignore'];
 	}
 
 
@@ -398,8 +441,7 @@ class SQLBuilder extends Builder{
 	 * @return string
 	 */
 	private function _rows() {
-		static $rows;
-		if (!isset($rows)) {
+		if (!isset($this->_data['rows'])) {
 			$rows = '';
 			if ($this->DB->protocol() === 'mysql') {
 				foreach ($this->options as $name => $option) {
@@ -411,15 +453,14 @@ class SQLBuilder extends Builder{
 						$rows = $option;
 					}
 				}
-				$rows = $rows ? 'SQL_CALC_FOUND_ROWS' : '';
+				$this->_data['rows'] = $rows ? 'SQL_CALC_FOUND_ROWS' : '';
 			}
 		}
-		return $rows;
+		return $this->_data['rows'];
 	}
 
 	private function _lock() {
-		static $lock;
-		if (!isset($lock)) {
+		if (!isset($this->_data['lock'])) {
 			$lock = '';
 			foreach ($this->options as $name => $option) {
 				if ($option instanceof Param) {
@@ -442,12 +483,12 @@ class SQLBuilder extends Builder{
 						$lock = 'LOCK IN SHARE MODE';
 						break;
 					default:
-						unset($lock);
 						throw new Exception($lock, 'Unknown type of lock');
 				}
 			}
+			$this->_data['lock'] = $lock;
 		}
-		return $lock;
+		return $this->_data['lock'];
 	}
 
 
@@ -456,9 +497,7 @@ class SQLBuilder extends Builder{
 	 * @return string
 	 */
 	private function _limit() {
-		static $limit;
-		if (!isset($limit)) {
-			$limit = 0;
+		if (!isset($this->_data['limit'])) {
 			foreach ($this->options as $name => $option) {
 				if ($option instanceof Param) {
 					if ($option->name === 'limit') {
@@ -468,9 +507,9 @@ class SQLBuilder extends Builder{
 					$limit = $option;
 				}
 			}
-			$limit = ($limit = intval($limit)) ? 'LIMIT ' . $limit : '';
+			$this->_data['limit'] = isset($limit) && ($limit = intval($limit)) ? 'LIMIT ' . $limit : '';
 		}
-		return $limit;
+		return $this->_data['limit'];
 	}
 
 
@@ -481,8 +520,7 @@ class SQLBuilder extends Builder{
 	 * @return string
 	 */
 	private function _offset() {
-		static $offset;
-		if (!isset($offset)) {
+		if (!isset($this->_data['offset'])) {
 			$offset = 0;
 			foreach ($this->options as $name => $option) {
 				if ($option instanceof Param) {
@@ -493,9 +531,9 @@ class SQLBuilder extends Builder{
 					$offset = $option;
 				}
 			}
-			$offset = ($offset = intval($offset)) ? 'OFFSET ' . $offset : '';
+			$this->_data['offset'] = ($offset = intval($offset)) ? 'OFFSET ' . $offset : '';
 		}
-		return $offset;
+		return $this->_data['offset'];
 	}
 
 
@@ -507,15 +545,14 @@ class SQLBuilder extends Builder{
 	 * @return string
 	 */
 	private function _order() {
-		static $order;
-		if (!isset($order) || is_array($order)) {
+		if (!isset($this->_data['order'])) {
 			$order = [];
 			foreach ($this->options as $name => $option) {
 				if ($option instanceof Param) {
 					if ($option->name === 'order' && $option->column) {
 						$column = $option->expression ? $option->column : $this->DB->key($option->column);
 						if ($column) {
-							$function = $option->function ? (empty($this->_functions[$function = strtoupper($option->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : false;
+							$function = $option->function ? (empty(self::$_functions[$function = strtoupper($option->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : false;
 							$order[$function? $function . '('. $column .')' : $column] = $option->value;
 						}
 					}
@@ -540,9 +577,9 @@ class SQLBuilder extends Builder{
 				}
 				$value = $column . ' ' . $value;
 			}
-			$order = $order ? 'ORDER BY ' . implode(', ', $order) : '';
+			$this->_data['order'] = $order ? 'ORDER BY ' . implode(', ', $order) : '';
 		}
-		return $order;
+		return $this->_data['order'];
 	}
 
 
@@ -552,15 +589,14 @@ class SQLBuilder extends Builder{
 	 * @return string
 	 */
 	private function _group($type) {
-		static $group;
-		if (!isset($group) || is_array($group)) {
+		if (!isset($this->_data['group'])) {
 			$group = [];
 			foreach ($this->options as $name => $option) {
 				if ($option instanceof Param) {
 					if ($option->name === 'group' && $option->value) {
 						$value = $option->expression ? $option->value : $this->DB->key($option->value);
 						if ($value) {
-							$function = $option->function ? (empty($this->_functions[$function = strtoupper($option->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : false;
+							$function = $option->function ? (empty(self::$_functions[$function = strtoupper($option->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : false;
 							if ($function) {
 								$value = $function . '('.$value.')';
 							}
@@ -575,9 +611,9 @@ class SQLBuilder extends Builder{
 					}
 				}
 			}
-			$group = implode(', ', $group);
+			$this->_data['group']  = implode(', ', $group);
 		}
-		return $type === 'SELECT' ? ($group ? 'GROUP BY ' . $group : '') : ($group ? 'COUNT(DISTINCT ' . $group . ')' : 'COUNT(*)');
+		return $type === 'SELECT' ? ($this->_data['group']  ? 'GROUP BY ' . $this->_data['group']  : '') : ($this->_data['group']  ? 'COUNT(DISTINCT ' . $this->_data['group']  . ')' : 'COUNT(*)');
 	}
 
 
@@ -590,15 +626,15 @@ class SQLBuilder extends Builder{
 	 * @return string
 	 */
 	private function _where() {
-		static $where, $useTables = [];
-		if (!isset($where)) {
-			$where = $this->_query($this->querys, false, $useTables);
-			if ($where) {
-				$where = 'WHERE ' . $where;
+		if (!isset($this->_data['where'])) {
+			$this->_data['whereUseTables'] = [];
+			$this->_data['where'] = $this->_query($this->querys, false, $this->_data['whereUseTables']);
+			if ($this->_data['where']) {
+				$this->_data['where'] = 'WHERE ' . $this->_data['where'];
 			}
-			$this->useTables = array_merge($useTables, $this->useTables);
 		}
-		return $where;
+		$this->useTables = array_merge($this->_data['whereUseTables'], $this->useTables);
+		return $this->_data['where'];
 	}
 
 	/**
@@ -606,15 +642,15 @@ class SQLBuilder extends Builder{
 	 * @return string
 	 */
 	private function _having() {
-		static $having, $useTables = [];
-		if (!isset($having)) {
-			$having = $this->_query($this->querys, true, $useTables);
-			if ($having) {
-				$having = 'HAVING ' . $having;
+		if (!isset($this->_data['having'])) {
+			$this->_data['havingUseTables'] = [];
+			$this->_data['having'] = $this->_query($this->querys, true, $this->_data['havingUseTables']);
+			if ($this->_data['having']) {
+				$this->_data['having'] = 'HAVING ' . $this->_data['having'];
 			}
-			$this->useTables = array_merge($useTables, $this->useTables);
 		}
-		return $having;
+		$this->useTables = array_merge($this->_data['havingUseTables'], $this->useTables);
+		return $this->_data['having'];
 	}
 
 
@@ -643,11 +679,12 @@ class SQLBuilder extends Builder{
 			if (!$logical) {
 				$logical = 'AND';
 			}
-			if (empty($this->_logicals[$logical])) {
+			if (empty(self::$_logicals[$logical])) {
 				throw new Exception($logical, 'Unknown logical');
 			}
-			$logical = $this->_logicals[$logical];
+			$logical = self::$_logicals[$logical];
 		}
+
 
 		$columnsType = $this->_columnsType();
 
@@ -672,15 +709,15 @@ class SQLBuilder extends Builder{
 			}
 
 			// 函数
-			$function = $query->function ? (empty($this->_functions[$function = strtoupper($query->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : '';
+			$function = $query->function ? (empty(self::$_functions[$function = strtoupper($query->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : '';
 
 			// 只允许聚合函数
-			if ($having && !$query->having && !in_array($function, $this->_havings, true)) {
+			if ($having && !$query->having && !in_array($function, self::$_havings, true)) {
 				continue;
 			}
 
 			// 不允许聚合函数
-			if ($having === false && ($query->having || ($query->having !== false && in_array($function, $this->_havings, true)))) {
+			if ($having === false && ($query->having || ($query->having !== false && in_array($function, self::$_havings, true)))) {
 				continue;
 			}
 
@@ -693,7 +730,7 @@ class SQLBuilder extends Builder{
 			} else {
 				$not = empty($query->not) ? '' : 'NOT';
 			}
-			$compare = empty($this->_compares[$compare]) ? ($compare ? $compare : '=') : $this->_compares[$compare];
+			$compare = empty(self::$_compares[$compare]) ? ($compare ? $compare : '=') : self::$_compares[$compare];
 
 
 			// 二进制
@@ -757,38 +794,31 @@ class SQLBuilder extends Builder{
 			}
 
 
-			if (is_string($query->column) && isset($columnsType[$query->column]) && (!$function || !in_array($function, $this->_havings, true)) && (!$compare || !in_array($compare, ['~', '~*', 'REGEX', 'REGEXP', 'TEXT', 'MATCH', 'AGAINST', 'SEARCH', 'NULL'], true))) {
+			if (is_string($query->column) && isset($columnsType[$query->column]) && (!$function || !in_array($function, self::$_havings, true)) && (!$compare || !in_array($compare, ['~', '~*', 'REGEX', 'REGEXP', 'TEXT', 'MATCH', 'AGAINST', 'SEARCH', 'NULL'], true))) {
 				switch ($columnsType[$query->column]) {
-					case 'array':
-					case 'json':
-						$query->value = (array) $query->value;
-						break;
-					case 'tinyint':
-					case 'smallint':
-					case 'mediumint':
-					case 'bigint':
-						if (in_array($compare, ['IN', 'BETWEEN'], true)) {
-							$query->value = array_map('intval', (array) $query->value);
-						} else {
-							$query->value = (int) $query->value;
-						}
-						break;
-					case 'real':
-					case 'double':
-					case 'float':
-					case 'decimal':
-						if (in_array($compare, ['IN', 'BETWEEN'], true)) {
-							$query->value = array_map('floatval', (array) $query->value);
-						} else {
-							$query->value = (float) $query->value;
-						}
-						break;
 					case 'bool':
 						if (in_array($compare, ['IN', 'BETWEEN'], true)) {
 							$query->value = array_map('boolval', (array) $query->value);
 						} else {
 							$query->value = (bool) $query->value;
 						}
+					case 'json':
+						$query->value = (array) $query->value;
+						break;
+					case 'integer':
+						if (in_array($compare, ['IN', 'BETWEEN'], true)) {
+							$query->value = array_map('intval', (array) $query->value);
+						} else {
+							$query->value = (int) $query->value;
+						}
+						break;
+					case 'float':
+						if (in_array($compare, ['IN', 'BETWEEN'], true)) {
+							$query->value = array_map('floatval', (array) $query->value);
+						} else {
+							$query->value = (float) $query->value;
+						}
+						break;
 					default:
 						if (in_array($compare, ['IN', 'BETWEEN'], true)) {
 							$query->value = array_map('strval', (array) $query->value);
@@ -869,7 +899,7 @@ class SQLBuilder extends Builder{
 					}
 					break;
 				default:
-					if (empty($this->_compares[$compare])) {
+					if (empty(self::$_compares[$compare])) {
 						throw new Exception($compare, 'Unknown compare');
 					}
 					$arrays[] = ['compare' => $compare, 'value' => $this->DB->value($query->value)];
@@ -886,9 +916,9 @@ class SQLBuilder extends Builder{
 						$commands[] =  implode(' ', [$array['binary'], $column, $array['not'], $array['compare'], $array['value'][0] . ' AND ' . $array['value'][1] ]);
 						break;
 					default;
-						if ($array['not'] && !empty($this->_notCompares[$array['compare']])) {
+						if ($array['not'] && !empty(self::$_notCompares[$array['compare']])) {
 							$array['not'] = '';
-							$array['compare'] = $this->_notCompares[$array['compare']];
+							$array['compare'] = self::$_notCompares[$array['compare']];
 						}
 						$commands[] =  implode(' ', [$array['binary'], $column, $array['not'], $array['compare'], $array['value']]);
 				}
@@ -907,8 +937,7 @@ class SQLBuilder extends Builder{
 	 * @return string
 	 */
 	private function _union() {
-		static $unions, $useTables;
-		if (!isset($unions) || is_array($union)) {
+		if (!isset($this->_data['union'])) {
 			$unions = $useTables = [];
 			foreach ($this->unions as $union) {
 				if (!$union instanceof Param) {
@@ -928,11 +957,12 @@ class SQLBuilder extends Builder{
 				}
 				throw new Exception($union, 'Does not support this type of union');
 			}
-			$unions = implode(' ', $unions);
+			$this->_data['union'] = implode(' ', $unions);
+			$this->_data['unionsUseTables'] = $useTables;
 		}
 
-		$this->useTables = array_merge($this->useTables, $useTables);
-		return $unions;
+		$this->useTables = array_merge($this->useTables, $this->_data['unionsUseTables']);
+		return $this->_data['union'];
 	}
 
 
@@ -947,7 +977,7 @@ class SQLBuilder extends Builder{
 		switch ($this->DB->protocol()) {
 			case 'mysql':
 				$table = $this->DB->value(addcslashes($table, '%_'));
-				$command = 'SHOW TABLES LIKE :table;';;
+				$command = 'SHOW TABLES LIKE :table;';
 				break;
 			case 'sqlite':
 				$table = $this->DB->value($table);
@@ -1047,15 +1077,15 @@ class SQLBuilder extends Builder{
 					$binaryType = ['blob' => 65535, 'mediumblob' => 16777215, 'logngblob' => 0];
 
 					$isIntegerType = array_key_exists($column->type, $integerType);
-					$isFloatType = in_array($column->type, $floatType);
-					$isIndexStringType = in_array($column->type, $indexStringType);
-					$isindexBinaryType = in_array($column->type, $indexBinaryType);
+					$isFloatType = in_array($column->type, $floatType, true);
+					$isIndexStringType = in_array($column->type, $indexStringType, true);
+					$isindexBinaryType = in_array($column->type, $indexBinaryType, true);
 					$isStringType = array_key_exists($column->type, $stringType);
 					$isBinaryType = array_key_exists($column->type, $binaryType);
-					if (in_array($column->type, ['bit', 'date', 'time', 'year', 'datetime', 'timestamp'])) {
+					if (in_array($column->type, ['bit', 'date', 'time', 'year', 'datetime', 'timestamp'], true)) {
 						// 其他类型
 						$value['type'] = $column->type;
-						if ($column->length && !in_array($column->type, ['date', 'year'])) {
+						if ($column->length && !in_array($column->type, ['date', 'year'], true)) {
 							$value['length'] = intval($column->length);
 						}
 					} elseif ($column->type === 'bool') {
@@ -1184,12 +1214,14 @@ class SQLBuilder extends Builder{
 			// 默认 value
 			if ($value['increment']) {
 
-			} elseif ($value['type'] === 'bool') {
-				$value['value'] = (bool) $column->value;
+			} elseif ($column->type === 'bool') {
+				$value['value'] = $this->DB->protocol() === 'mysql' ? (int) (bool) $column->value : (bool) $column->value;
 			} elseif ($isIntegerType || $isFloatType) {
 				$value['value'] = (int) $column->value;
 			} elseif ($isStringType) {
 
+			}  elseif ($isIndexStringType) {
+				$value['value'] = $this->DB->value((string) $column->value);
 			} elseif (!$column->value && array_key_exists($value['type'], $defaultValues)) {
 				if ($defaultValues[$value['type']] !== NULL) {
 					$value['value'] = $this->DB->value($defaultValues[$value['type']]);
@@ -1221,7 +1253,7 @@ class SQLBuilder extends Builder{
 					}
 					continue;
 				}
-				if ($value[$k] || ($value[$k] !== false && in_array($k, ['primary', 'unique', 'key', 'search'])) || in_array($k, ['value'])) {
+				if ($value[$k] || ($value[$k] !== false && in_array($k, ['primary', 'unique', 'key', 'search'], true)) || in_array($k, ['value'], true)) {
 					$array[] = sprintf($v, $value[$k]);
 				}
 			}
@@ -1277,7 +1309,7 @@ class SQLBuilder extends Builder{
 
 		$arrays = [];
 		foreach ($commandOptions as $name => $value) {
-			if ($value && !empty($options[$name]) && !in_array($name, ['primary', 'unique', 'key', 'search'])) {
+			if ($value && !empty($options[$name]) && !in_array($name, ['primary', 'unique', 'key', 'search'], true)) {
 				$arrays[':'.$name] = strtr($value, [':value' => $this->DB->value($options[$name])]);
 			} else {
 				$arrays[':'.$name] = '';
@@ -1377,7 +1409,7 @@ class SQLBuilder extends Builder{
 					} else {
 						$document[$value->name] = $value->expression ? $value->value : $this->DB->value($value->value);
 					}
-					$function = $value->function ? (empty($this->_functions[$function = strtoupper($value->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : '';
+					$function = $value->function ? (empty(self::$_functions[$function = strtoupper($value->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : '';
 					if ($function) {
 						$document[$value->name] = $function . '('. $document[$value->name] .')';
 					}
@@ -1442,9 +1474,11 @@ class SQLBuilder extends Builder{
 
 
 		$document = [];
-		foreach (end($this->documents) as $name => $value) {
+		$documents = $this->documents;
+		$documents = end($documents);
+		foreach ($documents as $name => $value) {
 			if ($value instanceof Param) {
-				if ($value->value) {
+				if ($value->value === NULL) {
 					continue;
 				}
 				$name = $this->DB->key($value->name);
@@ -1459,25 +1493,25 @@ class SQLBuilder extends Builder{
 				}
 
 				$assignment = strtoupper($value->assignment);
-				$assignment = empty($this->_assignments[$assignment]) ? $assignment : $this->_assignments[$assignment];
+				$assignment = empty(self::$_assignments[$assignment]) ? $assignment : self::$_assignments[$assignment];
 
 				// 字段 + 运算符 + 值
-				if (in_array($assignment, ['+', '-', '*', '/'])) {
+				if (in_array($assignment, ['+', '-', '*', '/'], true)) {
 					$column = $value->column ? $this->DB->key($value->column) : $name;
-					$document[$name] = $value->before ? $value  .' '. $assignment .' '. $column : $column  .' '. $assignment .' '. $value;
+					$document[$name] = $value->before ? $data  .' '. $assignment .' '. $column : $column  .' '. $assignment .' '. $data;
 					continue;
 				}
 
 				// 替换
 				if ($assignment === 'REPLACE') {
-					$document[$name] =  'REPLACE('. $name .', '. $this->DB->value($value->search) .', '. $value .')';
+					$document[$name] =  'REPLACE('. $name .', '. $this->DB->value($value->search) .', '. $data .')';
 					continue;
 				}
 
-				if (!in_array($assignment, ['', '='])) {
+				if (!in_array($assignment, ['', '='], true)) {
 					throw new Exception($assignment, 'Unknown assignment');
 				}
-				$document[$name] = $value;
+				$document[$name] = $data;
 			} elseif ($value !== NULL) {
 				$document[$this->DB->key($name, true)] = $this->DB->value($value);
 			}
@@ -1492,11 +1526,11 @@ class SQLBuilder extends Builder{
 			$value = $name . ' = ' . $value;
 		}
 		unset($value);
-		$value = implode(', ', $values);
+		$value = implode(', ', $document);
 
 
-		$command = 'UPDATE :using :form SET :value :where :order :offset :limit';
-		$command = strtr($command, [':ignore' => $this->_ignore(), ':using' => $this->_using(), ':form' => $this->_from('UPDATE'), ':value' => $value, ':where' => $this->_where(), ':order' => $this->_order(), ':limit' => $this->_limit()]);
+		$command = 'UPDATE :form SET :value :where :order :offset :limit';
+		$command = strtr($command, [':ignore' => $this->_ignore(), ':form' => $this->_from('UPDATE'), ':value' => $value, ':where' => $this->_where(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit()]);
 		return $this->_command($command);
 	}
 
@@ -1508,45 +1542,43 @@ class SQLBuilder extends Builder{
 
 
 	public function select() {
-		static $command, $replaces;
-
 		// 读缓存数据
 		if ($this->_isCache) {
 
 		} elseif ($this->execute) {
-			if (!$this->_lock() && is_array($this->_select)) {
-				return $this->_select;
+			if (!$this->_lock() && isset($this->_data['select'])) {
+				return $this->_data['select'];
 			}
-		} elseif (isset($command)) {
-			return $command;;
+		} elseif (isset($this->_data['selectCommand'])) {
+			return $this->_data['selectCommand'];
 		}
 
 
 
-		if (empty($replaces) || empty($command)) {
+		if (empty($this->_data['selectReplaces']) || empty($this->_data['selectCommand'])) {
 			// 替换
-			$replaces = [':field' => $this->_fields(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()];
+			$this->_data['selectReplaces'] = [':field' => $this->_fields(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()];
 
 			// 命令行
-			$command = strtr('SELECT :rows :field :form :where :group :having :order :offset :limit :lock :union;', $replaces + [':lock' => $this->_lock(), ':rows' => $this->_rows()]);
+			$this->_data['selectCommand'] = strtr('SELECT :rows :field :form :where :group :having :order :offset :limit :lock :union;', $this->_data['selectReplaces'] + [':lock' => $this->_lock(), ':rows' => $this->_rows()]);
 		}
 
 		// 不需要执行的
 		if (!$this->execute) {
-			return $command;
+			return $this->_data['selectCommand'];
 		}
 
-
-		if ($this->cache[0] && $this->_isCache && $this->_lock() && (is_array($this->_select = Cache::get($cacheKey = json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache] + $replaces), get_class($this))) && ($this->cache[1] < 1 || $this->cache[0] === -1 || (Cache::ttl($cacheKey, get_class($this)) > $this->cache[1] || !Cache::add(true, 'TTL' . $cacheKey, get_class($this), $this->cache[1] + 1))))) {
+		if ($this->cache[0] && $this->_isCache && !$this->_lock() && (($this->_data['select'] = Cache::get($cacheKey = json_encode(['cache' => $this->cache] + $this->_data['selectReplaces']), get_class($this->cursor) . $this->DB->database())) !== false && ($this->cache[1] < 1 || $this->cache[0] === -1 || (Cache::ttl($cacheKey, get_class($this)) > $this->cache[1] || !Cache::add(true, 'TTL' . $cacheKey, get_class($this), $this->cache[1] + 1))))) {
 			// 用缓存的
 		} else {
+
 			// 不用缓存
 
 			// 读取数据
-			$this->_select = $this->DB->command($command, $this->getReadonly());
+			$this->_data['select'] = $this->DB->command($this->_data['selectCommand'], $this->getReadonly());
 
 			// 写入缓存
-			$this->cache[0] && !$this->_lock() && Cache::set($this->_select, json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache] + $replaces), get_class($this), $this->cache[0]);
+			$this->cache[0] && !$this->_lock() && Cache::set($this->_data['select'], json_encode(['cache' => $this->cache] + $this->_data['selectReplaces']), get_class($this->cursor) . $this->DB->database(), $this->cache[0]);
 
 			// 需要去全部行数的
 			if ($this->_isCache && $this->_rows()) {
@@ -1555,44 +1587,43 @@ class SQLBuilder extends Builder{
 				$this->_isCache = true;
 			}
 		}
-		return $this->_select;
+		return $this->_data['select'];
 	}
 
 
 
 
 	public function count() {
-		static $command, $replaces;
 
 		// 读缓存数据
 		if ($this->_isCache) {
 
 		} elseif ($this->execute) {
-			if (!$this->_lock() && is_array($this->_select)) {
-				return $this->_select;
+			if (!$this->_lock() && isset($this->_data['count'])) {
+				return $this->_data['count'];
 			}
-		} elseif (isset($command)) {
-			return $command;;
+		} elseif (isset($this->_data['countCommand'])) {
+			return $this->_data['countCommand'];
 		}
 
 
 		if ($this->cache[0] || !$this->_rows()) {
-			$replaces = [':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union()];
+			$this->_data['countReplaces'] = [':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union()];
 		}
 
 		// rows 的
 		if ($this->_rows()) {
-			$command = 'SELECT FOUND_ROWS()';
+			$this->_data['countCommand'] = 'SELECT FOUND_ROWS()';
 		} else {
-			$command = strtr('SELECT :group :form :where :having :union;', $replaces);
+			$this->_data['countCommand'] = strtr('SELECT :group :form :where :having :union;', $this->_data['countReplaces']);
 		}
 
 		// 不需要执行的
 		if (!$this->execute) {
-			return $command;
+			return $this->_data['countCommand'];
 		}
 
-		if ($this->cache[0] && $this->_isCache && (($this->_count = Cache::get(json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache] + $replaces), get_class($this))) !== false && ($this->cache[1] < 1 || $this->cache[0] === -1 || (Cache::ttl($cacheKey, get_class($this)) > $this->cache[1] || (Cache::ttl($cacheKey, get_class($this)) > $this->cache[1] || !Cache::add(true, 'TTL' . $cacheKey, get_class($this), $this->cache[1] + 1)))))) {
+		if ($this->cache[0] && $this->_isCache && (($this->_data['count'] = Cache::get(json_encode(['cache' => $this->cache] + $this->_data['countReplaces']), get_class($this->cursor) . $this->DB->database())) !== false && ($this->cache[1] < 1 || $this->cache[0] === -1 || (Cache::ttl($cacheKey, get_class($this)) > $this->cache[1] || (Cache::ttl($cacheKey, get_class($this)) > $this->cache[1] || !Cache::add(true, 'TTL' . $cacheKey, get_class($this), $this->cache[1] + 1)))))) {
 			// 用缓存的
 		} else {
 			// 需要读取数据的
@@ -1605,21 +1636,21 @@ class SQLBuilder extends Builder{
 			}
 
 			// 数量
-			$this->_count = 0;
-			foreach ((array)$this->DB->command($command, $this->getReadonly()) as $row) {
-				$this->_count += array_sum((array) $row);
+			$this->_data['count'] = 0;
+			foreach ((array)$this->DB->command($this->_data['countCommand'], $this->getReadonly()) as $row) {
+				$this->_data['count'] += array_sum((array) $row);
 			}
-			$this->cache[0] && Cache::set($this->_count, json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache] + $replaces), get_class($this), $this->cache[0]);
+			$this->cache[0] && Cache::set($this->_data['count'], json_encode(['cache' => $this->cache] + $this->_data['countReplaces']), get_class($this->cursor) . $this->DB->database(), $this->cache[0]);
 		}
 
-		return $this->_count;
+		return $this->_data['count'];
 	}
 
 
 
 
 	public function delete() {
-		$command = strtr('DELETE :ignore :form :where :order :offset :limit', [':ignore' => $this->_ignore(), ':using' => $this->_using(), ':form' => $this->_from('DELETE'), ':where' => $this->_where(), ':order' => $this->_order(), ':limit' => $this->_limit()]);
+		$command = strtr('DELETE :ignore :form :where :order :offset :limit', [':ignore' => $this->_ignore(), ':form' => $this->_from('DELETE'), ':where' => $this->_where(), ':order' => $this->_order(), ':limit' => $this->_limit()]);
 		return $this->_command($command);
 	}
 
@@ -1627,14 +1658,19 @@ class SQLBuilder extends Builder{
 
 
 	public function deleteCacheSelect($refresh = NULL) {
-		$this->cache[0] && Cache::delete(json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache, ':field' => $this->_fields(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union(), ':lock' => $this->_lock()]), get_class($this), $refresh === NULL ? $this->cache[1] : $refresh);
-		$this->_select = false;
+		$this->cache[0] && Cache::delete(json_encode(['cache' => $this->cache, ':field' => $this->_fields(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union(), ':lock' => $this->_lock()]), get_class($this->cursor) . $this->DB->database(), $refresh === NULL ? $this->cache[1] : $refresh);
+		unset($this->_data['select']);
 		return $this;
 	}
 
 	public function deleteCacheCount($refresh = NULL) {
-		$this->cache[0] && Cache::delete(json_decode(['database' => $this->DB->database(), 'protocol' => $this->DB->protocol(), 'cache' => $this->cache, ':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union(), ':lock' => $this->_lock()]), get_class($this), $refresh === NULL ? $this->cache[1] : $refresh);
-		$this->_count = false;
+		$this->cache[0] && Cache::delete(json_encode(['cache' => $this->cache, ':group' => $this->_group('COUNT'), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':having' => $this->_having(), ':union' => $this->_union(), ':lock' => $this->_lock()]), get_class($this->cursor) . $this->DB->database(), $refresh === NULL ? $this->cache[1] : $refresh);
+		$this->_data['count'] = false;
 		return $this;
+	}
+
+
+	public function flush() {
+		$this->_data = [];
 	}
 }

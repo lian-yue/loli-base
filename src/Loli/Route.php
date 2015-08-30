@@ -180,7 +180,7 @@ class Route{
 			$this->method = $controller[1];
 
 			// RBAC 权限
-			if ($this->RBAC && !$this->RBAC->has($this->controller)) {
+			if ($this->RBAC && !$this->RBAC->has($this->controller, $this->method)) {
 				$this->response->setStatus(403);
 				throw new Message([90, 'RBAC'], Message::ERROR);
 			}
@@ -307,7 +307,7 @@ class Route{
 				break;
 			case 'session':
 				// Session
-				$result = new Session($route->request);
+				$result = new Session($route->request->getToken());
 				break;
 			case 'DB':
 				// 数据库
@@ -343,7 +343,7 @@ class Route{
 				if (class_exists('PDO') && in_array($server['protocol'], \PDO::getAvailableDrivers())) {
 					$class .= 'PDO';
 				} elseif (isset($protocol[$server['protocol']])) {
-					$class .= $protocol[$server['protocol']];
+					$class .= $protocol[$server['protocol']][1];
 				} else {
 					$class .= ucwords($server['protocol']);
 				}

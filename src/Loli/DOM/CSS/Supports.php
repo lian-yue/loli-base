@@ -35,6 +35,8 @@ class Supports extends Base implements IteratorAggregate, Countable{
 
 	protected $childs = [];
 
+	private $_nesting = 0;
+
 	public function __construct($value = false) {
 		$this->value = trim($value);
 	}
@@ -55,10 +57,9 @@ class Supports extends Base implements IteratorAggregate, Countable{
 
 
 	protected function prepare($supports) {
-		static $nesting = 0;
 
 		// 限制嵌套层次
-		if ($nesting >= self::NESTING) {
+		if ($this->_nesting >= self::NESTING) {
 			return;
 		}
 
@@ -104,9 +105,9 @@ class Supports extends Base implements IteratorAggregate, Countable{
 				$supports->insert($supports2 = new Supports);
 
 				// 递归
-				++$nesting;
+				++$this->_nesting;
 				$this->prepare($supports2);
-				--$nesting;
+				--$this->_nesting;
 
 				// 无效的对象移除
 				if (!$supports2->childs && !$supports2->value) {
@@ -137,154 +138,6 @@ class Supports extends Base implements IteratorAggregate, Countable{
 		}
 	}
 
-
-			/*if ($char === '(') {
-				// 属性的
-				if ($supports->parent && !$supports->childs && strpos($this->buffer, ':') !== false) {
-					$brackets = 1;
-				    $this->buffer .= '(';
-					while ($brackets > 0 && ($char = $this->search('()'))) {
-						if ($char === '(') {
-							++$brackets;
-							$this->buffer .= '(';
-						} elseif ($brackets > 0) {
-							--$brackets;
-							$this->buffer .= ')';
-						}
-					}
-					if ($brackets > 0) {
-						$this->buffer .= str_repeat(')', $brackets);
-					}
-					continue;
-				} else {
-					// 开始
-					$supports->type = self::TYPE_GROUP;
-					if ($supports->childs) {
-						// and or 运算符
-						if (in_array($buffer = strtolower(trim($this->buffer)), ['and', 'or'], true)) {
-							$supports->value = $buffer;
-						}
-					} elseif (!$supports->parent && strcasecmp(trim($this->buffer), 'not') === 0) {
-						// not 运算符
-						$supports->value = 'not';
-					} else {
-						$supports->value = 'and';
-					}
-
-					// 清空缓冲区
-					$this->buffer = '';
-
-					// 创建对象
-					$supports->insert($supports2 = new Supports);
-
-					// 递归
-					++$nesting;
-					$this->prepare($supports2);
-					--$nesting;
-
-					// 无效的对象移除
-					if (!$supports2->childs && !$supports2->value) {
-						$supports2->parent->delete($supports2);
-					}
-				}
-				continue;
-			}
-
-
-
-
-
-
-			if ($char === ')') {
-				// 结束
-				if ($supports->parent && !$supports->childs) {
-					$supports->type = self::TYPE_VALUE;
-					$supports->value = self::TYPE_VALUE;
-					$array = array_map('trim', explode(':', $this->buffer, 2));
-				}
-				$this->buffer = '';
-			}
-			break;
-
-
-
-
-
-
-
-
-			/*
-			switch ($char) {
-				case '(':
-					// 开始
-					$supports->type = self::TYPE_GROUP;
-
-					if ($supports->parent && !$supports->childs && strpos($this->buffer, ':') !== false) {
-						// 属性的
-						$brackets = 1;
-					    $this->buffer .= '(';
-						while ($brackets > 0 && ($char = $this->search('()'))) {
-							if ($char === '(') {
-								++$brackets;
-								$this->buffer .= '(';
-							} elseif ($brackets > 0) {
-								--$brackets;
-								$this->buffer .= ')';
-							}
-						}
-						if ($brackets > 0) {
-							$this->buffer .= str_repeat(')', $brackets);
-						}
-						break;
-					} elseif ($supports->childs) {
-						// and or 运算符
-						if (in_array($buffer = strtolower(trim($this->buffer)), ['and', 'or'], true)) {
-							$supports->value = $buffer;
-						}
-					} elseif (!$supports->parent && strcasecmp(trim($this->buffer), 'not') === 0) {
-						// not 运算符
-						$supports->value = 'not';
-					} else {
-						$supports->value = 'and';
-					}
-
-					// 清空缓冲区
-					$this->buffer = '';
-
-					// 创建对象
-					$supports->insert($supports2 = new Supports);
-
-					// 递归
-					++$nesting;
-					$this->prepare($supports2);
-					--$nesting;
-
-					// 无效的对象移除
-					if (!$supports2->childs && !$supports2->value) {
-						$supports2->parent->delete($supports2);
-					}
-					break;
-				case ')':
-					// 结束
-					if ($supports->parent && !$supports->childs) {
-						$supports->type = self::TYPE_VALUE;
-						$supports->value = self::TYPE_VALUE;
-						$array = array_map('trim', explode(':', $this->buffer, 2));
-					}
-					$this->buffer = '';
-					break 2;
-				default:
-					// 跳出
-					$this->buffer = '';
-					break 2;
-			}
-		}
-
-		// 如果是 not 运算符只允许一个 属性
-		if ($supports->value === 'not' && $supports->childs) {
-			$supports->childs = [reset($supports->childs)];
-		}
-	}*/
 
 
 	public function insert(Supports $supports, $index = NULL) {

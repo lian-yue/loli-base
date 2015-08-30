@@ -71,22 +71,26 @@ class Cursor{
 	// 主键
 	protected $primary = [];
 
-	// 主键
-	protected $primaryCache = 0;
+	// 主键缓存有效期
+	protected $primaryTTL = 0;
 
 	// 过滤
 	protected $callback = false;
 
 	// 构造器对象
-	protected $builders = [
+	protected $buildersClass = [
 		'mongo' => 'Mongo',
 		'mongodb' => 'Mongo',
 		'redis' => 'Redis',
 	];
 
+	// 构造器对象
+	protected $builder = NULL;
 
-	// 查询构造器
-	protected $data = [];
+	protected $current = 0;
+
+	protected $increment = 0;
+
 
 	/**
 	 * args 取得参数
@@ -101,13 +105,12 @@ class Cursor{
 
 
 	public function DB(Base $DB) {
-		$this->data = [];
+		++$this->increment;
 		$this->DB = $DB;
 	}
 
 
 	public function insertID($insertID) {
-		$this->data = [];
 		$this->insertID = $insertID;
 	}
 
@@ -118,7 +121,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function readonly($readonly) {
-		$this->data = [];
+		++$this->increment;
 		$this->readonly = $readonly;
 		return $this;
 	}
@@ -129,7 +132,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function execute($execute) {
-		$this->data = [];
+		++$this->increment;
 		$this->execute = $execute;
 		return $this;
 	}
@@ -143,7 +146,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function cache($ttl = 0, $refresh = 0) {
-		$this->data = [];
+		++$this->increment;
 		$this->cache = [$ttl, $refresh];
 		return $this;
 	}
@@ -154,7 +157,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function indexs(array $indexs) {
-		$this->data = [];
+		++$this->increment;
 		$this->indexs = array_merge($this->indexs, $indexs);
 		return $this;
 	}
@@ -166,7 +169,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function index($column, $value) {
-		$this->data = [];
+		++$this->increment;
 		$this->indexs[$column] = $value;
 		return $this;
 	}
@@ -178,7 +181,7 @@ class Cursor{
 	 * @return $this
 	 */
 	public function tables(array $tables) {
-		$this->data = [];
+		++$this->increment;
 		$this->tables = array_merge($this->tables, $tables);
 		return $this;
 	}
@@ -194,7 +197,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function table($table, $alias = NULL, $join = NULL, $on = NULL, array $params = []) {
-		$this->data = [];
+		++$this->increment;
 		if ($table instanceof Param) {
 			$alias === NULL || $table->setParam('alias', $alias);
 			$join === NULL || $table->setParam('join', $join);
@@ -214,7 +217,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function columns(array $columns) {
-		$this->data = [];
+		++$this->increment;
 		$this->columns = array_merge($this->columns, $columns);
 		return $this;
 	}
@@ -228,7 +231,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function column($name, $type = NULL, $length = NULL, array $params = []) {
-		$this->data = [];
+		++$this->increment;
 		if ($name instanceof Param) {
 			$type === NULL || $name->setParam('type', $type);
 			$length === NULL || $name->setParam('length', $length);
@@ -246,7 +249,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function fields(array $fields) {
-		$this->data = [];
+		++$this->increment;
 		$this->fields = array_merge($this->fields, $fields);
 		return $this;
 	}
@@ -260,7 +263,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function field($field, $alias = NULL, $function = NULL, array $params = []) {
-		$this->data = [];
+		++$this->increment;
 		if ($field instanceof Param) {
 			$alias === NULL || $field->setParam('alias', $alias);
 			$function === NULL || $field->setParam('function', $function);
@@ -278,7 +281,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function querys(array $querys) {
-		$this->data = [];
+		++$this->increment;
 		$this->querys = array_merge($this->querys, $querys);
 		return $this;
 	}
@@ -292,7 +295,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function query($column, $value = NULL, $compare = NULL, $function = NULL, array $params = []) {
-		$this->data = [];
+		++$this->increment;
 		if ($column instanceof Param) {
 			$value === NULL || $column->setParam('value', $value);
 			$compare === NULL || $column->setParam('compare', $compare);
@@ -314,7 +317,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function values(array $values, $toDocument = false) {
-		$this->data = [];
+		++$this->increment;
 		$this->values = array_merge($this->values, $values);
 		if ($toDocument && $this->values) {
 			$this->documents[] = $this->values;
@@ -334,7 +337,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function value($name, $value = NULL, array $params = [], $toDocument = false) {
-		$this->data = [];
+		++$this->increment;
 		if ($name instanceof Param) {
 			$value === NULL || $name->setParam('value', $value);
 			$name->setParams($params);
@@ -370,7 +373,7 @@ class Cursor{
 	 * @return $this
 	 */
 	public function document(array $document) {
-		$this->data = [];
+		++$this->increment;
 		$this->documents[] = $document;
 		return $this;
 	}
@@ -382,7 +385,7 @@ class Cursor{
 	 * @return $this
 	 */
 	public function options(array $options) {
-		$this->data = [];
+		++$this->increment;
 		$this->options = array_merge($this->options, $options);
 		return $this;
 	}
@@ -395,7 +398,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function option($name, $value = NULL, array $params = []) {
-		$this->data = [];
+		++$this->increment;
 		if ($name instanceof Param) {
 			$value === NULL || $name->setParam('value', $value);
 			$name->setParams($params);
@@ -414,7 +417,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function group($columns, $function = NULL) {
-		$this->data = [];
+		++$this->increment;
 		if ($columns instanceof Param) {
 			$columns = [$columns];
 		} else {
@@ -440,7 +443,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function order($columns, $order = NULL, $function = NULL) {
-		$this->data = [];
+		++$this->increment;
 		if ($columns instanceof Param) {
 			$columns = [$columns];
 		} elseif ($order !== NULL) {
@@ -491,7 +494,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function unions(array $unions, $all = false) {
-		$this->data = [];
+		++$this->increment;
 		foreach ($unions as $union) {
 			if ($union instanceof Param || !$all) {
 				$all && $union->setParam('all', $all);
@@ -510,7 +513,7 @@ class Cursor{
 	 * @return this
 	 */
 	public function union($union, $all = false) {
-		$this->data = [];
+		++$this->increment;
 		if ($union instanceof Param || !$all) {
 			$all && $union->setParam('all', $all);
 			$this->unions[] = $union;
@@ -521,8 +524,10 @@ class Cursor{
 	}
 
 
-	public function primary(array $primary) {
+	public function primary(array $primary, $primaryTTL = 0) {
+		++$this->increment;
 		$this->primary = $primary;
+		$this->primaryTTL = $primaryTTL;
 	}
 
 
@@ -535,8 +540,6 @@ class Cursor{
 		$this->callback = $callback;
 		return $this;
 	}
-
-
 
 
 	protected function read(Row &$value) {
@@ -552,10 +555,10 @@ class Cursor{
 	}
 
 	public function getUseTables() {
-		if (empty($this->data['builder'])) {
+		if (!$this->builder) {
 			return [];
 		}
-		return $this->data['builder']->getUseTables();
+		return $this->builder->getUseTables();
 	}
 
 
@@ -599,18 +602,23 @@ class Cursor{
 				$this->query($primary, $args[$i], '=');
 				++$i;
 			}
-			$this->offset(0)->limit(1)->cache($this->primaryCache);
+			$cache = $this->cache;
+			$this->offset(0)->limit(1)->cache($this->primaryTTL);
 		}
 
 
 		// 构造器
-		if (empty($this->data['builder'])) {
-			$builderName = __NAMESPACE__ .'\\'. (isset($this->builders[$this->DB->protocol()]) ? $this->builders[$this->DB->protocol()] : 'SQLBuilder');
-			$this->data['builder'] = new $builderName($this);
+		if (!$this->builder) {
+			$builderClass = __NAMESPACE__ .'\\'. (isset($this->buildersClass[$this->DB->protocol()]) ? $this->buildersClass[$this->DB->protocol()] : 'SQLBuilder');
+			$this->builder = new $builderClass($this);
+			$this->current = $this->increment;
+		} elseif ($this->increment !== $this->current) {
+			$this->builder->flush();
+			$this->current = $this->increment;
 		}
 
 		// 无效的方法
-		if (!method_exists($this->data['builder'], $name)) {
+		if (!method_exists($this->builder, $name)) {
 			throw new Exception('this.' . $name, 'The method is not registered');
 		}
 
@@ -619,44 +627,49 @@ class Cursor{
 				case 'insert':
 					// 插入
 					$this->write();
-					$result = $this->data['builder']->insert();
+					$result = $this->builder->insert();
 					$this->success($name);
 					break;
 				case 'update':
 					// 更新
 					$execute = $this->execute;
 					$this->execute = true;
-					$select = $this->data['builder']->select();
+					$select = $this->builder->select();
 					$this->execute = $execute;
 					$this->write($select);
-					$result = $this->data['builder']->update();
-					$this->data['builder']->deleteCacheSelect();
-					$this->data['builder']->deleteCacheCount();
+					$result = $this->builder->update();
+					$this->builder->deleteCacheSelect();
+					$this->builder->deleteCacheCount();
 					$this->success($name, $select);
 					break;
 				case 'delete':
 					// 删除
 					$execute = $this->execute;
 					$this->execute = true;
-					$select = $this->data['builder']->select();
+					$select = $this->builder->select();
 					$this->execute = $execute;
-					$result = $this->data['builder']->delete();
-					$this->data['builder']->deleteCacheSelect();
-					$this->data['builder']->deleteCacheCount();
+					$result = $this->builder->delete();
+					$this->builder->deleteCacheSelect();
+					$this->builder->deleteCacheCount();
 					$this->success($name, $select);
 					break;
 				case 'select':
-					$result = $this->data['builder']->select();
+					$result = $this->builder->select();
 					if (!is_string($result)) {
 						foreach($result as &$value) {
 							$this->read($value);
 						}
 					}
+					break;
 				default:
-					$result = $this->data['builder']->$name();
+					$result = $this->builder->$name();
 			}
 		} else {
-			$result = $this->data['builder']->$name();
+			$result = $this->builder->$name();
+		}
+		if (!empty($cache)) {
+			$this->cache = $cache;
+			++$this->increment;
 		}
 		return $result;
 	}

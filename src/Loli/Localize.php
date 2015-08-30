@@ -33,7 +33,7 @@ class Localize{
 
 	protected static $allTimezone = [];
 
-
+	protected $dateTime;
 
 
 	public function __construct($language = false, $timezone = false) {
@@ -205,7 +205,6 @@ class Localize{
 	 * @return string
 	 */
 	public function dateFormat($format, $time = 0, $translate = true, $timezone = false) {
-		static $dateTime;
 		// 时区
 		if ($timezone && !in_array($timezone, self::$allTimezone)) {
 			return false;
@@ -213,11 +212,11 @@ class Localize{
 		$timezone = $timezone ? $timezone : $this->timezone;
 
 		// 时间 时区 对象
-		if (empty($dateTime) || $dateTime->getTimezone()->getName() !== $timezone) {
+		if (empty($this->dateTime) || $this->dateTime->getTimezone()->getName() !== $timezone) {
 			if (in_array($timezone, DateTimeZone::listIdentifiers())) {
-				$dateTime = new DateTime(null, new DateTimeZone($timezone));
+				$this->dateTime = new DateTime(null, new DateTimeZone($timezone));
 			} else {
-				$dateTime = new DateTime($timezone);
+				$this->dateTime = new DateTime($timezone);
 			}
 		}
 
@@ -232,11 +231,11 @@ class Localize{
 		}
 
 		// 写入时间戳
-		$dateTime->setTimestamp($time);
+		$this->dateTime->setTimestamp($time);
 
 		// 无视语言包
 		if (!$translate || in_array($format, ['Z', 'c', 'r'], true)) {
-			return $dateTime->format($format);
+			return $this->dateTime->format($format);
 		}
 
 		// 本地化格式
@@ -248,7 +247,7 @@ class Localize{
 		$result = ' ' . $format;
 		foreach(['D', 'l', 'L', 'S', 'F', 'M', 'a', 'A', 'e'] as $value) {
 			if (strpos($format, $value) !== false) {
-				$valueFormat = $dateTime->format($value);
+				$valueFormat = $this->dateTime->format($value);
 				if ($valueFormat2 = $this->dateTimeTranslate($value === 'e' ? $valueFormat : $value . '_' . $valueFormat, false)) {
 					$valueFormat = $valueFormat2;
 				}
@@ -256,7 +255,7 @@ class Localize{
 			}
 		}
 
-		return $dateTime->format(substr($result, 1));
+		return $this->dateTime->format(substr($result, 1));
 	}
 
 

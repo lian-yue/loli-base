@@ -216,7 +216,7 @@ abstract class Base {
 			return (int) $type;
 		}
 		$type = strtolower($type);
-		if (strpos($mimetype'/') === false) {
+		if (strpos($type, '/') === false) {
 			foreach($this->types as $key => $extensions) {
 				if (in_array($type, $extensions, true)) {
 					return $key;

@@ -50,10 +50,11 @@ class Model extends Cursor{
 		return $this->form;
 	}
 
-
-	protected function model($model) {
-		$class = get_class($this) . '\\' . str_replace('/', '\\', $model);
-		return new $class($this->route);
+	public function flush() {
+		$this->fields = $this->querys = $this->values = $this->documents = $this->options = $this->unions = $this->data = [];
+		$this->builder && $this->builder->flush();
+		$this->increment = 0;
+		return $this;
 	}
 
 	protected function write(Iterator $value = NULL) {
@@ -92,10 +93,15 @@ class Model extends Cursor{
 		$form = [];
 		foreach ($this->form as $input) {
 			if (empty($input['errormessage'])) {
-				$input['errormessage'] = 1009;
+				$input['errormessage'] = 1000;
 			}
 			$form[$input['name']] = $input;
+			if (in_array($input['type'], ['checkbox', 'radio', 'select'], true)) {
+				$input['option'] = empty($input['option']) ? [] : (array) $input['option'];
+			}
+			$input['title'] = isset($input['title']) ? $this->route->localize($input['title']) : $input['name'];
 		}
+
 		foreach ($this->documents as &$document) {
 			$message = NULL;
 			foreach ($document as $name => &$value) {
@@ -124,7 +130,7 @@ class Model extends Cursor{
 				// 空检查
 				$empty = empty($value->value) && $value->value !== '0' && $value->value !== 0;
 				if (!empty($input['required']) && $empty) {
-					$message = new Message([1000, $input['name'], isset($input['title']) ? $this->route->localize($input['title']) : ''], Message::ERROR, $message);
+					$message = new Message([$input['errormessage'] + 1, $input['name'], $input['title']], Message::ERROR, $message);
 					continue;
 				}
 
@@ -134,6 +140,9 @@ class Model extends Cursor{
 				switch ($input['type']) {
 					case 'text':
 					case 'password':
+						$value->value = str_replace(["\r", "\n"], '', (string) $value->value);
+						break;
+					case 'textarea':
 						$value->value = (string) $value->value;
 						break;
 					case 'email':
@@ -165,7 +174,7 @@ class Model extends Cursor{
 					case 'date':
 						if (!$empty) {
 							if (preg_match('/^\d{4}\-(\d{2})\-(\d{2})$/', $value->value) && ($time = strtotime($value->value))) {
-								$value->value = @date('Y-m-d', $value->value);
+								$value->value = date('Y-m-d', $value->value);
 							} else {
 								$continue = true;
 							}
@@ -174,7 +183,7 @@ class Model extends Cursor{
 					case 'datetime':
 						if (!$empty) {
 							if ($time = strtotime($value->value)) {
-								$value->value = @date('Y-m-d h:i:s', $value->value);
+								$value->value = date('Y-m-d h:i:s', $value->value);
 							} else {
 								$continue = true;
 							}
@@ -182,23 +191,58 @@ class Model extends Cursor{
 						break;
 					case 'datetime-local':
 						break;
+					case 'radio':
+						if (!is_scalar($value->value) || !isset($input['option'][$value->value])) {
+							$continue = true;
+						}
+						break;
+					case 'checkbox':
+						$value->value = array_values((array) $value->value);
+						$value->value = array_intersect($value->value, $input['option']);
+						if (!$value->value) {
+							$continue = true;
+						}
+						break;
+					case 'select':
+						if (empty($input['multiple'])) {
+							if (!is_scalar($value->value)) {
+								$value->value = reset($value->value);
+							}
+							$continue = !is_scalar($value->value) || !isset($input['option'][$value->value]);
+						} elseif (!$$value->value = array_intersect(array_values((array) $value->value), $input['option'])) {
+							$continue = true;
+						}
+						break;
 				}
+
 
 				// 表单类型错误
 				if ($continue) {
-					$message = new Message([$input['errormessage'], $input['name'], isset($input['title']) ? $this->route->localize($input['title']) : $input['name']], Message::ERROR, $message);
+					$message = new Message([$input['errormessage'], $input['name'], $input['title']], Message::ERROR, $message);
 					continue;
 				}
 
 				// 最大长度
-				if (!empty($input['maxlength']) && strlen($value->value) > $input['maxlength']) {
-					$message = new Message([1001, $input['name'], isset($input['title']) ? $this->route->localize($input['title']) : $input['name']], Message::ERROR, $message);
+				if (!empty($input['maxlength']) && mb_strlen($value->value) > $input['maxlength']) {
+					$message = new Message([$input['errormessage'] + 2, $input['name'], $input['title']], Message::ERROR, $message);
+					continue;
+				}
+
+				// 范围
+				if ((isset($input['min']) && $input['min'] > $value->value) || (isset($input['max']) && $input['max'] < $value->value) || (!empty($input['step']) && ($value->value % $input['step']) !== 0)) {
+					$message = new Message([$input['errormessage'] + 3, $input['name'], $input['title']], Message::ERROR, $message);
+					continue;
+				}
+
+				// 规定数据
+				if (isset($input['option']) && count((array)$value->value) === count(array_intersect((array)$value->value, array_keys($input['option'])))) {
+					$message = new Message([$input['errormessage'] + 4, $input['name'], $input['title']], Message::ERROR, $message);
 					continue;
 				}
 
 				// 正则
-				if ((isset($input['pattern']) && preg_match('/'. str_replace('/', '\\/', $input['pattern']) .'/', $value->value)) || (!isset($input['min']) && $input['min'] > $value->value) || (!isset($input['max']) && $input['max'] < $value->value) || (!empty($input['step']) && ($value->value % $input['step']) !== 0) || (!empty($input['option']) && count((array)$value->value) === count(array_intersect((array)$value->value, array_values($input['option']))))) {
-					$message = new Message([$input['errormessage'], $input['name'], isset($input['title']) ? $this->route->localize($input['title'] ) : $input['name']], Message::ERROR, $message);
+				if (isset($input['pattern']) && preg_match('/'. str_replace('/', '\\/', $input['pattern']) .'/', $value->value)) {
+					$message = new Message([$input['errormessage'], $input['name'], $input['title']], Message::ERROR, $message);
 					continue;
 				}
 			}
