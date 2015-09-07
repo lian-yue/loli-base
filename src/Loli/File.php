@@ -38,7 +38,7 @@ class File implements RouteInterface{
 	public $flag = true;
 
 	// 发送文件或资源 文件  大小
-	public function __construct($stream, $fileSize, array $args = []) {
+	public function __construct(Route &$route, $stream, $fileSize, array $args = []) {
 		$args += empty($_SERVER['LOLI']['FILE']) ? [] : $_SERVER['LOLI']['FILE'];
 		foreach ($args as $key => $value) {
 			if ($value !== NULL && in_array($key, ['header', 'buffer', 'speed', 'flag', 'status'])) {
@@ -50,13 +50,10 @@ class File implements RouteInterface{
 	}
 
 
-
-
-
 	public function route(Route &$route) {
+
 		// 开启允许分段下载
 		$route->response->setHeader('Accept-Ranges', 'bytes');
-
 
 		// 用 header 发送文件的
 		if ($this->header && is_string($this->_stream)) {
@@ -120,8 +117,6 @@ class File implements RouteInterface{
 			throw new Exception("Error Processing Request", 1);
 		}
 	}
-
-
 
 	// 发送文件
 	public function __invoke() {

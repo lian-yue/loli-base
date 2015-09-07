@@ -28,7 +28,6 @@ abstract class Builder{
 	protected $cursor;
 
 	// 有修改表的日志  [database=>[表名=>执行时间戳]]
-	protected $useTables = [];
 	private static $_logs = [];
 
 
@@ -73,9 +72,6 @@ abstract class Builder{
 		}
 	}
 
-	public function getUseTables() {
-		return $this->useTables;
-	}
 
 	/**
 	 * lastInsertID 最后的 id
@@ -193,4 +189,6 @@ abstract class Builder{
 	 */
 	abstract public function deleteCacheCount($refresh = NULL);
 
+
+	abstract public function getUseTables();
 }

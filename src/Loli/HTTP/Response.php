@@ -209,13 +209,13 @@ class Response{
 
 		$values = [];
 		foreach ($this->caches as $name => $value) {
-			if (substr($name, 0, 3) === 'no-') {
-				// no-cache no-store
-				$values[] = $value ? $name . '=' . $value : $name;
-			} elseif ($name == 'max-age') {
-				// max-age
-				$values[] = $name . '=' . $value;
-			} elseif (in_array($name, ['public', 'private']) && in_array($values, ['public', 'private'])) {
+			if ($value === false) {
+
+			} elseif (in_array($name, ['max-age', 's-maxage'], true)) {
+				$values[] = $name .'=' . $value;
+			} elseif ($name === 'no-cache') {
+				$values[] = $name . ($value ? '=' . $value : '');
+			} elseif (in_array($name, ['public', 'private'], true) && in_array($values, ['public', 'private'], true)) {
 				// public  和 private 只能选一个
 			} elseif ($value) {
 				$values[] = $name;

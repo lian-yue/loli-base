@@ -209,7 +209,7 @@ class File extends Base{
 		}
 		$opendir = opendir($dir);
 		while ($name = readdir($opendir)) {
-			if (in_array($name, ['.', '..'])) {
+			if (in_array($name, ['.', '..'], true)) {
 				continue;
 			}
 			$path = $dir . '/' . $name;

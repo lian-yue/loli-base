@@ -11,6 +11,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
+use Model\RBAC;
 class_exists('Loli\Route') || exit;
 class Controller{
 
@@ -24,17 +25,14 @@ class Controller{
 		throw new Message(404, Message::ERROR);
 	}
 
-	public function __invoke($model) {
-		return $this->model($model);
-	}
-
-	protected function model($model) {
-		$class = 'Model\\' . str_replace('/', '\\', $model);
-		return new $class($this->route);
-	}
-
-	protected function view($files, array $data = [], $cache = false) {
-		return new View($files, $data, $cache);
+	public function __RBAC(array $params, Route &$route) {
+		if (empty($route->table['RBAC'])) {
+			return true;
+		}
+		if ($route->table['RBAC']->has($route->controllerName, $route->controllerMethod)) {
+			return true;
+		}
+		return false;
 	}
 
 	protected function token() {

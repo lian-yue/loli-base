@@ -11,8 +11,9 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
+use ArrayAccess;
 class_exists('Loli\HTTP\Request') || exit;
-class Route{
+class Route implements ArrayAccess{
 
 	protected static $callback = [
 		'request' => 'Loli\\Route::load',
@@ -21,7 +22,7 @@ class Route{
 		'session' => 'Loli\\Route::load',
 		'storage' => 'Loli\\Route::load',
 		'DB' => 'Loli\\Route::load',
-		'RBAC' => 'Loli\\Route::load',
+		'table' => 'Loli\\Route::load',
 	];
 
 	protected static $routes = [];
@@ -89,27 +90,6 @@ class Route{
 		}
 	}
 
-	public function __get($name) {
-		if (!isset($this->$name)) {
-			if (empty(self::$callback[$name])) {
-				$this->$name = NULL;
-			} else {
-				$this->$name = call_user_func(self::$callback[$name], $this, $name);
-			}
-		}
-		return $this->$name;
-	}
-
-	public function __set($name, $value) {
-		$this->$name = $value;
-	}
-
-
-	public function __destruct() {
-		foreach ($this as $name => $value) {
-			unset($this->$name);
-		}
-	}
 
 	public function __invoke() {
 		try {
@@ -139,7 +119,7 @@ class Route{
 						continue;
 					}
 					if (is_string($controller)) {
-						$controller = preg_split('/(\s+|\:+|-\>|@|\>)/', $controller, 2, PREG_SPLIT_NO_EMPTY);
+						$controller = preg_split('/(\s+|\:+|-\>|@|\>|\.)/', $controller, 2, PREG_SPLIT_NO_EMPTY);
 					}
 					$controller[0] = str_replace('/', '\\', $controller[0]);
 					$controller += [1 => 'index'];
@@ -166,27 +146,29 @@ class Route{
 				if (substr($class = get_class($controller[0]), 0, 11) !== 'Controller\\') {
 					throw new Message(500, Message::ERROR, new Message([1, 'Class object not controller'], Message::ERROR));
 				}
-				$this->controller = substr($class, 11);
+				$this->controllerName = substr($class, 11);
 			} else {
 				if (!class_exists($class = 'Controller\\' . $controller[0])) {
 					throw new Message(404, Message::ERROR, new Message([1, 'Controller not exists'], Message::ERROR));
 				}
-				$this->controller = substr($class, 11);
+				$this->controllerName = $controller[0];
 				$controller[0] = new $class($this);
 			}
 			if (!$controller[1] || $controller[1]{0} === '_') {
 				throw new Message(404, Message::ERROR, new Message([1, 'Controller not exists'], Message::ERROR));
 			}
-			$this->method = $controller[1];
+			$this->controllerMethod = $controller[1];
+
 
 			// RBAC 权限
-			if ($this->RBAC && !$this->RBAC->has($this->controller, $this->method)) {
+			if (method_exists($controller[0], '__RBAC') && !$controller[0]->__RBAC($matches, $this)) {
 				$this->response->setStatus(403);
 				throw new Message([90, 'RBAC'], Message::ERROR);
 			}
 
 			// 执行方法
-			$view = call_user_func($controller, $matches);
+			$view = call_user_func($controller, $matches, $this);
+
 
 			// 返回的是 RouteInterface
 			if ($view instanceof RouteInterface) {
@@ -262,11 +244,52 @@ class Route{
 
 
 
-	public static function setCallback($name, $callback) {
+
+	public function __call($name, $args) {
+		return call_user_func_array($this->$name, $args);
+	}
+
+	public function __get($name) {
+		if (empty(self::$callback[$name])) {
+			throw new Message('Unregistered route object', Message::ERROR);
+		} else {
+			$this->$name = call_user_func(self::$callback[$name], $this, $name);
+		}
+		return $this->$name;
+	}
+
+	public function __isset($name) {
+		return isset($this->$name) || !empty(self::$callback[$name]);
+	}
+
+	public function offsetExists($name) {
+		return $this->__isset($name);
+	}
+
+	public function offsetGet($name) {
+		return $this->$name;
+	}
+
+	public function offsetSet($name, $value) {
+		return $this->$name = $value;
+	}
+
+	public function offsetUnset($name) {
+		unset($this->$name);
+	}
+
+	public function __destruct() {
+		foreach ($this as $name => $value) {
+			unset($this->$name);
+		}
+	}
+
+
+
+	public static function callback($name, $callback) {
 		self::$callback[$name] = $callback;
 		return true;
 	}
-
 
 	protected static function load(Route $route, $name) {
 		switch ($name) {
@@ -349,20 +372,12 @@ class Route{
 				}
 				$result = new $class($servers);
 				break;
-			case 'RBAC':
-				if (class_exists('Model\RBAC')) {
-					$result = new \Model\RBAC($route);
-				} else {
-					$result = false;
-				}
+			case 'table':
+				$result = new TableObject($route, 'Table');
 				break;
 			default:
-				$result = false;
+				throw new Message('Unregistered route object', Message::ERROR);
 		}
 		return $result;
 	}
 }
-
-
-
-

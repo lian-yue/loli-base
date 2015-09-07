@@ -27,40 +27,40 @@ namespace Loli\Captcha;
 abstract class Base {
 
 	// 验证码值
-	protected $code = '1234';
+	public $code = '1234';
 
 	// 图片宽度
-	protected $width = 150;
+	public $width = 150;
 
 	// 图片高度
-	protected $height	= 50;
+	public $height	= 50;
 
 	// 文字颜色
-	protected $color = [];
+	public $color = [];
 
 	// 文字角度
-	protected $angle 	= [-20, 20];
+	public $angle 	= [-20, 20];
 
 	// 文字间隔
-	protected $spacing = [0.6, 0.8];
+	public $spacing = [0.6, 0.8];
 
 	// 文字大小
-	protected $size = [0.6, 0.8];
+	public $size = [0.6, 0.8];
 
 	// 文字字体目录
-	protected $font = '';
+	public $font = '';
 
 	// 线条
-	protected $line = true;
+	public $line = true;
 
 	// 背景颜色
-	protected $background	= [];
+	public $background	= [];
 
 	// 背景目录
-	protected $dirBackground = '';
+	public $dirBackground = '';
 
 	// 背景透明度
-	protected $pctBackground = 100;
+	public $pctBackground = 100;
 
 	// 储存图片
 	protected $im;
@@ -169,7 +169,7 @@ abstract class Base {
 	 * @param  $rgb
 	 * @return array|boolean
 	 */
-	protected function rgb($rgb) {
+	public function rgb($rgb) {
 		if ($rgb && is_array($rgb)) {
 			foreach (['red', 'green', 'blue'] as $v) {
 				$rgb[$v] = empty($rgb[$v]) ? 0 : $rgb[$v];

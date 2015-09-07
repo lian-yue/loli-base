@@ -11,8 +11,8 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-use ArrayIterator, IteratorAggregate,JsonSerializable, Loli\RouteInterface;
-interface_exists('Loli\RouteInterface') || exit;
+use ArrayIterator, IteratorAggregate, JsonSerializable;
+class_exists('Loli\Route') || exit;
 /*
 消息模块
 1000 以前是系统预留的
@@ -34,7 +34,8 @@ interface_exists('Loli\RouteInterface') || exit;
 400 － 599 ＝ 执行失败 并且 要设置 http 状态码的
 
 */
-class Message extends Exception implements IteratorAggregate, RouteInterface, JsonSerializable{
+
+class Message extends Exception implements IteratorAggregate, JsonSerializable, RouteInterface{
 	const NOTICE = 1;
 	const WARNING = 2;
 	const ERROR = 3;

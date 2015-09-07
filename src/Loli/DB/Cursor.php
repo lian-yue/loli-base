@@ -63,7 +63,7 @@ class Cursor{
 	protected $unions = [];
 
 	// 缓存时间
-	protected $cache = [0, 0];
+	protected $cache = [0, 0, true];
 
 	// 自动递增id
 	protected $insertID;
@@ -91,6 +91,8 @@ class Cursor{
 
 	protected $increment = 0;
 
+	protected $intersect = false;
+
 
 	/**
 	 * args 取得参数
@@ -105,7 +107,7 @@ class Cursor{
 
 
 	public function DB(Base $DB) {
-		++$this->increment;
+		$this->builder = NULL;
 		$this->DB = $DB;
 	}
 
@@ -121,8 +123,19 @@ class Cursor{
 	 * @return this
 	 */
 	public function readonly($readonly) {
-		++$this->increment;
 		$this->readonly = $readonly;
+		return $this;
+	}
+
+
+	/**
+	 * intersect 过滤未知字段
+	 * @param  boolean $intersect
+	 * @return this
+	 */
+	public function intersect($intersect) {
+		++$this->increment;
+		$this->intersect = $intersect;
 		return $this;
 	}
 
@@ -132,7 +145,6 @@ class Cursor{
 	 * @return this
 	 */
 	public function execute($execute) {
-		++$this->increment;
 		$this->execute = $execute;
 		return $this;
 	}
@@ -145,9 +157,8 @@ class Cursor{
 	 * @param  integer $refresh
 	 * @return this
 	 */
-	public function cache($ttl = 0, $refresh = 0) {
-		++$this->increment;
-		$this->cache = [$ttl, $refresh];
+	public function cache($ttl = 0, $refresh = 0, $empty = true) {
+		$this->cache = [$ttl, $refresh, $empty];
 		return $this;
 	}
 
@@ -525,7 +536,6 @@ class Cursor{
 
 
 	public function primary(array $primary, $primaryTTL = 0) {
-		++$this->increment;
 		$this->primary = $primary;
 		$this->primaryTTL = $primaryTTL;
 	}
@@ -574,13 +584,12 @@ class Cursor{
 
 
 	public function __call($name, array $args) {
-		$name = strtolower($name);
-
 		if ($this->values) {
 			$this->documents[] = $this->values;
 			$this->values = [];
 		}
 
+		$name = strtolower($name);
 
 		// 私有变量
 		if ($name{0} === '_') {
@@ -603,7 +612,7 @@ class Cursor{
 				++$i;
 			}
 			$cache = $this->cache;
-			$this->offset(0)->limit(1)->cache($this->primaryTTL);
+			$this->offset(0)->limit(1)->cache($this->primaryTTL, 0, false);
 		}
 
 
@@ -669,7 +678,6 @@ class Cursor{
 		}
 		if (!empty($cache)) {
 			$this->cache = $cache;
-			++$this->increment;
 		}
 		return $result;
 	}

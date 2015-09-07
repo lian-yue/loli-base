@@ -11,8 +11,9 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
+use JsonSerializable;
 interface_exists('Loli\RouteInterface') || exit;
-class View implements RouteInterface{
+class View implements JsonSerializable, RouteInterface{
 
 	protected $files;
 
@@ -30,10 +31,13 @@ class View implements RouteInterface{
 				unset($data[$key]);
 			}
 		}
+
 		$this->expire = $expire;
 		$this->data = $data;
 		$this->dir = empty($_SERVER['LOLI']['VIEW']['dir']) ? './' : $_SERVER['LOLI']['VIEW']['dir'];
 	}
+
+
 
 	public function route(Route &$route) {
 		$this->route = &$route;
@@ -107,6 +111,10 @@ class View implements RouteInterface{
 
 	protected function processing() {
 		return '<!--Processing:' . $this->route->request->processing() .' Memory:' .number_format((memory_get_peak_usage() / 1024 / 1024), 4) .' Files:' .count(get_included_files()) .' Query: '. count($this->route->DB->statistics()) .'-->';
+	}
+
+	public function jsonSerialize() {
+		return $this->data;
 	}
 
 	public function __invoke() {
