@@ -63,6 +63,9 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable, 
 				$$key = $value;
 				break;
 			}
+			if ($$key === NULL) {
+				$$key = $value;
+			}
 		}
 
 		switch ($type) {
@@ -84,10 +87,11 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable, 
 		$code = (int) reset($message);
 
 		// data
-		$this->data = (array) $data;
+		$this->data = $data ? (array) $data : [];
 
 		// args
 		$this->args = $message;
+
 		unset($this->args[key($this->args)]);
 
 
@@ -187,6 +191,20 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable, 
 
 	public function getData() {
 		return $this->data;
+	}
+
+	public function setData(array $data) {
+		$this->data = $data;
+		return $this;
+	}
+
+	public function setRedirect($redirect) {
+		$this->redirect = $redirect;
+		return $this;
+	}
+	public function setRefresh($refresh) {
+		$this->refresh = $refresh;
+		return $this;
 	}
 
 	public function getIterator() {

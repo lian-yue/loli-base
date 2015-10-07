@@ -140,7 +140,7 @@ class SQLBuilder extends Builder{
 		'integer' => 'intval',
 		'boolean' => 'boolval',
 		'float' => 'floatval',
-		'date' => 'strval'
+		'date' => 'strval',
 		'string' => 'strval',
 		'json' => 'to_array',
 	];
@@ -204,28 +204,34 @@ class SQLBuilder extends Builder{
 	private function _columnsType() {
 		if (!isset($this->_data['columnsType'])) {
 			$columnsType = [];
-			foreach ($this->columns as $name => &$column) {
-				if (!$column instanceof Param) {
-					$column = new Param($column + ['name' => $name]);
+			foreach ($this->columns as $name => $column) {
+				if ($column instanceof Param) {
+					$name = $column->name;
+					$type = $column->type;
+				} else {
+					if (isset($column['name'])) {
+						$name = $column['name'];
+					}
+					$type = isset($column['type']) ? $column['type'] : '';
 				}
-				if (!$column->name) {
+				if (!$name) {
 					continue;
 				}
 
-				if (!$column->type) {
-					$columnsType[$column->name] = 'string';
+				if (!$type) {
+					$columnsType[$name] = 'string';
 					continue;
 				}
 
-				if (isset(self::$_types[$column->type])) {
-					$columnsType[$column->name] = $column->type;
+				if (isset(self::$_types[$type])) {
+					$columnsType[$name] = $type;
 					continue;
 				}
 
 				$continue = false;
-				foreach(self::$_types as $type => $value) {
-					if (isset($value[$column->type])) {
-						$columnsType[$column->name] = $type;
+				foreach(self::$_types as $key => $value) {
+					if (isset($value[$type])) {
+						$columnsType[$name] = $key;
 						$continue = true;
 						break;
 					}
@@ -233,7 +239,7 @@ class SQLBuilder extends Builder{
 				if ($continue) {
 					continue;
 				}
-				$columnsType[$column->name] = 'string';
+				$columnsType[$name] = 'string';
 			}
 			$this->_data['columnsType'] = $columnsType;
 		}
@@ -316,7 +322,7 @@ class SQLBuilder extends Builder{
 			}
 
 
-			foreach ($this->tables as $alias => &$table) {
+			foreach ($this->tables as $alias => $table) {
 				// 全部转义成 Param
 				if ($table instanceof Param) {
 				} elseif (is_array($table)) {
@@ -339,7 +345,7 @@ class SQLBuilder extends Builder{
 
 				if ($table->value instanceof Cursor) {
 					// 子查询表
-					$execute = $table->value->arg('execute');
+					$execute = $table->value->execute;
 					$value = '(' . rtrim($table->value->execute(false)->select(), " \t\n\r\0\x0B;") . ')';
 					$table->value->execute($execute);
 					$useTables = array_merge($useTables, $table->value->getUseTables());
@@ -419,30 +425,46 @@ class SQLBuilder extends Builder{
 	 */
 	private function _fields() {
 		if (!isset($this->_data['fields'])) {
-			$columnsType = $this->intersect ? $this->_columnsType() : [];
 			$fields = [];
-			foreach ($this->fields as $alias => &$field) {
-				if (!$field instanceof Param) {
-					$field = new Param(['value' => $field, 'alias' => is_string($alias) && $alias ? $alias : NUll]);
+			foreach ($this->fields as $alias => $field) {
+				if ($field instanceof Param) {
+					$expression = $field->expression;
+					$function = $field->function;
+					$alias = $field->alias;
+					$value = $field->value;
+				} else {
+					$expression = $function = false;
+					if (!$alias || !is_string($alias)) {
+						$alias = false;
+					}
+					$value = $field;
 				}
-				if (!$field->value) {
+
+				if (!$value) {
 					continue;
 				}
-				if ($field->expression) {
-					$value = $field->value
-				} elseif ($field->value instanceof Cursor) {
-					$execute = $field->value->execute;
-					$value = rtrim($field->value->execute(false)->select(), " \t\n\r\0\x0B;");
-					$field->value->execute($execute);
-				} elseif (!is_string($field->value) || ($columnsType && empty($columnsType[$field->value])) || !($value = $this->DB->key($field->value))) {
+
+				if ($value instanceof Cursor) {
+					$execute = $value->execute;
+					$field = rtrim($value->execute(false)->select(), " \t\n\r\0\x0B;");
+					$value->value->execute($execute);
+				} elseif ($expression) {
+					$field = $field->value;
+				} elseif (!is_string($value) || !($field = $this->DB->key($value))) {
 					continue;
 				}
-				$alias = $field->alias ? $this->DB->key($field->alias) : false;
-				$function = $field->function ? (empty(self::$_functions[$function = strtoupper($field->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : false;
+
+				if ($alias) {
+					$alias = $this->DB->key($alias);
+				}
+
 				if ($function) {
-					$value = $function. '('.$value .')';
+					$function = empty(self::$_functions[$function = strtoupper($function)]) ? false : preg_replace('/[^A-Z]/', '', $function);
+					if ($function) {
+						$field = $function. '('.$value .')';
+					}
 				}
-				$fields[] = $alias ? $value . ' AS ' . $alias : $value;
+				$fields[] = $alias ? $field . ' AS ' . $alias : $field;
 			}
 			if (!$fields) {
 				$fields[] = '*';
@@ -456,14 +478,14 @@ class SQLBuilder extends Builder{
 	private function _options($optionName = false) {
 		if (!isset($this->_data['options'])) {
 			$this->_data['options'] = [];
-			foreach ($this->options as $name => &$option) {
+			foreach ($this->options as $name => $option) {
 				if (!$option instanceof Param) {
 					$option = new Param(['name' => $name, 'value' => $option]);
 				}
-				$this->_data['options'][$option->name] = &$option;
+				$this->_data['options'][$option->name][] = $option;
 			}
 		}
-		return $name === false ? $this->_data['options'] : (isset($this->_data['options'][$optionName]) ? $this->_data['options'][$optionName] : false);
+		return $optionName === false ? $this->_data['options'] : (isset($this->_data['options'][$optionName]) ? $this->_data['options'][$optionName] : false);
 	}
 
 
@@ -534,9 +556,7 @@ class SQLBuilder extends Builder{
 		if (!isset($this->_data['limit'])) {
 			if ($option = $this->_options('limit')) {
 				$limit = abs((int) end($option)->value);
-				if ($limit) {
-					$limit = 'LIMIT '. $limit;
-				}
+				$limit = $limit ? 'LIMIT '. $limit : '';
 			} else {
 				$limit = '';
 			}
@@ -556,9 +576,7 @@ class SQLBuilder extends Builder{
 		if (!isset($this->_data['offset'])) {
 			if ($option = $this->_options('offset')) {
 				$offset = (int) end($option)->value;
-				if ($offset) {
-					$offset = 'OFFSET '. $offset;
-				}
+				$offset = $offset ? 'OFFSET '. $offset : '';
 			} else {
 				$offset = '';
 			}
@@ -577,13 +595,12 @@ class SQLBuilder extends Builder{
 	 */
 	private function _order() {
 		if (!isset($this->_data['order'])) {
-			$columnsType = $this->intersect ? $this->_columnsType() : [];
 			$order = [];
 			if ($option = $this->_options('order')) {
 				foreach ($option as $value) {
 					if (!$value->column && is_array($value->value)) {
 						foreach($value->value as $column => $value) {
-							if ($column && (!$columnsType || isset($columnsType[$column])) && ($column = $this->DB->key($column))) {
+							if ($column && ($column = $this->DB->key($column))) {
 								$order[$column] = $value;
 							}
 						}
@@ -596,7 +613,7 @@ class SQLBuilder extends Builder{
 					}
 					if ($value->expression) {
 						$column = $value->column;
-					} elseif (!is_string($value->column) || ($columnsType && empty($columnsType[$value->column])) || !($column = $this->DB->key($value->column)) {
+					} elseif (!is_string($value->column) || !($column = $this->DB->key($value->column))) {
 						continue;
 					}
 					$function = $value->function ? (empty(self::$_functions[$function = strtoupper($value->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : false;
@@ -629,7 +646,6 @@ class SQLBuilder extends Builder{
 	 */
 	private function _group($type) {
 		if (!isset($this->_data['group'])) {
-			$columnsType = $this->intersect ? $this->_columnsType() : [];
 			$group = [];
 			if ($option = $this->_options('order')) {
 				foreach($option as $value) {
@@ -638,7 +654,7 @@ class SQLBuilder extends Builder{
 					}
 					if ($value->expression) {
 						$value = $value->value;
-					} elseif (!is_string($value->value) || ($columnsType && empty($columnsType[$value->value])) || !($value = $this->DB->key($value->value)) {
+					} elseif (!is_string($value->value) || !($value = $this->DB->key($value->value))) {
 						continue;
 					}
 					$function = $option->function ? (empty(self::$_functions[$function = strtoupper($option->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : false;
@@ -702,7 +718,7 @@ class SQLBuilder extends Builder{
 	 * @param  string       $logical 链接运算符
 	 * @return array
 	 */
-	private function _query(array &$querys, $having = NULL, array &$useTables, array &$useColumns, $logical = '') {
+	private function _query(array $querys, $having = NULL, array &$useTables, array &$useColumns, $logical = '') {
 		// 逻辑 运算符
 		if (!$logical) {
 			$logical = ($option = $this->_options('logical')) ? strtoupper(end($option)->value) : 'AND';
@@ -712,7 +728,6 @@ class SQLBuilder extends Builder{
 			$logical = self::$_logicals[$logical];
 		}
 
-		$intersect = $this->_columnsType();
 		$columnsType = $this->_columnsType();
 
 		$commands = [];
@@ -801,7 +816,7 @@ class SQLBuilder extends Builder{
 				$column = $function . '(' . rtrim($query->column->execute(false)->select(), " \t\n\r\0\x0B;") . ')';
 				$query->column->execute($execute);
 				$useTables = array_merge($useTables, $query->column->getUseTables());
-			} elseif (is_string($query->column) && (!$intersect || !$columnsType || isset($columnsType[$query->column])) && ($column = $this->DB->key($query->column))) {
+			} elseif (is_string($query->column) && ($column = $this->DB->key($query->column))) {
 				$useColumns[] = $query->column;
 				$column = $function ? $function . '('. $column .')' : $column;
 			} else {
@@ -829,7 +844,7 @@ class SQLBuilder extends Builder{
 			switch ($compare) {
 				case 'IN':
 					// IN 运算符
-					$value = array_map([$this->DB, 'value'], !$function && isset($columnsType[$value->column]) : array_map(self::$_typeFunctions[$columnsType[$value->column]], (array) $query->value) : (array) $query->value);
+					$value = array_map([$this->DB, 'value'], !$function && isset($columnsType[$value->column]) ? array_map(self::$_typeFunctions[$columnsType[$value->column]], (array) $query->value) : (array) $query->value);
 					// 空 的返回 1 = 2
 					if (!$value) {
 						$commands = ['1 = 2'];
@@ -849,7 +864,7 @@ class SQLBuilder extends Builder{
 					break;
 				case 'BETWEEN':
 					// BETWEEN
-					$value = array_map([$this->DB, 'value'], !$function && isset($columnsType[$value->column]) : array_map(self::$_typeFunctions[$columnsType[$value->column]], (array) $query->value) : (array) $query->value);
+					$value = array_map([$this->DB, 'value'], !$function && isset($columnsType[$value->column]) ? array_map(self::$_typeFunctions[$columnsType[$value->column]], (array) $query->value) : (array) $query->value);
 					// 都存在的
 					if (isset($value[0]) && isset($value[1])) {
 						if ($value[1] === $value[0]) {
@@ -868,7 +883,7 @@ class SQLBuilder extends Builder{
 				case 'REGEX':
 				case 'REGEXP':
 					if (preg_match('/^\/(.*)\/(\w*)$/is', (string) $query->value, $matches)) {
-						$value = strtr($matches[1], ['\/' => '/']);
+						$value = str_replace('\\/', '/', $matches[1]);
 						$binary = strpos($matches[2], 'i') === false ? 'BINARY' : $binary;
 					} else {
 						$value = $query->value;
@@ -902,7 +917,7 @@ class SQLBuilder extends Builder{
 					if (empty(self::$_compares[$compare])) {
 						throw new Exception($compare, 'Unknown compare');
 					}
-					$arrays[] = ['compare' => $compare, 'value' => $this->DB->value(!$function && isset($columnsType[$value->column]) : call_user_func(self::$_typeFunctions[$columnsType[$value->column]], $query->value) : $query->value)];
+					$arrays[] = ['compare' => $compare, 'value' => $this->DB->value(!$function && isset($columnsType[$query->column]) ? call_user_func(self::$_typeFunctions[$columnsType[$query->column]], $query->value) : $query->value)];
 			}
 
 
@@ -938,20 +953,27 @@ class SQLBuilder extends Builder{
 	private function _union() {
 		if (!isset($this->_data['union'])) {
 			$unions = $useTables = [];
-			foreach ($this->unions as &$union) {
+			foreach ($this->unions as $union) {
 				if (!$union instanceof Param) {
-					$union = new Param(['value' => $union]);
+					$all = $union->all;
+					$expression = $union->expression;
+					$value = $union->value;
+				} else {
+					$all = $expression = false;
+					$value = $union;
 				}
-				if ($union->value instanceof Cursor) {
-					$execute = $union->value->execute;
-					$unions[] = 'UNION ' .($union->all ? '' : 'ALL '). rtrim($union->value->execute(false)->select(), " \t\n\r\0\x0B;");
-					$union->value->execute($execute);
-					$useTables = array_merge($useTables, $union->value->getUseTables());
+
+
+				if ($value instanceof Cursor) {
+					$execute = $value->execute;
+					$unions[] = 'UNION ' .($all ? '' : 'ALL '). rtrim($value->execute(false)->select(), " \t\n\r\0\x0B;");
+					$value->execute($execute);
+					$useTables = array_merge($useTables, $value->getUseTables());
 					continue;
 				}
 
-				if ($union->expression) {
-					$unions[] = 'UNION ' .($union->all ? '' : 'ALL ') . trim($union->value, " \t\n\r\0\x0B;");
+				if ($expression) {
+					$unions[] = 'UNION ' .($all ? '' : 'ALL ') . trim($value, " \t\n\r\0\x0B;");
 					continue;
 				}
 				throw new Exception($union, 'Does not support this type of union');
@@ -1052,6 +1074,7 @@ class SQLBuilder extends Builder{
 						'value' => 'DEFAULT %s',
 						'increment' => 'AUTO_INCREMENT',
 						'charset' => 'CHARACTER SET %s',
+						'comment' => 'COMMENT %s',
 					];
 					break;
 				default:
@@ -1107,7 +1130,9 @@ class SQLBuilder extends Builder{
 						$value['unsigned'] = (bool) $column->unsigned;
 						break;
 					case 'date':
-						$value['value'] = $this->DB->value($column->value ? (string) $column->value : $types[$value['type']]);
+						if ($types[$value['type']] !== NULL) {
+							$value['value'] = $this->DB->value($column->value ? (string) $column->value : $types[$value['type']]);
+						}
 						break;
 					case 'string':
 						$index = isset($column->primary) || isset($column->search) || !empty($column->unique) || !empty($column->key);
@@ -1203,6 +1228,9 @@ class SQLBuilder extends Builder{
 
 				// 是否允许空
 				$value['null'] = (bool) $column->null;
+
+				// 注释
+				$value['comment'] = $column->comment ? $this->DB->value((string)$column->comment) : NULL;
 
 				// 插入
 				$values[$name] = $value;
@@ -1344,7 +1372,7 @@ class SQLBuilder extends Builder{
 
 
 			$defaultDocument = $documents = [];
-			foreach ($this->documents as &$values) {
+			foreach ($this->documents as $values) {
 				if ($values instanceof Param) {
 					throw new Exception($this->documents, 'Documents can not be Param');
 				}
@@ -1388,10 +1416,6 @@ class SQLBuilder extends Builder{
 			}
 
 
-
-			if ($this->intersect) {
-				$defaultDocument = array_intersect_key($defaultDocument, $columnsType);
-			}
 			ksort($defaultDocument);
 			$column = [];
 			foreach ($defaultDocument as $key => &$value) {
@@ -1404,15 +1428,12 @@ class SQLBuilder extends Builder{
 
 
 			foreach ($documents as &$document) {
-				if ($this->intersect) {
-					$document = array_intersect_key($document, $columnsType);
-				}
 				$document += $defaultDocument;
 				ksort($document);
 				$document = '('. implode(',', $document) . ')';
 			}
 			unset($document);
-			$documents = implode(',', $document);
+			$documents = implode(',', $documents);
 
 			switch ($this->DB->protocol()) {
 				case 'mysql':
@@ -1444,16 +1465,13 @@ class SQLBuilder extends Builder{
 			$document = [];
 			foreach($this->documents[0] as $name => $value) {
 				if (!$value instanceof Param) {
-					if ($value !== NULL && (!$this->intersect || isset($columnsType[$name]))) {
+					if ($value !== NULL) {
 						$document[$this->DB->key($name, true)] = $this->DB->value(isset($columnsType[$name]) ? call_user_func(self::$_typeFunctions[$columnsType[$name]], $value) : $value);
 					}
 					continue;
 				}
 
 				if ($value->value === NULL) {
-					continue;
-				}
-				if ($this->intersect && (!is_string($value->name) || empty($columnsType[$value->name]))) {
 					continue;
 				}
 
@@ -1469,7 +1487,7 @@ class SQLBuilder extends Builder{
 				} elseif ($value->expression) {
 					$data = '('. $value->value .')';
 				} else {
-					$data = $this->DB->value(!$assignment && isset($columnsType[$value->name]) ? call_user_func(self::$_typeFunctions[$columnsType[$value->name]], $value->value) : $value->value));
+					$data = $this->DB->value(in_array($assignment, ['', '='], true) && isset($columnsType[$value->name]) ? call_user_func(self::$_typeFunctions[$columnsType[$value->name]], $value->value) : $value->value);
 				}
 
 				// 字段 + 运算符 + 值
@@ -1557,6 +1575,18 @@ class SQLBuilder extends Builder{
 		return $this->_data['select'];
 	}
 
+	public function selectRow() {
+		$this->_limit();
+		if (empty($this->_data['limit'])) {
+			$this->_data['limit'] = "LIMIT 1";
+		}
+		$select = $this->select();
+		if ($select && !is_string($select)) {
+			$select = reset($select);
+		}
+		unset($this->_data['limit']);
+		return $select;
+	}
 
 
 
@@ -1627,6 +1657,16 @@ class SQLBuilder extends Builder{
 	public function deleteCacheSelect($refresh = NULL) {
 		$this->cache[0] && Cache::delete(json_encode(['cache' => $this->cache, ':field' => $this->_fields(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union(), ':lock' => $this->_lock()]), get_class($this->cursor) . $this->DB->database(), $refresh === NULL ? $this->cache[1] : $refresh);
 		unset($this->_data['select']);
+		return $this;
+	}
+
+	public function deleteCacheSelectRow($refresh = NULL) {
+		$this->_limit();
+		if (empty($this->_data['limit'])) {
+			$this->_data['limit'] = "LIMIT 1";
+		}
+		$this->deleteCacheSelect();
+		unset($this->_data['limit']);
 		return $this;
 	}
 

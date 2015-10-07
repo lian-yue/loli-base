@@ -7,17 +7,13 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2014-05-12 18:03:40
-/*	Updated: UTC 2015-03-22 08:14:55
+/*	Created: UTC 2015-08-21 13:42:16
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
 class_exists('Loli\Storage\Base') || exit;
 class FTP extends Base{
 
-	private $_link;
-
-	private $_throw;
 
 	protected $dir = '/';
 
@@ -25,204 +21,147 @@ class FTP extends Base{
 
 	protected $chmodDir = 0755;
 
-	protected $host;
+	protected $hostname = '127.0.0.1';
 
-	protected $port = 21;
+	protected $username = false;
 
-	protected $user = false;
-
-	protected $pass = false;
-
-	protected $pasv = false;
+	protected $password = false;
 
 	protected $ssl = false;
 
-	protected $timeout = 15;
+	private $_context;
 
-	protected $mode = FTP_BINARY;
-
-
-	private function _link() {
-		if ($this->_link) {
-			return $this->_link;
-		}
-		if ($this->_link !== NULL) {
-			throw $this->_throw;
-		}
-
-		// 连接
-		$this->_link = $this->ssl && function_exists('ftp_ssl_connect') ? @ftp_ssl_connect($this->host, $this->port, $this->timeout) : @ftp_connect($this->host, $this->port, $this->timeout);
-		if (!$this->_link) {
-			throw $this->_throw = new ConnectException('Unable to connect to server', 10);
-		}
-
-		// 登陆
-		if ($this->user && $this->pass && !@ftp_login($this->_link, $this->user, $this->pass)) {
-			$this->_close();
-			throw $this->_throw = new ConnectException('Unable to login to the server', 11);
-		}
-
-		// 被动模式
-		$this->pasv && ftp_pasv($this->_link, true);
-
-		// 设置超时时间
-		ftp_get_option($this->_link, FTP_TIMEOUT_SEC) < $this->timeout && ftp_set_option($this->_link, FTP_TIMEOUT_SEC, $this->timeout);
-
-		return $this->_link;
+	public function __destruct() {
+		unset($this->_context);
 	}
 
-
-	public function put($remote, $local) {
-		if (!is_file($local)){
-			throw new Exception('Storage data does not exist', 5);
+	private function _error() {
+		$error = error_get_last();
+		if ($error && strpos($error['message'], 'failed to open stream: operation failed') !== false) {
+			new ConnectException($error['message'], 10);
 		}
-
-		$file = $this->dir . $this->filter($remote);
-		$this->_mkdir(dirname($file));
-		if (!ftp_put($this->_link(), $file, $local, $this->mode)) {
-			throw new Exception('Unable to write data', 6);
-		}
-		$this->_chmod($file, $this->chmod);
-		return true;
+	}
+	private function _base() {
+		return ($this->ssl ? 'ftps' : 'ftp') . '://' . ($this->username || $this->password ? $this->username . ':' . $this->password . '@' : '') . $this->hostname . ($this->dir && $this->dir !== '/' ? '/'. trim($this->dir, '/') : '');
 	}
 
-	public function get($remote) {
-		if (!$this->exists($remote)) {
-			throw new Exception('Storage data does not exist', 5);
-		}
-		return 'ftps://' . ($this->user || $this->pass ?  $this->user . ':' . $this->pass. '@' : '') . $this->host . ':' . $this->port . '/' .$this->dir . $this->filter($remote);
+	public function dir_closedir() {
+		$result = $this->_context && closedir($this->_context);
+		$this->_context = NULL;
+		return $result;
 	}
 
-
-	public function fput($remote, $resource) {
-		if (!is_resource($resource)) {
-			throw new Exception('Resource does not exist', 3);
-		}
-
-		$file = $this->dir . $this->filter($remote);
-		$this->_mkdir(dirname($file));
-		if (!ftp_fput($this->_link() ,$file,  $resource, $this->mode)){
-			throw new Exception('Unable to write data', 6);
-		}
-		$this->_chmod($file, $this->chmod);
-		return true;
+	public function dir_opendir($path, $options) {
+		$this->_context = @opendir($this->_base() . $this->path($path));
+		$this->_context || $this->_error();
+		return !empty($this->_context);
 	}
 
-
-	public function fget($remote) {
-		return fopen($this->get($remote), 'rb');
-	}
-
-
-	public function cput($remote, $contents) {
-		if ($contents === NULL) {
-			throw new Exception('Data storage is empty', 4);
-		}
-		$remote = $this->filter($remote);
-		$resource = tmpfile();
-		fwrite($resource, $contents);
-		$this->fput($remote, $resource);
-		fclose($resource);
-		return true;
-	}
-
-
-	public function cget($remote) {
-		$resource = $this->fget($remote);
-		$contents = '';
-		while (!feof($resource)) {
-			$contents .= fread($file, $this->buffer);
-		}
-		fclose($resource);
-		return $contents;
-	}
-
-
-
-	public function rename($source, $destination) {
-		$source = $this->filter($source);
-		$destination = $this->filter($destination);
-		if (!$this->exists($source)) {
-			throw new Exception('Storage data does not exist', 5);
-		}
-		$this->_mkdir(dirname($destination));
-		if (!@ftp_rename($this->_link(), $this->dir . $source, $this->dir . $destination)){
-			throw new Exception('Unable to rename', 7);
-		}
-		return true;
-	}
-
-
-	public function unlink($remote) {
-		if (!$this->exists($source)) {
-			throw new Exception('Storage data does not exist', 5);
-		}
-		if (!@ftp_delete($this->_link(), $this->dir . $this->filter($remote))) {
-			throw new Exception('You can not delete', 7);
-		}
-		return true;
-	}
-
-	public function unlinks($remote) {
-		foreach ($remote as $v) {
-			 $this->unlink($v);
-		}
-		return true;
-	}
-
-
-
-	public function size($remote) {
-		if (!$this->exists($remote) || ($size = @ftp_size($this->_link(), $this->dir . $remote)) == -1) {
-			throw new Exception('Storage data does not exist', 5);
-		}
-		return $size < 0 ? false : $size;
-	}
-
-	public function exists($remote) {
-		if (!ftp_nlist($this->_link(), $this->dir . $this->filter($remote))) {
+	public function dir_readdir() {
+		if (!$this->_context) {
 			return false;
 		}
-		return !$this->_isDir($this->dir . $this->filter($remote));
-	}
-
-
-
-	private function _close() {
-		$this->_link && @ftp_close($this->_link);
-		$this->_link = NULL;
-	}
-
-	private function _isDir($dir) {
-		$pwd = @ftp_pwd($this->_link());
-		if (!$result = @ftp_chdir($this->_link(), $dir)) {
-			return false;
+		while(in_array($result = readdir($this->_context), ['.', '..'], true)) {
 		}
-		@ftp_chdir($this->_link, $pwd);
-		return true;
+		return $result;
+	}
+
+	public function dir_rewinddir() {
+		return $this->_context ? rewinddir($this->_context) : false;
+	}
+
+
+	public function rename($pathFrom, $pathTo) {
+		return @rename($this->_base() . $this->path($pathFrom), $this->_base() . $this->path($pathTo));
+	}
+
+	public function mkdir($path, $mode, $options) {
+		if ($options & STREAM_MKDIR_RECURSIVE) {
+			$base = $this->_base();
+			$path = $this->path($path);
+			$names = $path === '/' ? [] : explode('/', trim($path, '/'));
+			$mkdir = [];
+			while ($names) {
+				if (@file_exists($base . '/' . implode('/', $names))) {
+					break;
+				}
+				$mkdir[] = array_pop($names);
+			}
+			if (!$mkdir) {
+				return false;
+			}
+			$path = $base . implode('/', $names);
+			while ($mkdir) {
+				$path .= '/' . array_pop($mkdir);
+				if (!@mkdir($path, $this->chmodDir)) {
+					return false;
+				}
+			}
+			return true;
+		} else {
+			return @mkdir($this->_base() . $this->path($path), $this->chmodDir);
+		}
+	}
+
+	public function rmdir($path) {
+		return @rmdir($this->_base() . $this->path($path));
 	}
 
 
 
-
-	private function _mkdir($dir) {
-		if (!$dir || $this->_isDir($dir)) {
-			return;
-		}
-		$this->_mkdir(dirname($dir));
-		if (!@ftp_mkdir($this->_link(), $dir)) {
-			throw new Exception('Unable to create directory', 12);
-		}
-		$this->_chmod($dir, $this->chmodDir);
+	public function stream_close() {
+		$result = $this->_context && @fclose($this->_context);
+		$this->_context = NULL;
+		return $result;
 	}
 
-
-	private function _chmod($path, $mode) {
-		// 属性的文件或目录
-		if (!function_exists('ftp_chmod')) {
-			return @ftp_site($this->_link(), sprintf('CHMOD %o %s', $mode, $path));
-		}
-		return @ftp_chmod($this->_link(), $mode, $path);
+	public function stream_eof() {
+		return $this->_context ? feof($this->_context) : true;
+	}
+	public function stream_flush() {
+		return $this->_context ? fflush($this->_context) : true;
 	}
 
+	public function stream_open($path, $mode, $options, &$openedPath) {
+		$path = $this->path($path, $protocol);
+		$openedPath = $protocol . ':/' . $path;
+		$this->_context = @fopen($this->_base() . $path, $mode);
+		if ($this->_context && $mode[0] !== 'r') {
+			@chmod($this->_base() . $path, $this->chmod);
+		}
+		$this->_context || $this->_error();
+		return !empty($this->_context);
+	}
+
+	public function stream_read($count) {
+		return $this->_context ? fread($this->_context, $count) : false;
+	}
+
+	public function stream_seek($offset, $whence = SEEK_SET) {
+		return $this->_context ? fseek($this->_context, $offset, $whence) : false;
+	}
+
+	public function stream_stat() {
+		return $this->_context ? fstat($this->_context) : false;
+	}
+
+	public function stream_tell() {
+		return $this->_context ? ftell($this->_context) : false;
+	}
+
+	public function stream_truncate($newSize) {
+		return $this->_context ? ftruncate($this->_context, $newSize) : false;
+	}
+
+	public function stream_write($data) {
+		return $this->_context ? fwrite($this->_context, $data) : false;
+	}
+
+	public function unlink($path) {
+		return @unlink($this->_base() . $this->path($path, $protocol));
+	}
+
+	public function url_stat($path, $flags) {
+		return @stat($this->_base() . $this->path($path));
+	}
 }

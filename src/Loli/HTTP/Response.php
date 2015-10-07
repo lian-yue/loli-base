@@ -249,7 +249,7 @@ class Response{
 							$type = trim($matches[1]);
 							$filename = trim($matches[2], " \t\n\r\0\x0B\"");
 							if (!($userAgent = $request->getHeader('User-Agent')) || strpos($userAgent, 'MSIE ') !== false || (strpos($userAgent, 'Trident/') !== false && strpos($userAgent, 'rv:') !== false && strpos($userAgent, 'opera') === false)) {
-								$filename = strtr(urlencode($filename), ['+'=>'%20', '"' => '']);
+								$filename = str_replace(['+', '"'], ['%20', ''], urlencode($filename));
 							}
 
 							$value = [$type];

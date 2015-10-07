@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-09-24 15:30:40
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-04-09 12:09:10
 /*	Updated: UTC 2015-04-09 12:49:12
 /*
@@ -17,8 +28,13 @@ class CURL{
 	// curl 文件保存途径
 	protected $cookie = './';
 
+	protected $tempdir = '';
+
+	// cookie 是否储存在本地
+	protected $cookieLocal = true;
+
 	// 默认
-	public $defaults = [];
+	protected $defaults = [];
 
 	// info 信息
 	private $_info = [];
@@ -30,9 +46,15 @@ class CURL{
 	private $_chs = [];
 
 	// 自动加载
-	public function __construct(array $defaults = [], $cookie = false) {
+	public function __construct(array $defaults = [], $cookie = false, $tempdir = false) {
 		$this->cookie = $cookie == false ? (empty($_SERVER['LOLI']['CURL']['cookie']) ? './' : $_SERVER['LOLI']['CURL']['cookie']) : $cookie;
-		$this->defaults = $defaults + [
+		$this->tempdir = $tempdir;
+
+		// cookie 是否是本地协议
+		if (preg_match('/^([0-9a-z._-]+)\:\/\//i', $this->cookie, $matches) && strcasecmp($matches[1], 'file') !== 0) {
+			$this->cookieLocal = false;
+		}
+		$this->defaults = $defaults + $this->defaults + [
 			CURLOPT_SSL_VERIFYPEER => false,
 			CURLOPT_DNS_CACHE_TIMEOUT => 300,
 			CURLOPT_DNS_USE_GLOBAL_CACHE => true,
@@ -130,7 +152,7 @@ class CURL{
 			$option = is_int($option) ? $option : constant('CURLOPT_' . strtoupper($option));
 			$this->_options[$key][$option] = $value;
 		}
-		if (empty($this->_options[$key][CURLOPT_URL])) {
+		if ((empty($this->_options[$key][CURLOPT_URL]) && empty($this->defaults[CURLOPT_URL])) || (isset($this->_options[$key][CURLOPT_URL]) && empty($this->_options[$key][CURLOPT_URL]))) {
 			unset($this->_options[$key]);
 			throw new Exception('URL can not be empty');
 		}
@@ -220,6 +242,19 @@ class CURL{
 					}
 				} elseif ($optoin === CURLOPT_COOKIEJAR || $optoin === CURLOPT_COOKIEFILE) {
 					$value = $this->cookie($value);
+
+					// cookie 不是本地
+					if (!$this->cookieLocal) {
+						$curlCookieFiles[$key][$optoin] = $value;
+						if (empty($cookieFiles[$value])) {
+							$cookieFiles[$value] = tempnam($this->tempdir, 'curl');
+							if ($optoin === CURLOPT_COOKIEJAR) {
+								$contents = file_get_contents($value);
+								$contents && file_put_contents($cookieFiles[$value], $contents);
+							}
+							$value = $cookieFiles[$value];
+						}
+					}
 				} elseif ($optoin === CURLOPT_FILE) {
 					if (!is_resource($value)) {
 						$downloads[$key]['file'] = $value;
@@ -258,6 +293,19 @@ class CURL{
 					   fwrite($fp, fgets($downloads[$key]['temp']));
 					}
 					fclose($downloads[$key]['temp']);
+				}
+
+				// 如果有远程 Cookie
+				if (!empty($curlCookieFiles[$key])) {
+					foreach ($curlCookieFiles[$key] as $optoin => $value) {
+						if ($optoin === CURLOPT_COOKIEJAR) {
+							$contents = file_get_contents($cookieFiles[$value]);
+							$contents && file_put_contents($value, $contents);
+						}
+					}
+					foreach ($cookieFiles as $value) {
+						@unlink($value);
+					}
 				}
 				$this->_options = $this->_chs = [];
 				return $content;
@@ -312,9 +360,26 @@ class CURL{
 				$fp = fopen($downloads[$key]['file'], 'wb');
 				fseek($downloads[$key]['temp'], 0);
 				while (!feof($downloads[$key]['temp'])) {
-				   fwrite($fp, fgets($downloads[$key]['temp']));
+				   fwrite($fp, fread($downloads[$key]['temp'], 1024 * 1024 * 2));
 				}
 				fclose($downloads[$key]['temp']);
+			}
+
+			// 如果有远程 Cookie
+			if (!empty($curlCookieFiles[$key])) {
+				foreach ($curlCookieFiles[$key] as $optoin => $value) {
+					if ($optoin === CURLOPT_COOKIEJAR) {
+						$contents = file_get_contents($cookieFiles[$value]);
+						$contents && file_put_contents($value, $contents);
+					}
+				}
+			}
+		}
+
+		// 删除缓存文件
+		if (!empty($cookieFiles)) {
+			foreach ($cookieFiles as $value) {
+				@unlink($value);
 			}
 		}
 

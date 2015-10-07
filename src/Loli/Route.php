@@ -20,7 +20,6 @@ class Route implements ArrayAccess{
 		'response' => 'Loli\\Route::load',
 		'localize' => 'Loli\\Route::load',
 		'session' => 'Loli\\Route::load',
-		'storage' => 'Loli\\Route::load',
 		'DB' => 'Loli\\Route::load',
 		'table' => 'Loli\\Route::load',
 	];
@@ -57,7 +56,7 @@ class Route implements ArrayAccess{
 				}, $defaultHost);
 				$defaultHost = '/^(?:' . implode('|', $defaultHost) . ')$/';
 			}
-			foreach (empty($_SERVER['LOLI']['ROUTE']['file']) ? [] : require $_SERVER['LOLI']['ROUTE']['file'] as $route => $controller) {
+			foreach (empty($_SERVER['LOLI']['ROUTE']['file']) ? [] : require $_SERVER['LOLI']['ROUTE']['file'] as $route => $model) {
 				if ($route{0} === '/') {
 					$path = $route;
 					$method = empty($_SERVER['LOLI']['ROUTE']['method']) ? ['GET', 'POST'] : (is_array($_SERVER['LOLI']['ROUTE']['method']) ? $_SERVER['LOLI']['ROUTE']['method'] : preg_split('/(,|\||\s+)/', $_SERVER['LOLI']['ROUTE']['method'], -1, PREG_SPLIT_NO_EMPTY));
@@ -75,17 +74,19 @@ class Route implements ArrayAccess{
 					$path = '/' . $route[1];
 				}
 				$path = '/^'. str_replace('/', '\\/', $path) . '$/';
-				if (is_object($controller)) {
-				} elseif (is_array($controller)) {
-					if (is_string($controller[0])) {
-						$controller[0] = str_replace('/', '\\', $controller[0]);
+
+				if (!is_array($model)) {
+					$split = preg_split('/(\s+|\:+|-\>|@|\>|\.)/', $model, -1, PREG_SPLIT_NO_EMPTY);
+					$model = ['', 'index'];
+					if (count($split) > 1) {
+						$model[1] = array_pop($split);
 					}
-					$controller += [1=> 'index'];
+					$model[0] = implode('\\', $split);
 				} else {
-					$controller = preg_split('/(\s+|\:+|-\>|@|\>)/', $controller, 2, PREG_SPLIT_NO_EMPTY) + [1 => 'index'];
-					$controller[0] = str_replace('/', '\\', $controller[0]);
+					$model[0] = strtr($model[0], '/.', '\\\\');
+					$model += [1=> 'index'];
 				}
-				self::$routes[] = ['method' => $method, 'path' => $path, 'host' => $host, 'controller' => $controller];
+				self::$routes[] = ['method' => $method, 'path' => $path, 'host' => $host, 'model' => $model];
 			}
 		}
 	}
@@ -106,6 +107,22 @@ class Route implements ArrayAccess{
 				if (!preg_match($route['host'], $host, $matches2)) {
 					continue;
 				}
+				$model = $route['model'];
+				$replace = [];
+				foreach ($matches as $key => $value) {
+					$replace['$'.$key] = $value;
+				}
+				foreach ($matches2 as $key => $value) {
+					$replace['$host.'.$key] = $value;
+				}
+
+				foreach ($model as &$mom) {
+					if (is_string($mom)) {
+						$mom = strtr($mom, $replace);
+					}
+				}
+
+
 				$matches += $matches2;
 				foreach($matches as $key => $value) {
 					if (is_int($key)) {
@@ -113,62 +130,27 @@ class Route implements ArrayAccess{
 						continue;
 					}
 				}
-				$controller = $route['controller'];
-				if (is_object($controller) && is_object($controller[0])) {
-					if ($controller = call_user_func($controller, $matches, $this)) {
-						continue;
-					}
-					if (is_string($controller)) {
-						$controller = preg_split('/(\s+|\:+|-\>|@|\>|\.)/', $controller, 2, PREG_SPLIT_NO_EMPTY);
-					}
-					$controller[0] = str_replace('/', '\\', $controller[0]);
-					$controller += [1 => 'index'];
-				}
-
-				$replace = [];
-				foreach ($matches as $key => $value) {
-					$replace['$'.$key] = $value;
-				}
-				foreach ($controller as &$mom) {
-					if (is_string($mom)) {
-						$mom = strtr($mom, $replace);
-					}
-				}
 				break;
 			}
 
-
-			if (empty($controller)) {
+			if (empty($model)) {
 				throw new Message(404, Message::ERROR);
 			}
 
-			if (is_object($controller[0])) {
-				if (substr($class = get_class($controller[0]), 0, 11) !== 'Controller\\') {
-					throw new Message(500, Message::ERROR, new Message([1, 'Class object not controller'], Message::ERROR));
-				}
-				$this->controllerName = substr($class, 11);
-			} else {
-				if (!class_exists($class = 'Controller\\' . $controller[0])) {
-					throw new Message(404, Message::ERROR, new Message([1, 'Controller not exists'], Message::ERROR));
-				}
-				$this->controllerName = $controller[0];
-				$controller[0] = new $class($this);
+			if (empty($model[1]) || $model[1]{0} === '_') {
+				throw new Message(404, Message::ERROR, new Message([1, 'Model not exists'], Message::ERROR));
 			}
-			if (!$controller[1] || $controller[1]{0} === '_') {
-				throw new Message(404, Message::ERROR, new Message([1, 'Controller not exists'], Message::ERROR));
-			}
-			$this->controllerMethod = $controller[1];
 
 
-			// RBAC 权限
-			if (method_exists($controller[0], '__RBAC') && !$controller[0]->__RBAC($matches, $this)) {
-				$this->response->setStatus(403);
-				throw new Message([90, 'RBAC'], Message::ERROR);
+			if (!class_exists($class = 'Model\\' . $model[0])) {
+				throw new Message(404, Message::ERROR, new Message([1, 'Model not exists'], Message::ERROR));
 			}
+			$this->model = $model;
+			$model[0] = new $class($this, true);
+
 
 			// 执行方法
-			$view = call_user_func($controller, $matches, $this);
-
+			$view = call_user_func($model, $matches + $this->request->getParams(), $this);
 
 			// 返回的是 RouteInterface
 			if ($view instanceof RouteInterface) {
@@ -322,11 +304,6 @@ class Route implements ArrayAccess{
 				if ($route->request->getParam('timezone')) {
 					$result->setLanguage($route->request->getParam('timezone', ''));
 				}
-				break;
-			case 'storage':
-				// 储存
-				$class = __NAMESPACE__ . '\Storage\\' . (empty($_SERVER['LOLI']['STORAGE']['type']) ? 'Local' : $_SERVER['LOLI']['STORAGE']['type']);
-				$result = new $class($_SERVER['LOLI']['STORAGE']);
 				break;
 			case 'session':
 				// Session

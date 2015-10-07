@@ -209,8 +209,9 @@ class Localize{
 		if ($timezone && !in_array($timezone, self::$allTimezone)) {
 			return false;
 		}
-		$timezone = $timezone ? $timezone : $this->timezone;
-
+		if (!$timezone) {
+			$timezone = $this->timezone;
+		}
 		// 时间 时区 对象
 		if (empty($this->dateTime) || $this->dateTime->getTimezone()->getName() !== $timezone) {
 			if (in_array($timezone, DateTimeZone::listIdentifiers())) {
@@ -223,7 +224,10 @@ class Localize{
 		// 当前时间戳
 		if ($time === false) {
 			$time = time();
+		} elseif (!is_numeric($time)) {
+			$time = strtotime($time);
 		}
+
 
 		// 返回时间戳
 		if ($format === 'U') {

@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-05-04 14:05:22
 /*	Updated: UTC 2015-06-02 02:43:01
 /*
@@ -20,6 +31,12 @@ class Iterator extends ArrayIterator implements JsonSerializable{
 			$array[$key] = $value;
 		}
 		return $array;
+	}
+
+	public function __clone() {
+		foreach ($this as $key => $value) {
+			$array[$key] = clone $value;
+		}
 	}
 
 }

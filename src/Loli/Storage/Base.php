@@ -23,20 +23,12 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
-use finfo;
-define('UPLOAD_ERR_MULTIPLE', 100);
-define('UPLOAD_ERR_MIME', 101);
-define('UPLOAD_ERR_MIME_TYPE', 102);
-
-
+use streamWrapper;
 /*
-	没有DIR 函数 扁平化 存放  可以比如放数据库什么的
-
- */
+没有DIR 函数 扁平化 存放  可以比如放数据库什么的
+*/
 
 abstract class Base{
-
-	protected $buffer = 2097152;
 
 	public function __construct(array $args = []) {
 		foreach ($args as $key => $value) {
@@ -46,139 +38,40 @@ abstract class Base{
 		}
 	}
 
-	/**
-	*	上传文件
-	*
-	*	1 参数 远程文件
-	*	2 参数 本地文件
-	*
-	*	返回值 true  false
-	**/
-	abstract public function put($remote, $local);
-
-	/**
-	*	下载 到本地文件
-	*
-	*	1 参数 远程文件
-	*
-	*	返回值 true false
-	**/
-	abstract public function get($remote);
-
-	/**
-	*	上传文件 已打开文件
-	*
-	*	1 参数 远程文件
-	*	2 参数 已打开的文件资源
-	*
-	*	返回值 true  false
-	**/
-	abstract public function fput($remote, $resource);
-
-	/**
-	*	打开一个文件
-	*
-	*	1 参数 远程文件
-	*
-	*	返回值 true  false
-	**/
-	abstract public function fget($remote);
-
-	/**
-	*	上传文件 文件内容
-	*
-	*	1 参数远程地址
-	*	2 参数 文件内容
-	*
-	*	返回值 bool
-	**/
-	abstract public function cput($remote, $contents);
-
-	/**
-	*	打开一个文件
-	*
-	*	1 参数 远程文件
-	*
-	*	返回值 true  false
-	**/
-	abstract public function cget($remote);
-
-	/**
-	*	删除上传文件
-	*
-	*	1 参数文件地址
-	*
-	*	返回值 true false
-	**/
-	abstract public function unlink($remote);
-
-	/**
-	*	删除上传文件 多个
-	*
-	*	1 参数文件地址 数组
-	*
-	*	返回值 true false
-	**/
-	abstract public function unlinks($remote);
 
 
-	/**
-	*	取得文件大小
-	*
-	*	1 参数 文件地址
-	*
-	*	返回值 true false
-	**/
-	abstract public function size($remote);
+	public function path($path, &$protocol = NULL) {
+		$parse = parse_url($path);
+		if (empty($parse['protocol'])) {
+			$protocol = 'storage';
+		} else {
+			$protocol = strtolower($parse['protocol']);
+		}
+		$path = $parse['host'];
+		if (!empty($parse['path'])) {
+			$path .= '/' . $parse['path'];
+		}
 
-	/**
-	*	判断是否 是文件
-	*
-	*	1 参数 文件地址
-	*
-	*	返回值 true false
-	**/
-	abstract public function exists($remote);
-
-	/**
-	*	移动文件
-	*
-	*	1 参数 源
-	*	2 参数 目的
-	*
-	*	返回值 true false
-	**/
-	abstract public function rename($source, $destination);
-
-
-
-	/**
-	*	过滤 途径
-	*
-	*	1 参数 filter
-	*
-	*	返回值 string
-	**/
-	public function filter($path) {
 		if (!$path = preg_replace('/[\/\\\\]+/', '/', trim($path, " \t\n\r\0\x0B/\\"))) {
-			throw new Exception('Path can not be empty', 1);
+			return '/';
 		}
-		$r = [];
+
+		$array = [];
 		foreach (explode('/', $path) as $name) {
-			if (!$name || trim($name, " \t\n\r\0\x0B.") != $name || preg_match('/[\\\"\<\>\|\?\*\:\/	]/', '', $name)) {
-				throw new Exception('Path format', 1);
+			if (!$name || $name === '.') {
+				continue;
 			}
-			$r[] = $v;
-		}
-		return '/' . implode('/', $r);
-	}
+			if ($name === '..') {
+				$array && array_pop($array);
+				continue;
+			}
+			if (trim($name, " \t\n\r\0\x0B.") !== $name || preg_match('/[\\\"\<\>\|\?\*\:\/	]/', $name)) {
+				continue;
+			}
 
-
-	public function mime($file) {
-		$info = new finfo();
-		if (!is_file($file)) {
-			throw new Exception('File does not exist', 2);
+			$array[] = $name;
 		}
-		return ['type' => $info->file($file, FILEINFO_MIME_TYPE), 'encoding' => $info->file($file, FILEINFO_MIME_ENCODING)];
+
+		return '/' . implode('/', $array);
 	}
 }

@@ -96,7 +96,7 @@ class View implements JsonSerializable, RouteInterface{
 
 	protected function load($files) {
 		foreach ($files as $_file) {
-			if ($is = is_file($_file = $this->dir .'/' . strtolower($_file) . '.php')) {
+			if ($is = is_file($_file = $this->dir .'/' . strtolower(strtr($_file, '\\.', '/')) . '.php')) {
 				break;
 			}
 		}
@@ -117,7 +117,12 @@ class View implements JsonSerializable, RouteInterface{
 		return $this->data;
 	}
 
+
 	public function __invoke() {
+		$this->output();
+	}
+
+	public function output() {
 		if (is_string($this->data)) {
 			return $this->data;
 		}

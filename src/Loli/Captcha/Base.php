@@ -39,7 +39,7 @@ abstract class Base {
 	public $color = [];
 
 	// 文字角度
-	public $angle 	= [-20, 20];
+	public $angle = [-20, 20];
 
 	// 文字间隔
 	public $spacing = [0.6, 0.8];
@@ -169,7 +169,7 @@ abstract class Base {
 	 * @param  $rgb
 	 * @return array|boolean
 	 */
-	public function rgb($rgb) {
+	protected function rgb($rgb) {
 		if ($rgb && is_array($rgb)) {
 			foreach (['red', 'green', 'blue'] as $v) {
 				$rgb[$v] = empty($rgb[$v]) ? 0 : $rgb[$v];

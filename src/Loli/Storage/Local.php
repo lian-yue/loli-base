@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-10-06 05:16:44
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-01-15 13:01:52
 /*	Updated: UTC 2015-02-26 10:02:24
 /*
@@ -20,131 +31,99 @@ class Local extends Base{
 
 	protected $chmodDir = 0755;
 
-	public function put($remote, $local) {
-		if (!is_file($local)){
-			throw new Exception('Storage data does not exist', 5);
-		}
+	private $_context;
 
-		$file = $this->dir . $this->filter($remote);
-		$this->_mkdir(dirname($file));
-		if (!@copy($local, $file)) {
-			throw new Exception('Unable to write data', 6);
-		}
-		@chmod($file, $this->chmod);
-		return true;
+	public function __destruct() {
+		unset($this->_context);
 	}
 
-
-	public function get($remote) {
-		if (!$this->exists($remote)) {
-			throw new Exception('Storage data does not exist', 5);
-		}
-		return $this->dir. $this->filter($remote);
+	public function dir_closedir() {
+		$result = $this->_context && closedir($this->_context);
+		$this->_context = NULL;
+		return $result;
 	}
 
-
-	public function fput($remote, $resource) {
-		if (!is_resource($resource)) {
-			throw new Exception('Resource does not exist', 3);
-		}
-
-		$file = $this->dir . $this->filter($remote);
-		$this->_mkdir(dirname($file));
-
-		// 写入文件
-		if (!$fp = fopen($file, 'wb')) {
-			throw new Exception('Unable to write data', 6);
-		}
-		$ftell = ftell($resource);
-		fseek($resource, 0);
-		while (!feof($resource)) {
-		   fwrite($fp, fread($resource, $this->buffer));
-		}
-		fseek($resource, $ftell);
-		fclose($fp);
-		@chmod($file, $this->chmod);
-		return true;
+	public function dir_opendir($path, $options) {
+		$this->_context = @opendir($this->dir . $this->path($path));
+		return !empty($this->_context);
 	}
 
-
-	public function fget($remote) {
-		if (!$this->exists($remote)) {
-			throw new Exception('Storage data does not exist', 5);
+	public function dir_readdir() {
+		if (!$this->_context) {
+			return false;
 		}
-		return fopen($this->dir . $this->filter($remote), 'rb');
+		while(in_array($result = readdir($this->_context), ['.', '..'], true)) {
+		}
+		return $result;
 	}
 
-
-	public function cput($remote, $contents) {
-		if ($contents === NULL) {
-			throw new Exception('Data storage is empty', 4);
-		}
-		$remote = $this->filter($remote);
-		$file = $this->dir .$remote;
-		$this->_mkdir(dirname($file));
-
-		// 写入文件
-		if (!$fp = fopen($file, 'wb')) {
-			throw new Exception('Unable to write data', 6);
-		}
-		fwrite($fp, $contents);
-		fclose($fp);
-		@chmod($file, $this->chmod);
-		return true;
+	public function dir_rewinddir() {
+		return $this->_context ? rewinddir($this->_context) : false;
 	}
 
+	public function rename($pathFrom, $pathTo) {
+		return @rename($this->dir . $this->path($pathFrom), $this->dir . $this->path($pathTo));
+	}
 
+	public function mkdir($path, $mode, $options) {
+		return @mkdir($this->dir . $this->path($path), $this->chmodDir);
+	}
 
-	public function cget($remote) {
-		if (!$this->exists($remote)) {
-			throw new Exception('Storage data does not exist', 5);
+	public function rmdir($path) {
+		return @rmdir($this->dir . $this->path($path));
+	}
+
+	public function stream_close() {
+		$result = $this->_context && fclose($this->_context);
+		$this->_context = NULL;
+		return $result;
+	}
+
+	public function stream_eof() {
+		return $this->_context ? feof($this->_context) : true;
+	}
+	public function stream_flush() {
+		return $this->_context ? fflush($this->_context) : true;
+	}
+
+	public function stream_lock($operation) {
+		return $this->_context ? flock($this->_context, $operation) : false;
+	}
+
+	public function stream_open($path, $mode, $options, &$openedPath) {
+		$path = $this->path($path, $protocol);
+		$openedPath = $protocol . ':/' . $path;
+		$this->_context = @fopen($this->dir . $path, $mode);
+		if ($mode[0] !== 'r') {
+			@chmod($this->dir . $path, $this->chmod);
 		}
-		return fread(fopen($file = $this->dir . $this->filter($remote), 'rb'), filesize($file));
+		return !empty($this->_context);
+	}
+	public function stream_read($count) {
+		return $this->_context ? fread($this->_context, $count) : false;
 	}
 
-
-	public function rename($source, $destination) {
-		if (!$this->exists($remote)) {
-			throw new Exception('Storage data does not exist', 5);
-		}
-		$source = $this->filter($source);
-		$destination = $this->filter($destination);
-		$this->_mkdir(dirname($destination));
-		return @rename($this->dir .$source, $this->dir .$destination);
+	public function stream_seek($offset, $whence = SEEK_SET) {
+		return $this->_context ? fseek($this->_context, $offset, $whence) : false;
 	}
 
-
-
-	public function unlink($remote) {
-		if (!$this->exists($source)) {
-			throw new Exception('Storage data does not exist', 5);
-		}
-		if (!@unlink($this->dir . $this->filter($remote))) {
-			throw new Exception('You can not delete', 7);
-		}
-		return true;
+	public function stream_stat() {
+		return $this->_context ? fstat($this->_context) : false;
+	}
+	public function stream_tell() {
+		return $this->_context ? ftell($this->_context) : false;
+	}
+	public function stream_truncate($newSize) {
+		return $this->_context ? ftruncate($this->_context, $newSize) : false;
+	}
+	public function stream_write($data) {
+		return $this->_context ? fwrite($this->_context, $data) : false;
+	}
+	public function unlink($path) {
+		return @unlink($this->dir . $this->path($path, $protocol));
 	}
 
-	public function unlinks($remote) {
-		foreach ($remote as $v) {
-			 $this->unlink($v);
-		}
-		return true;
+	public function url_stat($path, $flags) {
+		return @stat($this->dir . $this->path($path));
 	}
-
-	public function size($remote) {
-		if (!$this->exists($remote)) {
-			throw new Exception('Storage data does not exist', 5);
-		}
-		return filesize($this->dir  . $this->filter($remote));
-	}
-
-	public function exists($remote) {
-		return is_file($this->dir .$this->filter($remote));
-	}
-
-	private function _mkdir($dir) {
-		$dir && (is_dir($dir) || @mkdir($dir, $this->chmodDir, true));
-	}
-
 }

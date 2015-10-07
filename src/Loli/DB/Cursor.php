@@ -78,20 +78,21 @@ class Cursor{
 	protected $callback = false;
 
 	// 构造器对象
-	protected $buildersClass = [
+	protected $builder = false;
+
+
+	protected $current = 0;
+
+
+	protected $increment = 0;
+
+
+	// 构造器对象
+	protected static $buildersClass = [
 		'mongo' => 'Mongo',
 		'mongodb' => 'Mongo',
 		'redis' => 'Redis',
 	];
-
-	// 构造器对象
-	protected $builder = NULL;
-
-	protected $current = 0;
-
-	protected $increment = 0;
-
-	protected $intersect = false;
 
 
 	/**
@@ -103,11 +104,15 @@ class Cursor{
 		return $this->$name;
 	}
 
+	public function __isset($name) {
+		return isset($this->$name);
+	}
+
 
 
 
 	public function DB(Base $DB) {
-		$this->builder = NULL;
+		$this->builder = false;
 		$this->DB = $DB;
 	}
 
@@ -556,11 +561,11 @@ class Cursor{
 
 	}
 
-	protected function write(Iterator $value = NULL) {
+	protected function write($name, Iterator $iterator = NULL) {
 
 	}
 
-	protected function success($name, Iterator $value = NULL) {
+	protected function success($name, Iterator $iterator = NULL) {
 
 	}
 
@@ -615,10 +620,9 @@ class Cursor{
 			$this->offset(0)->limit(1)->cache($this->primaryTTL, 0, false);
 		}
 
-
 		// 构造器
 		if (!$this->builder) {
-			$builderClass = __NAMESPACE__ .'\\'. (isset($this->buildersClass[$this->DB->protocol()]) ? $this->buildersClass[$this->DB->protocol()] : 'SQLBuilder');
+			$builderClass = __NAMESPACE__ .'\\'. (isset(self::$buildersClass[$this->DB->protocol()]) ? self::$buildersClass[$this->DB->protocol()] : 'SQLBuilder');
 			$this->builder = new $builderClass($this);
 			$this->current = $this->increment;
 		} elseif ($this->increment !== $this->current) {
@@ -632,12 +636,13 @@ class Cursor{
 		}
 
 		if ($this->callback) {
-			switch ($name) {
+			switch ($name2 = strtolower($name)) {
 				case 'insert':
 					// 插入
-					$this->write();
+					$this->_documentsParam();
+					$this->write($name2);
 					$result = $this->builder->insert();
-					$this->success($name);
+					$this->success($name2);
 					break;
 				case 'update':
 					// 更新
@@ -645,11 +650,12 @@ class Cursor{
 					$this->execute = true;
 					$select = $this->builder->select();
 					$this->execute = $execute;
-					$this->write($select);
+					$this->_documentsParam();
+					$this->write($name2, $select);
 					$result = $this->builder->update();
 					$this->builder->deleteCacheSelect();
 					$this->builder->deleteCacheCount();
-					$this->success($name, $select);
+					$this->success($name2, $select);
 					break;
 				case 'delete':
 					// 删除
@@ -660,7 +666,7 @@ class Cursor{
 					$result = $this->builder->delete();
 					$this->builder->deleteCacheSelect();
 					$this->builder->deleteCacheCount();
-					$this->success($name, $select);
+					$this->success($name2, $select);
 					break;
 				case 'select':
 					$result = $this->builder->select();
@@ -668,6 +674,12 @@ class Cursor{
 						foreach($result as &$value) {
 							$this->read($value);
 						}
+					}
+					break;
+				case 'selectrow':
+					$result = $this->builder->selectRow();
+					if ($result && !is_string($result)) {
+						$this->read($result);
 					}
 					break;
 				default:
@@ -683,4 +695,52 @@ class Cursor{
 	}
 
 
+
+
+
+	private function _documentsParam() {
+		foreach($this->documents as &$document) {
+			foreach ($document as $name => &$value) {
+				if (!$value instanceof Param) {
+					$value = new Param(['name' => $name, 'value' => $value]);
+				}
+			}
+		}
+	}
+
+	protected function documentUpdate() {
+		$array = [];
+		if ($this->documents) {
+			foreach (reset($this->documents) as $name => &$value) {
+				if ($value instanceof Param) {
+					if (is_string($value->name) && !is_object($value->value)) {
+						$array[$value->name] = $value->value;
+					}
+				} elseif (is_string($name) && !is_object($value)) {
+					$array[$name] = $value;
+				}
+			}
+		}
+		return new Row($array);
+	}
+
+	private function documentsInsert() {
+		$arrays = [];
+		foreach($this->documents as &$document) {
+			$array = [];
+			foreach ($document as $name => &$value) {
+				if ($value instanceof Param) {
+					if (is_string($value->name) && !is_object($value->value)) {
+						$array[$value->name] = $value->value;
+					}
+				} elseif (is_string($name) && !is_object($value)) {
+					$array[$name] = $value;
+				}
+			}
+			if ($array) {
+				$arrays[] = new Row($array);
+			}
+		}
+		return new Iterator($arrays);
+	}
 }

@@ -109,6 +109,8 @@ class Request{
 		$IP = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1';
 		if (empty($_SERVER['LOLI']['IP'])) {
 
+		} elseif (is_string($_SERVER['LOLI']['IP']) && !empty($_SERVER[$key = 'HTTP_' . strtr(strtoupper($_SERVER['LOLI']['IP']), '-', '_')]) && filter_var($_SERVER[$key], FILTER_VALIDATE_IP)) {
+			$IP = $_SERVER[$key];
 		} elseif (isset($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP)) {
 			$IP = $_SERVER['HTTP_CLIENT_IP'];
 		} elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {

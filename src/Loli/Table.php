@@ -11,10 +11,12 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-use Loli\DB\Cursor;
+use Loli\DB\Cursor, ArrayAccess;
 class_exists('Loli\DB\Cursor') || exit;
-class Table extends Cursor{
+class Table extends Cursor implements ArrayAccess{
 	protected $callback = true;
+
+	protected $route;
 
 	public function __construct(Route &$route) {
 		$this->route = &$route;
@@ -28,5 +30,23 @@ class Table extends Cursor{
 			$this->current = $this->increment = 0;
 		}
 		return $this;
+	}
+
+
+
+	public function offsetExists($name) {
+		return $this->route->table->offsetExists($name);
+	}
+
+	public function offsetGet($name) {
+		return $this->route->table->offsetGet($name);
+	}
+
+	public function offsetSet($name, $value) {
+		return $this->route->table->offsetSet($name, $value);
+	}
+
+	public function offsetUnset($name) {
+		return $this->route->table->offsetUnset($name);
 	}
 }

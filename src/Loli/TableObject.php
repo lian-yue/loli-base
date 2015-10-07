@@ -40,12 +40,12 @@ class TableObject implements ArrayAccess{
 		return $this->__unset($name);
 	}
 
-	public function __invoke($name) {
+	public function __invoke($name, $new = false) {
 		return $this->__get($name);
 	}
 
 	public function __get($name) {
-		$name = strtr($name, '/.', '\\');
+		$name = strtr($name, '/.', '\\\\');
 		if (isset($this->_data[$name])) {
 			return $this->_data[$name]->flush();
 		}
@@ -61,11 +61,12 @@ class TableObject implements ArrayAccess{
 	}
 
 	public function __isset($name) {
-		return isset($this->_data[$name]) || class_exists($class = $this->_namespace . '\\' . strtr($name, './', '\\'));
+		$name = strtr($name, '/.', '\\\\');
+		return isset($this->_data[$name]) || class_exists($class = $this->_namespace . '\\' . $name);
 	}
 
 	public function __unset($name) {
-		unset($this->_data[$name]);
+		unset($this->_data[strtr($name, '/.', '\\\\')]);
 		return true;
 	}
 }

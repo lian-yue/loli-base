@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-05-04 11:42:33
 /*	Updated: UTC 2015-05-17 02:16:50
 /*
@@ -29,6 +40,7 @@ class Row implements ArrayAccess{
 	public function offsetExists($offset) {
 		return isset($this->$offset);
 	}
+
 	public function offsetGet($offset) {
 		return $this->$offset;
 	}

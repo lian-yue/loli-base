@@ -48,9 +48,9 @@ abstract class Builder{
 	 */
 	protected function getReadonly() {
 		if ($this->readonly === NULL) {
-			if (!empty(self::$_logs[$this->DB->database()]) && $this->useTables) {
+			if (!empty(self::$_logs[$this->DB->database()]) && ($useTables = $this->getUseTables())) {
 				foreach (self::$_logs[$this->DB->database()] as $table => $time) {
-					if (in_array($table, $this->useTables, true) && $time > time()) {
+					if (in_array($table, $useTables, true) && $time > time()) {
 						return false;
 					}
 				}
@@ -65,10 +65,8 @@ abstract class Builder{
 	 * @param  integer $ttl
 	 */
 	protected function setReadonly($ttl = 2) {
-		if ($this->useTables) {
-			foreach ($this->useTables as $table) {
-				self::$_logs[$this->DB->database()][$table] = time() + ($ttl < 2 ? 2 : $ttl);
-			}
+		foreach ($this->getUseTables() as $table) {
+			self::$_logs[$this->DB->database()][$table] = time() + ($ttl < 2 ? 2 : $ttl);
 		}
 	}
 
@@ -162,12 +160,20 @@ abstract class Builder{
 	abstract public function select();
 
 
+	/**
+	 * selectRow  选择一行
+	 * @return
+	 */
+	abstract public function selectRow();
+
+
 
 	/**
 	 * count
 	 * @return integer
 	 */
 	abstract public function count();
+
 
 
 
@@ -180,6 +186,9 @@ abstract class Builder{
 	 * @return this
 	 */
 	abstract public function deleteCacheSelect($refresh = NULL);
+
+
+	abstract public function deleteCacheSelectRow($refresh = NULL);
 
 
 	/**

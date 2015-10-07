@@ -150,7 +150,7 @@ class Code{
 		}
 
 		// 解密
-		if (count($arrays = explode(chr(0), self::_code(base64_decode(str_replace(['-', '_'], ['+', '/'], $code)), $rand . $password), 3)) != 3) {
+		if (count($arrays = explode(chr(0), self::_code(base64_decode(strtr($code, '-_', '+/')), $rand . $password), 3)) != 3) {
 			return false;
 		}
 		list($type, $time, $value) = $arrays;

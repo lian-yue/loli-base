@@ -65,3 +65,7 @@ if (!headers_sent()) {
 	// 版权信息
 	header('X-Powered-By: ' . POWERED_BY);
 }
+
+
+// 数据流
+stream_wrapper_register('storage', __NAMESPACE__ . '\\Storage');

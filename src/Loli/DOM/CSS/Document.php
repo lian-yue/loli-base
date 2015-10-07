@@ -90,7 +90,7 @@ class Document extends Base implements IteratorAggregate, Countable{
 		$conditions[] = $this->buffer;
 		foreach ($conditions as $condition) {
 			if (preg_match('/^\s*(url|url\-prefix|domain|regexp)\s*\(("|\')?(.*)(?(2)\2|)\)\s*$/i', $condition, $matches)) {
-				$matches[3] = strtr($matches[3], "\r\n", ' ');
+				$matches[3] = strtr($matches[3], "\r\n", '  ');
 				$this->conditions[] = [strtolower($matches[1]), empty($matches[2]) ? $matches[3] : (str_replace('\\'. $matches[2], $matches[2], $matches[3]))];
 			}
 		}
