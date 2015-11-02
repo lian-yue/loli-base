@@ -71,7 +71,6 @@ abstract class Base{
 
 			$array[] = $name;
 		}
-
-		return '/' . implode('/', $array);
+		return '/' . str_replace(' ', '%20', implode('/', $array));
 	}
 }
