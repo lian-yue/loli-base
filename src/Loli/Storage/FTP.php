@@ -52,7 +52,10 @@ class FTP extends Base{
 	}
 
 	public function dir_opendir($path, $options) {
-		$this->_context = @opendir($this->_base() . $this->path($path));
+		if (!$path = $this->path($path)) {
+			return false;
+		}
+		$this->_context = @opendir($this->_base() . $path);
 		$this->_context || $this->_error();
 		return !empty($this->_context);
 	}
@@ -72,13 +75,21 @@ class FTP extends Base{
 
 
 	public function rename($pathFrom, $pathTo) {
-		return @rename($this->_base() . $this->path($pathFrom), $this->_base() . $this->path($pathTo));
+		if (!$pathFrom = $this->path($pathFrom)) {
+			return false;
+		}
+		if (!$pathTo = $this->path($pathTo)) {
+			return false;
+		}
+		return @rename($this->_base() . $pathFrom, $this->_base() . $pathTo);
 	}
 
 	public function mkdir($path, $mode, $options) {
+		if (!$path = $this->path($path)) {
+			return false;
+		}
 		if ($options & STREAM_MKDIR_RECURSIVE) {
 			$base = $this->_base();
-			$path = $this->path($path);
 			$names = $path === '/' ? [] : explode('/', trim($path, '/'));
 			$mkdir = [];
 			while ($names) {
@@ -99,12 +110,15 @@ class FTP extends Base{
 			}
 			return true;
 		} else {
-			return @mkdir($this->_base() . $this->path($path), $this->chmodDir);
+			return @mkdir($this->_base() . $path, $this->chmodDir);
 		}
 	}
 
 	public function rmdir($path) {
-		return @rmdir($this->_base() . $this->path($path));
+		if (!$path = $this->path($path)) {
+			return false;
+		}
+		return @rmdir($this->_base() . $path);
 	}
 
 
@@ -123,7 +137,9 @@ class FTP extends Base{
 	}
 
 	public function stream_open($path, $mode, $options, &$openedPath) {
-		$path = $this->path($path, $protocol);
+		if (!$path = $this->path($path, $protocol)) {
+			return false;
+		}
 		$openedPath = $protocol . ':/' . $path;
 		$this->_context = @fopen($this->_base() . $path, $mode);
 		if ($this->_context && $mode[0] !== 'r') {
@@ -158,10 +174,16 @@ class FTP extends Base{
 	}
 
 	public function unlink($path) {
-		return @unlink($this->_base() . $this->path($path, $protocol));
+		if (!$path = $this->path($path)) {
+			return false;
+		}
+		return @unlink($this->_base() . $path);
 	}
 
 	public function url_stat($path, $flags) {
-		return @stat($this->_base() . $this->path($path));
+		if (!$path = $this->path($path)) {
+			return false;
+		}
+		return @stat($this->_base() . $path);
 	}
 }

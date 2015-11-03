@@ -56,8 +56,9 @@ abstract class Base{
 			return '/';
 		}
 
+
 		$array = [];
-		foreach (explode('/', $path) as $name) {
+		foreach (explode('/', urldecode($path)) as $name) {
 			if (!$name || $name === '.') {
 				continue;
 			}
@@ -66,7 +67,7 @@ abstract class Base{
 				continue;
 			}
 			if (trim($name, " \t\n\r\0\x0B.") !== $name || preg_match('/[\\\"\<\>\|\?\*\:\/	]/', $name)) {
-				continue;
+				return false;
 			}
 
 			$array[] = $name;

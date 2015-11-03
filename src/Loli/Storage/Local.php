@@ -44,7 +44,10 @@ class Local extends Base{
 	}
 
 	public function dir_opendir($path, $options) {
-		$this->_context = @opendir($this->dir . $this->path($path));
+		if (!$path = $this->path($path)) {
+			return false;
+		}
+		$this->_context = @opendir($this->dir . $path);
 		return !empty($this->_context);
 	}
 
@@ -62,15 +65,24 @@ class Local extends Base{
 	}
 
 	public function rename($pathFrom, $pathTo) {
-		return @rename($this->dir . $this->path($pathFrom), $this->dir . $this->path($pathTo));
+		if (!($pathFrom = $this->path($pathFrom)) || !($pathTo = $this->path($pathTo))) {
+			return false;
+		}
+		return @rename($this->dir . $pathFrom, $this->dir . $pathTo);
 	}
 
 	public function mkdir($path, $mode, $options) {
-		return @mkdir($this->dir . $this->path($path), $this->chmodDir);
+		if (!$path = $this->path($path)) {
+			return false;
+		}
+		return @mkdir($this->dir . $path, $this->chmodDir);
 	}
 
 	public function rmdir($path) {
-		return @rmdir($this->dir . $this->path($path));
+		if (!$path = $this->path($path)) {
+			return false;
+		}
+		return @rmdir($this->dir . $path);
 	}
 
 	public function stream_close() {
@@ -91,7 +103,9 @@ class Local extends Base{
 	}
 
 	public function stream_open($path, $mode, $options, &$openedPath) {
-		$path = $this->path($path, $protocol);
+		if (!$path = $this->path($path, $protocol)) {
+			return false;
+		}
 		$openedPath = $protocol . ':/' . $path;
 		$this->_context = @fopen($this->dir . $path, $mode);
 		if ($mode[0] !== 'r') {
@@ -120,10 +134,16 @@ class Local extends Base{
 		return $this->_context ? fwrite($this->_context, $data) : false;
 	}
 	public function unlink($path) {
-		return @unlink($this->dir . $this->path($path, $protocol));
+		if (!$path = $this->path($path)) {
+			return false;
+		}
+		return @unlink($this->dir . $path);
 	}
 
 	public function url_stat($path, $flags) {
-		return @stat($this->dir . $this->path($path));
+		if (!$path = $this->path($path)) {
+			return false;
+		}
+		return @stat($this->dir . $path);
 	}
 }
