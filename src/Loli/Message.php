@@ -144,9 +144,10 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable, 
 				if (empty($parse['host']) && (stripos($this->redirect, ':') !== false || stripos($this->redirect, '&#') !== false || stripos($this->redirect, ';') !== false)) {
 					$parse = [];
 				}
-				if (!$parse) {
+				if (empty($parse['host'])) {
 					$parse['host'] = reset($this->hosts);
 				}
+
 				$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
 				$parse['query']['_r'] = mt_rand();
 				$parse['query']['_message'] = $this->code . '.' . $this->type;

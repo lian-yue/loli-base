@@ -42,6 +42,21 @@ abstract class Builder{
 		return $this->cursor->$name;
 	}
 
+
+	public function search($value, $write = false) {
+		if (is_array($value)) {
+			$value = implode(' ', $value);
+		}
+		$value = preg_replace('/[\0000-\002F\003A-\0040\005B-0060\007B-\007F\FF01-\FF0F\FF1A-\FF20\FF3B-\FF40\FF5B-\FF65\FF0E-\FFA0]+/', ' ', mb_strtolower($value));
+		$value = array_filter(array_map('trim', explode(' ', $value)));
+		if ($write) {
+			return $value;
+		}
+		return ['+' => $value, '-' => []];
+	}
+
+
+
 	/**
 	 * getReadonly  读取是否用只读模式
 	 * @return boolean
@@ -105,7 +120,6 @@ abstract class Builder{
 	public function rollBack() {
 		$this->DB->rollBack();
 	}
-
 	/**
 	 * exists 判断某个表是否存在
 	 * @return boolean

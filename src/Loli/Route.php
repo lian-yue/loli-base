@@ -11,7 +11,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-use ArrayAccess;
+use ArrayAccess, Loli\Crypt\RSA;
 class_exists('Loli\HTTP\Request') || exit;
 class Route implements ArrayAccess{
 
@@ -39,99 +39,245 @@ class Route implements ArrayAccess{
 			$this->$name = $value;
 		}
 
+
 		if (!self::$routes) {
-			if (!empty($_SERVER['LOLI']['ROUTE']['host'])) {
-				$defaultHost = '/^' . preg_quote($this->request->getHeader('Host'), '/') . '$/';
-			} else {
-				$defaultHost = (array) $_SERVER['LOLI']['ROUTE']['host'];
-				$defaultHost = array_map(function($host) {
-					if ($host !== '*') {
-						$host = preg_quote($host, '/');
-						if (substr($host, 0, 2) === '\\*') {
-							$host = '*' . substr($host, 2);
+			$defaultHost = empty($_SERVER['LOLI']['ROUTE']['host']) ? [] : (array) $_SERVER['LOLI']['ROUTE']['host'];
+			foreach (empty($_SERVER['LOLI']['ROUTE']['file']) ? [] : require $_SERVER['LOLI']['ROUTE']['file'] as $model => $route) {
+				// 模块
+				if (empty($route['model'])) {
+					$route['model'] = $model;
+				}
+				if (!is_array($route['model'])) {
+					$route['model'] = ($length = strrpos($route['model'], '.')) ? [substr($route['model'], 0, $length), substr($route['model'], $length + 1)] : [$model];
+				}
+				$route['model'] += [1 => 'index'];
+
+
+				// 协议
+				if (empty($route['scheme'])) {
+					$route['scheme'] = ['https', 'http'];
+				} else if (!is_array($route['scheme'])) {
+					$route['scheme'] = (array) $route['scheme'];
+				}
+
+				// 方法
+				if (empty($route['method'])) {
+					$route['method'] = ['GET', 'POST'];
+				} elseif (!is_array($route['method'])) {
+					$route['method'] = preg_split('/(\.|\| )/', $route['method'], -1, PREG_SPLIT_NO_EMPTY);
+				}
+				if (in_array('GET', $route['method'], true)) {
+					$route['method'][] = 'HEAD';
+				}
+
+
+				// 域名
+				if (!isset($route['host'])) {
+					$route['host'] = $defaultHost;
+				} elseif (!is_array($route['host'])) {
+					$route['host'] = (array) $route['host'];
+				}
+
+				// 路径
+				if (!isset($route['path'])) {
+					continue;
+				}
+
+				$route['path'] = '/' . ltrim($route['path'], '/');
+
+
+				// 是否是文件
+				$route['isFile'] = preg_match('/\.[0-9a-zA-Z_-]$/', $route['path']);
+
+				$continue = false;
+
+				// host 规则重写
+				$route['hostMatch'] = [];
+				foreach ($route['host'] as $key => $value) {
+					$array = ['', [], []];
+					$offset = 0;
+					while (isset($value[$offset]) && ($beginOffset = strpos($value, '{', $offset)) !== false) {
+						$endOffset = strpos($value, '}', $beginOffset);
+						if ($endOffset === false) {
+							$continue = true;
+							break;
 						}
-					}
-					return $host;
+						$optional = $value[$endOffset-1] === '?';
+						$name = substr($value, $beginOffset + 1, $endOffset - $beginOffset - ($optional? 2 : 1));
 
-				}, $defaultHost);
-				$defaultHost = '/^(?:' . implode('|', $defaultHost) . ')$/';
-			}
-			foreach (empty($_SERVER['LOLI']['ROUTE']['file']) ? [] : require $_SERVER['LOLI']['ROUTE']['file'] as $route => $model) {
-				if ($route{0} === '/') {
-					$path = $route;
-					$method = empty($_SERVER['LOLI']['ROUTE']['method']) ? ['GET', 'POST'] : (is_array($_SERVER['LOLI']['ROUTE']['method']) ? $_SERVER['LOLI']['ROUTE']['method'] : preg_split('/(,|\||\s+)/', $_SERVER['LOLI']['ROUTE']['method'], -1, PREG_SPLIT_NO_EMPTY));
-					$host = $defaultHost;
-				} else {
-					$route = explode('/', $route, 2) + [1 => ''];
 
-					// host 自定义
-					if (stripos($route[0], '.') !== false || stripos($route[0], '(') !== false || stripos($route[0], '*') !== false || stripos($route[0], '\\') !== false  || strtoupper($route[0]) !== $route[0]) {
-						$host = '/^' . str_replace('/', '\\/', $route[0]) . '$/';
-						$route = explode('/', $route, 2) + [1 => ''];
+						if (empty($route['match'][$name])) {
+							$route['match'][$name] = '[0-9a-zA-Z_-]+';
+						}
+						$array[2][$name] = $optional && isset($value[$endOffset + 1]) && $value[$endOffset + 1] === '.' && ($beginOffset === 0 || $value[$beginOffset - 1] === '.') ? '.' : '';
+						$array[1][$name] = '(?<_' . $name .'>(?:'. str_replace('/', '\\/', $route['match'][$name]) . ')' . ($optional ? '?' : '') .')';
+						$array[0] .= substr($value, $offset, $beginOffset - $offset) . '"'. $name. '"';
+						$offset = $endOffset + ($array[2][$name] ? 2 : 1);
 					}
-					$method = preg_split('/(,|\||\s+)/', $route[0], -1, PREG_SPLIT_NO_EMPTY);
-					$host = $defaultHost;
-					$path = '/' . $route[1];
+					if ($continue) {
+						break;
+					}
+					$array[0] .= substr($value, $offset);
+					$route['hostMatch'][] = $array;
 				}
-				$path = '/^'. str_replace('/', '\\/', $path) . '$/';
-
-				if (!is_array($model)) {
-					$split = preg_split('/(\s+|\:+|-\>|@|\>|\.)/', $model, -1, PREG_SPLIT_NO_EMPTY);
-					$model = ['', 'index'];
-					if (count($split) > 1) {
-						$model[1] = array_pop($split);
-					}
-					$model[0] = implode('\\', $split);
-				} else {
-					$model[0] = strtr($model[0], '/.', '\\\\');
-					$model += [1=> 'index'];
+				if ($continue) {
+					continue;
 				}
-				self::$routes[] = ['method' => $method, 'path' => $path, 'host' => $host, 'model' => $model];
+
+
+				// path 规则重写
+				$route['pathMatch'] = ['', [], []];
+				$offset = 0;
+				while (isset($route['path'][$offset]) && ($beginOffset = strpos($route['path'], '{', $offset)) !== false) {
+					$endOffset = strpos($route['path'], '}', $beginOffset);
+					if ($endOffset === false) {
+						$continue = true;
+						break;
+					}
+					$optional = $route['path'][$endOffset-1] === '?';
+					$name = substr($route['path'], $beginOffset + 1, $endOffset - $beginOffset - ($optional? 2 : 1));
+
+					if (empty($route['match'][$name])) {
+						$route['match'][$name] = '[0-9a-zA-Z_-]+';
+					}
+
+					$route['pathMatch'][2][$name] = $optional && in_array($route['path'][$beginOffset - 1], ['-', '/'], true) && (!isset($route['path'][$endOffset + 1]) || $route['path'][$endOffset + 1] === $route['path'][$beginOffset - 1]) ? $route['path'][$beginOffset - 1] : '';
+					$route['pathMatch'][1][$name] = '(?<_'. $name .'>(?:'. str_replace('/', '\\/', $route['match'][$name]) . ')' . ($optional ? '?' : '') .')';
+					$route['pathMatch'][0] .= substr($route['path'], $offset, $beginOffset - ($route['pathMatch'][2][$name] ? $offset + 1 : $offset)) . '"'. $name. '"';
+					$offset = $endOffset + 1;
+				}
+				if ($continue) {
+					continue;
+				}
+
+				$route['pathMatch'][0] .= rtrim(substr($route['path'], $offset), '/');
+
+				//  模块
+				foreach ($route['model'] as $key => $value) {
+					$offset = 0;
+
+					$pattern = '';
+					while (isset($value[$offset]) && ($beginOffset = strpos($value, '{', $offset)) !== false) {
+						$endOffset = strpos($value, '}', $beginOffset);
+						if ($endOffset === false) {
+							$continue = true;
+							break;
+						}
+						$optional = $value[$endOffset-1] === '?';
+						$name = substr($value, $beginOffset + 1, $endOffset - $beginOffset - ($optional? 2 : 1));
+						if (empty($route['match'][$name])) {
+							$route['match'][$name] = '[0-9a-zA-Z_-]+';
+						}
+						$patternPart = '(?<_' . $name .'>(?:'. str_replace('/', '\\/', $route['match'][$name]) .')' . ($optional ? '?' : '') .')';
+						$startChar = $optional && $beginOffset !== 0 && $value[$beginOffset - 1] === '.' && (!isset($value[$endOffset + 1]) || $value[$endOffset + 1] === '.') ? '.' : '';
+						if ($startChar) {
+							$patternPart = '(?:\\' . $startChar. $patternPart .')?';
+						}
+						$pattern .= substr($value, $offset, $beginOffset - ($startChar ? $offset + 1 : $offset)) . $patternPart;
+						$offset = $endOffset + 1;
+					}
+					if ($continue) {
+						break;
+					}
+					$pattern .= substr($value, $offset);
+					$route['modelMatch'][] = $pattern;
+				}
+
+				if ($continue) {
+					continue;
+				}
+
+				self::$routes[] = $route;
 			}
 		}
 	}
 
-
 	public function __invoke() {
 		try {
-			$path = $this->request->getPath();
+			$scheme = $this->request->getScheme();
 			$method = $this->request->getMethod();
 			$host = $this->request->getHeader('Host');
+			$path = $this->request->getPath();
+			$dirPath = $path;
+			if (substr($dirPath, -1, 1) !== '/') {
+				$dirPath .= '/';
+			}
 			foreach (self::$routes as $route) {
+
+				// 协议
+				if (!in_array($scheme, $route['scheme'], true)) {
+					continue;
+				}
+
+				// 方法
 				if (!in_array($method, $route['method'], true)) {
 					continue;
 				}
-				if (!preg_match($route['path'], $path, $matches)) {
-					continue;
-				}
-				if (!preg_match($route['host'], $host, $matches2)) {
-					continue;
-				}
-				$model = $route['model'];
-				$replace = [];
-				foreach ($matches as $key => $value) {
-					$replace['$'.$key] = $value;
-				}
-				foreach ($matches2 as $key => $value) {
-					$replace['$host.'.$key] = $value;
-				}
 
-				foreach ($model as &$mom) {
-					if (is_string($mom)) {
-						$mom = strtr($mom, $replace);
+				// host 判断
+				if ($route['hostMatch']) {
+					$continue = true;
+					foreach ($route['hostMatch'] as $hostMatch) {
+						$strtr = [];
+						foreach ($hostMatch[1] as $name => $value) {
+							$strtr['"'. $name . '"'] = $hostMatch[2][$name] ? '(?:'. $value .'\\'. $hostMatch[2][$name] .')?' : $value;
+						}
+						if (preg_match('/^' . strtr(preg_quote($hostMatch[0], '/'), $strtr). '$/', $host, $matches)) {
+							$continue = false;
+							break;
+						}
 					}
-				}
-
-
-				$matches += $matches2;
-				foreach($matches as $key => $value) {
-					if (is_int($key)) {
-						unset($matches[$key]);
+					if ($continue) {
 						continue;
 					}
+				} else {
+					$matches = [];
+				}
+
+				$strtr = [];
+				foreach ($route['pathMatch'][1] as $name => $value) {
+					$strtr['"'. $name . '"'] = $route['pathMatch'][2][$name] ? '(?:\\'. $route['pathMatch'][2][$name] . $value. ')?' : $value;
+				}
+
+				if (!preg_match('/^' . strtr(preg_quote($route['pathMatch'][0], '/'), $strtr) . ($route['isFile'] ? '' :  '\/?'). '$/', $path, $matches2)) {
+					continue;
+				}
+
+				// 是目录就跳到目录去
+				if (!$route['isFile'] && in_array($method, ['GET', 'HEAD']) && substr($route['path'], -1, 1) === '/' && substr($path, -1, 1) !== '/') {
+					throw new Message(301, Message::NOTICE, ['redirect' => $scheme .'://' . $host . $path . '/' . (($queryString = merge_string($this->request->getQuerys())) ? '?' . $queryString: '')], '', 0);
+				}
+
+
+				$params = $replace = [];
+				foreach ($matches + $matches2 as $key => $value) {
+					if (!is_int($key)) {
+						$key = substr($key, 1);
+						$replace['{'. $key . '?}'] = $replace['{'. $key . '}'] = $value;
+						if (!is_numeric($key)) {
+							$params[$key] = $value;
+						}
+					}
+				}
+				foreach ($route['match'] as $key => $value) {
+					if (!isset($replace['{'. $key . '}'])) {
+						$replace['{'. $key . '?}'] = $replace['{'. $key . '}'] = '';
+					}
+				}
+
+				$model = $route['model'];
+
+				unset($value);
+				foreach ($model as &$value) {
+					$value = strtr($value, $replace);
+				}
+				$model[0] = trim(preg_replace('/[\\\\\/>.-]+/', '\\', $model[0]), '\\');
+				if ($model[1] === '') {
+					$model[1] = 'index';
 				}
 				break;
 			}
+
 
 			if (empty($model)) {
 				throw new Message(404, Message::ERROR);
@@ -141,16 +287,18 @@ class Route implements ArrayAccess{
 				throw new Message(404, Message::ERROR, new Message([1, 'Model not exists'], Message::ERROR));
 			}
 
-
 			if (!class_exists($class = 'Model\\' . $model[0])) {
 				throw new Message(404, Message::ERROR, new Message([1, 'Model not exists'], Message::ERROR));
 			}
+
+			$params += $this->request->getParams();
+
 			$this->model = $model;
+
 			$model[0] = new $class($this, true);
 
-
 			// 执行方法
-			$view = call_user_func($model, $matches + $this->request->getParams(), $this);
+			$view = call_user_func($model, $params);
 
 			// 返回的是 RouteInterface
 			if ($view instanceof RouteInterface) {
@@ -221,6 +369,10 @@ class Route implements ArrayAccess{
 			$view->route($this);
 		}
 
+		if ($this->response->hasMessage()) {
+			$view = [$this->response, 'getMessage'];
+		}
+
 		$this->response->setContent($view);
 	}
 
@@ -268,10 +420,16 @@ class Route implements ArrayAccess{
 
 
 
-	public static function callback($name, $callback) {
+	public static function callback($model, $callback) {
 		self::$callback[$name] = $callback;
 		return true;
 	}
+
+	public static function URL(array $model, array $params = [], $method = false) {
+
+		return true;
+	}
+
 
 	protected static function load(Route $route, $name) {
 		switch ($name) {

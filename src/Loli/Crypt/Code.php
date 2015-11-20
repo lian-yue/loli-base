@@ -22,7 +22,7 @@
 /*	Updated: UTC 2015-06-14 08:09:14
 /*
 /* ************************************************************************** */
-namespace Loli;
+namespace Loli\Crypt;
 class Code{
 
 	// 生成 字符串 KEY
@@ -186,31 +186,6 @@ class Code{
 				return ($un = @unserialize($value)) ? $un : false;
 		}
 	}
-
-	private static function _password(&$password) {
-		if (strlen($password) !== 65 || $password{32} !== "\x01") {
-			$password = md5('password' . $password) ."\x01". md5($password . 'password');
-		}
-	}
-
-	public static function passwordHash($password) {
-		self::_password($password);
-		if (function_exists('password_hash')) {
-			return password_hash($password, PASSWORD_BCRYPT);
-		}
-		return crypt($password, '$2y$10$'. uniqid(mt_rand(), true) .'$');
-	}
-
-	public static function passwordVerify($password, $hash) {
-		self::_password($password);
-		if (!$hash || !is_string($hash)) {
-			return false;
-		}
-		if (function_exists('password_verify')) {
-			return password_verify($password, $hash);
-		}
-		return hash_equals($password, $hash);
-	}
 }
 
-Code::$key = isset($_SERVER['LOLI']['CODE']['key']) ? $_SERVER['LOLI']['CODE']['key'] : '';
+Code::$key = isset($_SERVER['LOLI']['CRYPT']['key']) ? $_SERVER['LOLI']['CRYPT']['key'] : '';

@@ -59,18 +59,18 @@ class SSH2 extends Base{
 			print_r($this);
 			$hostname = explode(':', $this->hostname, 2) + [1 => 22];
 			if (!$this->_link = @ssh2_connect($hostname[0], $hostname[1], $this->publicKey || $this->privateKey ? $this->methods + ['hostkey' => 'ssh-rsa'] : $this->methods, ['disconnect' => [$this, 'disconnect']])) {
-				new ConnectException('Unable to connect to server', 10);
+				throw new ConnectException('Unable to connect to server', 10);
 				return false;
 			}
 
 			if ($this->publicKey || $this->privateKey) {
 				if (!@ssh2_auth_pubkey_file($this->_link, $this->username, $this->publicKey, $this->privateKey, $this->password)) {
-					new ConnectException('Unable to login to the server', 11);
+					throw new ConnectException('Unable to login to the server', 11);
 					$this->_link = false;
 				}
 			} else {
 				if (!@ssh2_auth_password($this->_link, $this->username, $this->password)) {
-					new ConnectException('Unable to login to the server', 11);
+					throw new ConnectException('Unable to login to the server', 11);
 					$this->_link = false;
 				}
 			}
@@ -82,7 +82,7 @@ class SSH2 extends Base{
 
 		if ($this->_sftpLink === NULL) {
 			if (!$this->_sftpLink = @ssh2_sftp($this->_link)) {
-				new ConnectException('ssh2_sftp', 11);
+				throw new ConnectException('ssh2_sftp', 11);
 			}
 		}
 
@@ -107,13 +107,7 @@ class SSH2 extends Base{
 	}
 
 	public function dir_opendir($path, $options) {
-		if (!$base = $this->_base()) {
-			return false;
-		}
-		if (!$path = $this->path($path)) {
-			return false;
-		}
-		$this->_context = @opendir($base . $path);
+		$this->_context = @opendir($this->_base() . $this->path($path));
 		return !empty($this->_context);
 	}
 
@@ -132,37 +126,17 @@ class SSH2 extends Base{
 
 
 	public function rename($pathFrom, $pathTo) {
-		if (!$base = $this->_base()) {
-			return false;
-		}
-		if (!$pathFrom = $this->path($pathFrom)) {
-			return false;
-		}
-		if (!$pathTo = $this->path($pathTo)) {
-			return false;
-		}
-		return @rename($base . $pathFrom, $base . $pathTo);
+		$base = $this->_base();
+		return @rename($base . $this->path($pathFrom), $base . $this->path($pathTo));
 	}
 
 
 	public function mkdir($path, $mode, $options) {
-		if (!$base = $this->_base()) {
-			return false;
-		}
-		if (!$path = $this->path($path)) {
-			return false;
-		}
-		return @mkdir($base . $path, $this->chmodDir, $options & STREAM_MKDIR_RECURSIVE);
+		return @mkdir($this->_base() . $this->path($path), $this->chmodDir, $options & STREAM_MKDIR_RECURSIVE);
 	}
 
 	public function rmdir($path) {
-		if (!$base = $this->_base()) {
-			return false;
-		}
-		if (!$path = $this->path($path)) {
-			return false;
-		}
-		return @rmdir($base . $path);
+		return @rmdir($this->_base() . $this->path($path));
 	}
 
 
@@ -185,12 +159,8 @@ class SSH2 extends Base{
 	}
 
 	public function stream_open($path, $mode, $options, &$openedPath) {
-		if (!$base = $this->_base()) {
-			return false;
-		}
-		if (!$path = $this->path($path, $protocol)) {
-			return false;
-		}
+		$base = $this->_base();
+		$path = $this->path($path, $protocol);
 		$openedPath = $protocol . ':/' . $path;
 		$this->_context = fopen($base . $path, $mode);
 		if ($this->_context && $mode[0] !== 'r') {
@@ -224,22 +194,10 @@ class SSH2 extends Base{
 	}
 
 	public function unlink($path) {
-		if (!$base = $this->_base()) {
-			return false;
-		}
-		if (!$path = $this->path($path)) {
-			return false;
-		}
-		return @unlink($base . $path);
+		return @unlink($this->_base() . $this->path($path));
 	}
 
 	public function url_stat($path, $flags) {
-		if (!$base = $this->_base()) {
-			return false;
-		}
-		if (!$path = $this->path($path)) {
-			return false;
-		}
-		return @stat($base . $path);
+		return @stat($this->_base() . $this->path($path));
 	}
 }

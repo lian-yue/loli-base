@@ -901,12 +901,9 @@ class SQLBuilder extends Builder{
 					$arrays[] = ['compare' => '', 'value' => 'AGAINST('.$value . ' ' . $mode .')'];
 					break;
 				case 'SEARCH':
-					$search = $this->search($query->value);
-					if ($search = $search->get()) {
-						foreach ($search as $key => $values) {
-							foreach ($values as $value) {
-								$arrays[] = ['not' =>  $key === '-' ? 'NOT' : '', 'compare' => 'LIKE', 'value' => $this->DB->value('%' . addcslashes($value, '_%\\') . '%')];
-							}
+					foreach ($this->search($query->value, false) as $key => $values) {
+						foreach ($values as $value) {
+							$arrays[] = ['not' =>  $key === '-' ? 'NOT' : '', 'compare' => 'LIKE', 'value' => $this->DB->value('%' . addcslashes($value, '_%\\') . '%')];
 						}
 					}
 					break;

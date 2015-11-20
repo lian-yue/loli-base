@@ -67,7 +67,7 @@ abstract class Base{
 				continue;
 			}
 			if (trim($name, " \t\n\r\0\x0B.") !== $name || preg_match('/[\\\"\<\>\|\?\*\:\/	]/', $name)) {
-				return false;
+				throw new Exception('Path is not allowed (' . $path . ')', 1);
 			}
 
 			$array[] = $name;

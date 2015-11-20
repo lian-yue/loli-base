@@ -33,28 +33,28 @@ class Model{
 			'placeholder' => 3,			// 表单的输入提示
 			'minlength' => 1,			// 最小字符串长度
 			'maxlength' => 1,			// 最大字符串长度
-			'errormessage' => '',		// 错误消息
+			'errorMessage' => '',		// 错误消息
 		],*/
 	];
 
 	protected $tokens = [];
 
+	protected $permissions = [];
+
 	protected $logins = [];
 
 	protected $viewModel = false;
-
-	protected $errorMessage = NULL;
 
 
 	public function __construct(Route &$route, $viewModel = false) {
 		$this->route = &$route;
 		$this->viewModel = $viewModel;
 		if ($this->viewModel) {
-			$method = strtolower($this->model[1]);
+			$method = strtolower($this->route->model[1]);
 
-			// rbac 权限判断
-			if (!isset($this->rbacs[$this->model[1]]) || !empty($this->rbacs[$this->model[1]])) {
-				$this->RBACMessage();
+			// permission 权限判断
+			if (!isset($this->permissions[$this->model[1]]) || !empty($this->permissions[$this->model[1]])) {
+				$this->permissionMessage();
 			}
 
 			// token 判断
@@ -91,21 +91,20 @@ class Model{
 	}
 
 
-
 	public function __call($name, array $args) {
 		throw new Message(404, Message::ERROR);
 	}
 
-	protected function RBACMessage() {
-		if (empty($this->route->table['RBAC.Permission'])) {
-			return true;
+	protected function permissionMessage() {
+		if (!empty($_SERVER['LOLI']['MODEL']['permission'])) {
+			return call_user_func($_SERVER['LOLI']['MODEL']['permission'], $this->route);
 		}
-		if ($this->route->table['RBAC.Permission']->has($this->route->model[0], $this->route->model[1])) {
+		if ($this->route->table['Access']->hasPermission($this->route->model[0], $this->route->model[1])) {
 			return true;
 		}
 
 		$this->route->response->setStatus(403);
-		throw new Message([90, 'RBAC'], Message::ERROR);
+		throw new Message([90, 'Permission'], Message::ERROR);
 	}
 
 	protected function tokenMessage() {
@@ -122,10 +121,7 @@ class Model{
 		if (!empty($_SERVER['LOLI']['MODEL']['login'])) {
 			return call_user_func($_SERVER['LOLI']['MODEL']['login'], $this->route, $is);
 		}
-		if (empty($this->route->table['RBAC.Token'])) {
-			return true;
-		}
-		$userID = $this->route->table['RBAC.Token']->userID();
+		$userID = $this->route->table['Access']->userID();
 		if (($userID && $is === 1) || (!$userID && $is === -1)) {
 			return true;
 		}
@@ -136,8 +132,6 @@ class Model{
 	}
 
 
-
-
 	protected function getForm($name = []) {
 		$form = [];
 		foreach ($this->form as $input) {
@@ -145,11 +139,11 @@ class Model{
 				continue;
 			}
 			$input['title'] = $this->localize->translate(empty($input['title']) ? $input['name'] : $input['title']);
-			if (!empty($input['errormessage'])) {
-				$input['errormessage'] = $this->route->localize->translate([$input['errormessage'],  $input['name'], $input['title']], ['message']);
+			if (!empty($input['errorMessage'])) {
+				$input['errorMessage'] = $this->route->localize->translate([$input['errorMessage'],  $input['name'], $input['title']], ['message']);
 			}
-			if (!empty($input['errormessage'])) {
-				$input['placeholder'] = $this->route->localize->translate($input['errormessage']);
+			if (!empty($input['errorMessage'])) {
+				$input['placeholder'] = $this->route->localize->translate($input['errorMessage']);
 			}
 			if (!empty($input['option'])) {
 				foreach ($input['option'] as &$value) {
@@ -164,8 +158,8 @@ class Model{
 	// 表单验证
 	protected function formVerify(array &$array, $message = NULL) {
 		foreach ($this->form as $input) {
-			if (empty($input['errormessage'])) {
-				$input['errormessage'] = 1000;
+			if (empty($input['errorMessage'])) {
+				$input['errorMessage'] = 1000;
 			}
 			if (in_array($input['type'], ['checkbox', 'radio', 'select'], true)) {
 				$input['option'] = empty($input['option']) ? [] : (array) $input['option'];
@@ -176,7 +170,7 @@ class Model{
 			if (!isset($array[$input['name']])) {
 				continue;
 			}
-			$name = $input['option'];
+
 			$value = &$array[$input['name']];
 
 
@@ -187,7 +181,7 @@ class Model{
 			// 空检查
 			$empty = empty($value) && $value !== '0' && $value !== 0;
 			if (!empty($input['required']) && $empty) {
-				$message = new Message([$input['errormessage'] + 1, $input['title'], $input['name']], Message::ERROR, $message);
+				$message = new Message([$input['errorMessage'] + 1, $input['title'], $input['name']], Message::ERROR, $message);
 				continue;
 			}
 
@@ -275,44 +269,45 @@ class Model{
 
 			// 表单类型错误
 			if ($continue) {
-				$message = new Message([$input['errormessage'], $input['title'], $input['name']], Message::ERROR, $message);
+				$message = new Message([$input['errorMessage'], $input['title'], $input['name']], Message::ERROR, $message);
 				continue;
 			}
 
 			// 最大 最小长度
 			if ((!empty($input['maxlength']) && mb_strlen($value) > $input['maxlength']) || (!empty($input['minlength']) && mb_strlen($value) > $input['minlength'])) {
-				$message = new Message([$input['errormessage'] + 2, $input['title'], $input['name']], Message::ERROR, $message);
+				$message = new Message([$input['errorMessage'] + 2, $input['title'], $input['name']], Message::ERROR, $message);
 				continue;
 			}
 
 			// 范围
 			if ((isset($input['min']) && $input['min'] > $value) || (isset($input['max']) && $input['max'] < $value) || (!empty($input['step']) && ($value % $input['step']) !== 0)) {
-				$message = new Message([$input['errormessage'] + 3, $input['title'], $input['name']], Message::ERROR, $message);
+				$message = new Message([$input['errorMessage'] + 3, $input['title'], $input['name']], Message::ERROR, $message);
 				continue;
 			}
 
 			// 规定数据
 			if (isset($input['option']) && count((array)$value) === count(array_intersect((array)$value, array_keys($input['option'])))) {
-				$message = new Message([$input['errormessage'] + 3, $input['title'], $input['name']], Message::ERROR, $message);
+				$message = new Message([$input['errorMessage'] + 3, $input['title'], $input['name']], Message::ERROR, $message);
 				continue;
 			}
 
 			// 正则
 			if (isset($input['pattern']) && preg_match('/'. str_replace('/', '\\/', $input['pattern']) .'/', $value)) {
-				$message = new Message([$input['errormessage'], $input['title'], $input['name']], Message::ERROR, $message);
+				$message = new Message([$input['errorMessage'], $input['title'], $input['name']], Message::ERROR, $message);
 				continue;
 			}
 		}
+
 		if ($message) {
-			throw new $message;
+			throw $message;
 		}
 	}
 
-	protected function view($files , array $data = [], $cache = false) {
+	protected function getView($files , array $data = [], $cache = false) {
 		return new View($files, $data, $cache);
 	}
 
-	protected function model($name) {
+	protected function getModel($name) {
 		$className = 'Model\\' . strtr($name, '/.', '\\\\');
 		return new $className($this->route);
 	}

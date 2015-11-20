@@ -227,6 +227,7 @@ class CURL{
 			$this->_chs[$key] = curl_init();
 
 			$options += $this->defaults;
+
 			$skips = [];
 			foreach ($options as $optoin => $value) {
  				if ($value === NULL || in_array($optoin, $skips)) {
@@ -257,8 +258,10 @@ class CURL{
 					}
 				} elseif ($optoin === CURLOPT_FILE) {
 					if (!is_resource($value)) {
-						$downloads[$key]['file'] = $value;
-						$downloads[$key]['temp'] = $value = tmpfile();
+						if (!$value) {
+							continue;
+						}
+						$downloads[$key] = $value = fopen($value, 'wb');
 					}
 					$skips[] = CURLOPT_RETURNTRANSFER;
 					curl_setopt($this->_chs[$key], CURLOPT_RETURNTRANSFER, false);
@@ -279,20 +282,16 @@ class CURL{
 			foreach ($this->_chs as $key => &$ch) {
 				// 结果
 				$content = curl_exec($ch);
+
+
 				// 信息
 				$this->_info[$key] = curl_getinfo($ch);
 				$this->_info[$key]['error'] = curl_error($ch);
 				$this->_info[$key]['errno'] = curl_errno($ch);
-				$this->_info[$key]['content'] = $content;
 
-				// 如果有下载就移动文件
-				if (!empty($downloads[$key])) {
-					$fp = fopen($downloads[$key]['file'], 'wb');
-					fseek($downloads[$key]['temp'], 0);
-					while (!feof($downloads[$key]['temp'])) {
-					   fwrite($fp, fgets($downloads[$key]['temp']));
-					}
-					fclose($downloads[$key]['temp']);
+				// 如果有下载就关闭指针
+				if (isset($downloads[$key])) {
+					fclose($downloads[$key]);
 				}
 
 				// 如果有远程 Cookie
@@ -350,19 +349,13 @@ class CURL{
 			$this->_info[$key] = curl_getinfo($ch);
 			$this->_info[$key]['error'] = curl_error($ch);
 			$this->_info[$key]['errno'] = curl_errno($ch);
-			$this->_info[$key]['content'] = $results[$key];
 
 			// 移出列队
 			curl_multi_remove_handle($mh, $ch);
 
 			// 如果有下载就移动文件
-			if (!empty($downloads[$key])) {
-				$fp = fopen($downloads[$key]['file'], 'wb');
-				fseek($downloads[$key]['temp'], 0);
-				while (!feof($downloads[$key]['temp'])) {
-				   fwrite($fp, fread($downloads[$key]['temp'], 1024 * 1024 * 2));
-				}
-				fclose($downloads[$key]['temp']);
+			if (isset($downloads[$key])) {
+				fclose($downloads[$key]);
 			}
 
 			// 如果有远程 Cookie
@@ -385,6 +378,7 @@ class CURL{
 
 		// 关闭列队
 		curl_multi_close($mh);
+
 
 		$this->_options = $this->_chs = [];
 		return $results;

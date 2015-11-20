@@ -37,7 +37,7 @@ mb_internal_encoding('UTF-8');
 libxml_disable_entity_loader(true);
 
 // 内存限制
-@ini_set('memory_limit', empty($_SERVER['LOLI']['limit']) ? '256M' : $_SERVER['LOLI']['limit']);
+@ini_set('memory_limit', empty($_SERVER['LOLI']['MEMORYLIMIT']) ? '256M' : $_SERVER['LOLI']['MEMORYLIMIT']);
 
 // 激活引用计数器
 @gc_enable();
@@ -66,6 +66,6 @@ if (!headers_sent()) {
 	header('X-Powered-By: ' . POWERED_BY);
 }
 
-
 // 数据流
 stream_wrapper_register('storage', __NAMESPACE__ . '\\Storage');
+

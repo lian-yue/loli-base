@@ -38,7 +38,7 @@ class FTP extends Base{
 	private function _error() {
 		$error = error_get_last();
 		if ($error && strpos($error['message'], 'failed to open stream: operation failed') !== false) {
-			new ConnectException($error['message'], 10);
+			throw new ConnectException($error['message'], 10);
 		}
 	}
 	private function _base() {
@@ -52,10 +52,7 @@ class FTP extends Base{
 	}
 
 	public function dir_opendir($path, $options) {
-		if (!$path = $this->path($path)) {
-			return false;
-		}
-		$this->_context = @opendir($this->_base() . $path);
+		$this->_context = @opendir($this->_base() . $this->path($path));
 		$this->_context || $this->_error();
 		return !empty($this->_context);
 	}
@@ -75,19 +72,11 @@ class FTP extends Base{
 
 
 	public function rename($pathFrom, $pathTo) {
-		if (!$pathFrom = $this->path($pathFrom)) {
-			return false;
-		}
-		if (!$pathTo = $this->path($pathTo)) {
-			return false;
-		}
-		return @rename($this->_base() . $pathFrom, $this->_base() . $pathTo);
+		return @rename($this->_base() . $this->path($pathFrom), $this->_base() . $this->path($pathTo));
 	}
 
 	public function mkdir($path, $mode, $options) {
-		if (!$path = $this->path($path)) {
-			return false;
-		}
+		$path = $this->path($path);
 		if ($options & STREAM_MKDIR_RECURSIVE) {
 			$base = $this->_base();
 			$names = $path === '/' ? [] : explode('/', trim($path, '/'));
@@ -115,10 +104,7 @@ class FTP extends Base{
 	}
 
 	public function rmdir($path) {
-		if (!$path = $this->path($path)) {
-			return false;
-		}
-		return @rmdir($this->_base() . $path);
+		return @rmdir($this->_base() . $this->path($path));
 	}
 
 
@@ -137,9 +123,7 @@ class FTP extends Base{
 	}
 
 	public function stream_open($path, $mode, $options, &$openedPath) {
-		if (!$path = $this->path($path, $protocol)) {
-			return false;
-		}
+		$path = $this->path($path, $protocol);
 		$openedPath = $protocol . ':/' . $path;
 		$this->_context = @fopen($this->_base() . $path, $mode);
 		if ($this->_context && $mode[0] !== 'r') {
@@ -174,16 +158,10 @@ class FTP extends Base{
 	}
 
 	public function unlink($path) {
-		if (!$path = $this->path($path)) {
-			return false;
-		}
-		return @unlink($this->_base() . $path);
+		return @unlink($this->_base() . $this->path($path));
 	}
 
 	public function url_stat($path, $flags) {
-		if (!$path = $this->path($path)) {
-			return false;
-		}
-		return @stat($this->_base() . $path);
+		return @stat($this->_base() . $this->path($path));
 	}
 }

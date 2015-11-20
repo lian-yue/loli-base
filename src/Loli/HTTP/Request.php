@@ -23,7 +23,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli\HTTP;
-use Loli\Code, Loli\Storage;
+use Loli\Crypt\Code, Loli\Storage, Loli\IP;
 class Request{
 	const TOKEN_HEADER = 'X-Token';
 
@@ -37,7 +37,7 @@ class Request{
 
 	protected static $schemesList = ['http', 'https'];
 
-	protected static $methodsList = ['OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH'];
+	protected static $methodsList = ['HEAD', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'PURGE', 'OPTIONS', 'TRACE'];
 
 	protected static $defaultHost = 'localhost';
 
@@ -45,15 +45,9 @@ class Request{
 
 	protected $postLength = 2097152;
 
-	protected $addr = false;
+	protected $clientAddr = false;
 
-	protected $port = 0;
-
-
-
-	protected $IP = '127.0.0.1';
-
-
+	protected $clientPort = 0;
 
 
 
@@ -84,8 +78,6 @@ class Request{
 
 
 
-
-
 	protected $newToken = false;
 
 	protected $token = NULL;
@@ -94,33 +86,45 @@ class Request{
 
 	protected $time;
 
+	protected $trustedProxy = false;
+
 
 	public function __construct($method = NULL, $URI = NULL, array $headers = NULL, array $posts = NULL, array $files = NULL) {
-
 		$this->time = empty($_SERVER['REQUEST_TIME_FLOAT']) ? microtime(true) : $_SERVER['REQUEST_TIME_FLOAT'];
 
-		// addr
-		$addr = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 0;
+		$this->trustedProxy = !isset($_SERVER['REMOTE_ADDR']) || (filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP) && !filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP, FILTER_FLAG_NO_RES_RANGE)) || (!empty($_SERVER['LOLI']['trustedProxy']) && IP::match($_SERVER['LOLI']['trustedProxy'], $_SERVER['REMOTE_ADDR']));
 
-		// port
-		$port = isset($_SERVER['REMOTE_PORT']) ? $_SERVER['REMOTE_PORT'] : 0;
 
-		// IP
-		$IP = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1';
-		if (empty($_SERVER['LOLI']['IP'])) {
+		$clientAddr = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1';
+		if (!$this->trustedProxy) {
 
-		} elseif (is_string($_SERVER['LOLI']['IP']) && !empty($_SERVER[$key = 'HTTP_' . strtr(strtoupper($_SERVER['LOLI']['IP']), '-', '_')]) && filter_var($_SERVER[$key], FILTER_VALIDATE_IP)) {
-			$IP = $_SERVER[$key];
-		} elseif (isset($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP)) {
-			$IP = $_SERVER['HTTP_CLIENT_IP'];
-		} elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+		} elseif (!empty($_SERVER['LOLI']['clientAddr']) && !empty($_SERVER[$key = 'HTTP_' . strtr(strtoupper($_SERVER['LOLI']['clientAddr']), '-', '_')]) && filter_var($_SERVER[$key], FILTER_VALIDATE_IP)) {
+			$clientAddr = $_SERVER[$key];
+		} elseif (isset($_SERVER['HTTP_FORWARDED']) && preg_match_all('/for="?\[?([a-z0-9\.:_\/\-]*)/', $_SERVER['HTTP_FORWARDED'], $matches)) {
+			foreach ($matches[1] as $value) {
+				if (filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_NO_RES_RANGE) && (empty($_SERVER['SERVER_ADDR']) || $_SERVER['SERVER_ADDR'] !== $value)) {
+					$clientAddr = $value;
+					break;
+				}
+			}
+		 } elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
 			foreach (explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']) as $value) {
-				if (filter_var($value = trim($value), FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) && (empty($_SERVER['SERVER_ADDR']) || $_SERVER['SERVER_ADDR'] != $value)) {
-					$IP = $value;
+				if (filter_var($value = trim($value), FILTER_VALIDATE_IP, FILTER_FLAG_NO_RES_RANGE) && (empty($_SERVER['SERVER_ADDR']) || $_SERVER['SERVER_ADDR'] !== $value)) {
+					$clientAddr = $value;
 					break;
 				}
 			}
 		}
+
+		// clientPort
+		$clientPort = isset($_SERVER['REMOTE_PORT']) ? $_SERVER['REMOTE_PORT'] : 0;
+		if (!$this->trustedProxy) {
+
+		} elseif (!empty($_SERVER['LOLI']['clientAddr']) && !empty($_SERVER[$key = 'HTTP_' . strtr(strtoupper($_SERVER['LOLI']['clientPort']), '-', '_')])) {
+			$clientPort = $_SERVER[$key];
+		}
+
+
 
 
 		// 协议
@@ -132,14 +136,28 @@ class Request{
 			$scheme = 'https';
 		} elseif (isset($_SERVER['SERVER_PORT_SECURE']) && '1' === $_SERVER['SERVER_PORT_SECURE']) {
 			$scheme = 'https';
+		} elseif ($this->trustedProxy && isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+			$scheme = 'https';
 		} else {
 			$scheme = 'http';
 		}
 
 
-
 		// 方法
-		$method = $method === NULL ? (isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : 'GET') : $method;
+		if ($method !== NULL) {
+
+		} elseif (!empty($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'])) {
+			$method = $_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'];
+		} elseif (!empty($_SERVER['HTTP_X_METHOD_OVERRIDE'])) {
+			$method = $_SERVER['HTTP_X_METHOD_OVERRIDE'];
+		} elseif (isset($_SERVER['HTTP_X_HTTP_METHOD'])) {
+			$method = $_SERVER['HTTP_X_HTTP_METHOD'];
+		} elseif (isset($_SERVER['REQUEST_METHOD'])) {
+			$method = $_SERVER['REQUEST_METHOD'];
+		} else {
+			$method = 'GET';
+		}
+
 
 
 
@@ -189,8 +207,9 @@ class Request{
 		}
 		unset($headers['X-Original-Url']);
 
-
-		if (empty($headers['Host'])) {
+		if ($this->trustedProxy && !empty($_SERVER['HTTP_X_FORWARDED_HOST'])) {
+			$headers['Host'] = $_SERVER['HTTP_X_FORWARDED_HOST'];
+		} else if (empty($headers['Host'])) {
 			if (isset($_SERVER['HTTP_HOST'])) {
 				$headers['Host'] = $_SERVER['HTTP_HOST'];
 			}  elseif (isset($_SERVER['SERVER_NAME'])) {
@@ -223,14 +242,15 @@ class Request{
 
 
 
+
 		//  地址
-		$this->setAddr($addr);
+		$this->setClientAddr($clientAddr);
 
 		// 端口
-		$this->setPort($port);
+		$this->setClientPort($clientPort);
 
-		// ip
-		$this->setIP($IP);
+		// 协议
+		$this->setScheme($scheme);
 
 		// 方法
 		$this->setMethod($method);
@@ -262,7 +282,7 @@ class Request{
 
 	public function setTime() {
 		$this->time = microtime(true);
-		return true;
+		return $this;
 	}
 
 	public function processing($decimal = 4) {
@@ -270,14 +290,11 @@ class Request{
 	}
 
 
-
-	public function getIP() {
-		return $this->IP;
+	public function getClientAddr() {
+		return $this->clientAddr;
 	}
 
-
-
-	public function setIP($IP) {
+	public function setClientAddr($IP) {
 		if(!$IP = inet_pton($IP)) {
 			throw new Exception('IP is not legitimate');
 		}
@@ -287,44 +304,19 @@ class Request{
 		if (preg_match('/\:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/', $IP, $matches)) {
 			$IP = $matches[1];
 		}
-		$this->IP = $IP;
+		$this->clientAddr = $IP;
 		return $this;
 	}
 
 
-
-
-
-	public function getAddr($port = false) {
-		return $this->addr;
-	}
-
-
-	public function setAddr($addr) {
-		if ($addr) {
-			if(!$addr = inet_pton($addr)) {
-				throw new Exception('Addr is not legitimate');
-			}
-			$addr = inet_ntop($addr);
-		} else {
-			$addr = false;
-		}
-		$this->addr = $addr;
-		return $this;
-	}
-
-
-	public function getPort() {
-		return $this->port;
-	}
-
-	public function setPort($port) {
+	public function setClientPort($port) {
 		if($port > 65535 || $port < 0){
 			throw new Exception('Port is not legitimate');
 		}
-		$this->port = (int) $port;
+		$this->clientPort = (int) $port;
 		return $this;
 	}
+
 
 
 
@@ -469,7 +461,7 @@ class Request{
 			switch ($name) {
 				case 'Host':
 					$value = $value ? strtolower($value) : self::$defaultHost;
-					if (!preg_match('/^([0-9a-z_-]+\.)*[0-9a-z_-]+$/', $value)) {
+					if (!preg_match('/^(\[[:0-9a-f]+\]|[0-9a-z_-]+(\.[0-9a-z_-]+)*)(?:\:\d+)?$/', $value)) {
 						throw new Exception('Host name error', 400);
 					}
 					break;
@@ -596,10 +588,6 @@ class Request{
 		}
 		return true;
 	}
-
-
-
-
 
 
 
@@ -896,6 +884,25 @@ class Request{
 		});
 	}
 
+
+
+
+	public function getPublicKey($hash = true) {
+		if (empty($this->params['__publicKey']) || !is_string($this->params['__publicKey'])) {
+			return '';
+		}
+		return $hash ? base64_encode(hash('sha256', $this->params['__publicKey'], true)) : base64_decode($this->params['__publicKey']);
+	}
+
+
+	public function getPrivateKey($hash = true) {
+		if (empty($this->params['__privateKey']) || !is_string($this->params['__privateKey'])) {
+			return '';
+		}
+		return $hash ? $this->params['__privateKey'] : base64_decode($this->params['__privateKey']);
+	}
+
+
 	protected function parseAccept($name, $pattern, $callback = NULL) {
 		$arrays = [];
 		foreach (explode(',', $this->getHeader($name)) as $value) {
@@ -928,9 +935,8 @@ class Request{
 
 
 	public function flush() {
-		$this->addr = false;
-		$this->port = 0;
-		$this->IP = '127.0.0.1';
+		$this->clientAddr = '127.0.0.1';
+		$this->clientPort = 0;
 		$this->scheme = 'http';
 		$this->version = 1.1;
 		$this->method = 'GET';
@@ -949,8 +955,4 @@ class Request{
 		$this->time = microtime(true);
 		return $this;
 	}
-
 }
-
-
-

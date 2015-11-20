@@ -12,9 +12,6 @@
 /* ************************************************************************** */
 namespace Loli;
 use finfo;
-define('UPLOAD_ERR_MULTIPLE', 100);
-define('UPLOAD_ERR_MIME', 101);
-define('UPLOAD_ERR_MIME_TYPE', 102);
 class Storage{
 
 	private $_link = NULL;
