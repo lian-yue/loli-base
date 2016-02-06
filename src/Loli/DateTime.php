@@ -24,18 +24,15 @@ class DateTime extends \DateTime implements JsonSerializable{
 		}
 
 		// 本地化格式
-		if ($format2 = self::translate('format_' . $format, false)) {
-			$format = $format2;
-		}
+		$format = self::translate('format_' . $format, $format);
+
 
 		// 本地化语言
 		$result = ' ' . $format;
 		foreach(['D', 'l', 'L', 'S', 'F', 'M', 'a', 'A', 'e'] as $value) {
 			if (strpos($format, $value) !== false) {
 				$valueFormat = parent::format($value);
-				if ($valueFormat2 = self::translate($value === 'e' ? $valueFormat : $value . '_' . $valueFormat, false)) {
-					$valueFormat = $valueFormat2;
-				}
+				$valueFormat = self::translate($value === 'e' ? $valueFormat : $value . '_' . $valueFormat, $valueFormat);
 				$result = preg_replace('/([^\\\])'. $value .'/', '\\1' . preg_replace('/([a-z])/i', '\\\\\1', $valueFormat), $result);
 			}
 		}
