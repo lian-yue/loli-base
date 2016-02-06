@@ -66,4 +66,92 @@ class Results extends ArrayObject{
 		}
 		throw new Exception('results.'. $name .'()', 'The results is empty');
 	}
+
+	public function query($column, $value, $compare = '=') {
+		$array = [];
+		switch (strtoupper($column)) {
+			case '=':
+			case '':
+				foreach ($this->data() as $value) {
+					if ($value->$column == $value) {
+						$array[] = $value;
+					}
+				}
+				break;
+			case '==':
+			case '===':
+				foreach ($this->data() as $value) {
+					if ($value->$column === $value) {
+						$array[] = $value;
+					}
+				}
+				break;
+			case '<':
+				foreach ($this->data() as $value) {
+					if ($value->$column < $value) {
+						$array[] = $value;
+					}
+				}
+				break;
+			case '<=':
+			case '=<':
+				foreach ($this->data() as $value) {
+					if ($value->$column <= $value) {
+						$array[] = $value;
+					}
+				}
+				break;
+			case '>':
+				foreach ($this->data() as $value) {
+					if ($value->$column > $value) {
+						$array[] = $value;
+					}
+				}
+				break;
+			case '>=':
+			case '=>':
+				foreach ($this->data() as $value) {
+					if ($value->$column >= $value) {
+						$array[] = $value;
+					}
+				}
+				break;
+			case 'IN':
+				foreach ($this->data() as $value) {
+					if (in_array($value->$column, (array) $value)) {
+						$array[] = $value;
+					}
+				}
+				break;
+			default:
+				throw new Exception('Results.query()', 'Unknown query compare');
+		}
+		return $this->clear()->write($array);
+	}
+
+	public function order($column, $order = NULL) {
+		if ($order === NULL && !is_scalar($column)) {
+			foreach ($column as $key => $value) {
+				$this->order($key, $value);
+			}
+			return $this;
+		} elseif (strtoupper($order) === 'DESC' || $order == -1) {
+			$array = $this->data();
+			usort($array, function($a, $b) use($column) {
+				 if ($a == $b) {
+			        return 0;
+			    }
+			    return ($a < $b) ? 1 : -1;
+			});
+		} else {
+			$array = $this->data();
+			usort($array, function($a, $b) use($column) {
+				 if ($a == $b) {
+			        return 0;
+			    }
+			    return ($a < $b) ? -1 : 1;
+			});
+		}
+		return $this->clear()->write($array);
+	}
 }

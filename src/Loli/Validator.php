@@ -364,7 +364,11 @@ class Validator {
 		$model = $class::query($column, $value, '=');
 		if (!empty($input['unique'][2])) {
 			foreach (parse_string($input['unique'][2]) as $column => $value) {
-				$model->query($column, $value, '=');
+				if (is_array($value) && isset($value['value'])) {
+					$model->query($column, $value['value'] === 'NULL' ? 'NULL' : $value['value'], isset($value['compare']) ? $value['compare'] : '');
+				} else {
+					$model->query($column, $value === 'NULL' ? 'NULL' : $value);
+				}
 			}
 		}
 		return $model->selectRow();

@@ -92,7 +92,7 @@ class Language{
 				}
 			}
 		}
-		return $original ? $text : false;
+		return $original === true ? $text : $original;
 	}
 
 
