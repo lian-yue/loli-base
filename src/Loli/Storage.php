@@ -12,30 +12,31 @@
 /* ************************************************************************** */
 namespace Loli;
 use finfo;
-class Storage{
 
+class Storage{
 	private $_link = NULL;
 
 	public function __call($method, $args) {
 		static $methods = ['dir_opendir', 'rename', 'stream_open', 'unlink', 'url_stat', 'mkdir', 'rmdir'];
-		if (in_array($method, $methods, true)) {
-			$parse = parse_url($args[0]);
-			$key = empty($parse['host']) ? '' : $parse['host'];
-			if (empty($_SERVER['LOLI']['STORAGE'][$key])) {
-				$key = empty($_SERVER['LOLI']['STORAGE']) ? '' : key($_SERVER['LOLI']['STORAGE']);
+		if (in_array(strtolower($method), $methods, true)) {
+			if (!$key = parse_url($args[0], PHP_URL_HOST)) {
+				$key = '';
 			}
-			$class = __NAMESPACE__ . '\Storage\\' . (empty($_SERVER['LOLI']['STORAGE'][$key]['type']) ? 'Local' : $_SERVER['LOLI']['STORAGE'][$key]['type']);
-			$this->_link = new $class(empty($_SERVER['LOLI']['STORAGE'][$key]) ? [] : $_SERVER['LOLI']['STORAGE'][$key]);
+			if (empty($_SERVER['LOLI']['storage'][$key])) {
+				$key = empty($_SERVER['LOLI']['storage']) ? '' : key($_SERVER['LOLI']['storage']);
+			}
+			$class = (empty($_SERVER['LOLI']['storage'][$key]['type']) ? 'File' : $_SERVER['LOLI']['storage'][$key]['type']);
+			if ($class[0] !== '\\') {
+				$class = __NAMESPACE__ . '\Storage\\' . $class;
+			}
+			$this->_link = new $class(empty($_SERVER['LOLI']['storage'][$key]) ? [] : $_SERVER['LOLI']['storage'][$key]);
 		}
-		return call_user_func_array([$this->_link, $method], $args);
+		return $this->_link->$method(...$args);
 	}
 
 
 	public static function mime($file) {
 		$info = new finfo();
-		if (!is_file($file)) {
-			return false;
-		}
 		return ['type' => $info->file($file, FILEINFO_MIME_TYPE), 'encoding' => $info->file($file, FILEINFO_MIME_ENCODING)];
 	}
 }

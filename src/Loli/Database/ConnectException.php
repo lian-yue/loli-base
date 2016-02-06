@@ -7,7 +7,7 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2015-08-21 13:42:16
+/*	Created: UTC 2016-01-28 06:43:16
 /*
 /* ************************************************************************** */
 /* ************************************************************************** */
@@ -18,14 +18,13 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2015-04-03 07:05:11
-/*	Updated: UTC 2015-04-03 07:05:16
+/*	Created: UTC 2015-02-27 09:59:36
+/*	Updated: UTC 2015-03-22 08:01:03
 /*
 /* ************************************************************************** */
-namespace Loli\HTTP;
-use Loli\LogException;
-class Exception extends LogException{
-	public function __construct($message, $code = 500, $level = 3, Exception $previous = NULL) {
-		parent::__construct($message, $code ? $code : 500, $level, $previous);
-	}
+namespace Loli\Database;
+
+class ConnectException extends Exception{
+	protected $level = 4;
+	protected $state = 'HY000';
 }

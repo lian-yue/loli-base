@@ -47,7 +47,7 @@ class CURL{
 
 	// 自动加载
 	public function __construct(array $defaults = [], $cookie = false, $tempdir = false) {
-		$this->cookie = $cookie == false ? (empty($_SERVER['LOLI']['CURL']['cookie']) ? './' : $_SERVER['LOLI']['CURL']['cookie']) : $cookie;
+		$this->cookie = $cookie == false ? (empty($_SERVER['LOLI']['curl']['cookie']) ? './' : $_SERVER['LOLI']['curl']['cookie']) : $cookie;
 		$this->tempdir = $tempdir;
 
 		// cookie 是否是本地协议
@@ -73,8 +73,8 @@ class CURL{
 	}
 
 
-	public function __invoke() {
-		return call_user_func_array([$this, 'get'], func_get_args());
+	public function __invoke(...$args) {
+		return $this->get(...$args);
 	}
 	/**
 	*	curl 下载 cookie 文件保存位置

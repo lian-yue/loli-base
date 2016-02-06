@@ -24,7 +24,7 @@
 /* ************************************************************************** */
 namespace Loli\Captcha;
 use Loli\Exception;
-class_exists('Loli\Captcha\Base') || exit;
+
 
 class GD extends Base{
 
@@ -97,13 +97,13 @@ class GD extends Base{
 		// for 循环写入字体
 		$len = mb_strlen($this->code);
 		for ($i = 0; $i < $len; ++$i) {
-			$size = $this->width / $len * $this->rand($this->size[0], $this->size[1]);
-			$angle = $this->angle ? $this->rand($this->angle[0], $this->angle[1]) : 0;
-			$x = isset($x) ? $x + $size * $this->rand($this->spacing[0], $this->spacing[1]) : $this->rand(0, $this->width /(($this->spacing[0]+ $this->spacing[1] + $this->size[0] + $this->size[1])/1.4));
-			$y = isset($y) ? ($y <= $size ? $y * $this->rand(1,1.2) : ($y >= $this->height ? $y * $this->rand(0.8, 1) : $y * $this->rand(0.9,1.1))) : $this->rand($size, $this->height);
+			$size = $this->width / $len * $this->random($this->size[0], $this->size[1]);
+			$angle = $this->angle ? $this->random($this->angle[0], $this->angle[1]) : 0;
+			$x = isset($x) ? $x + $size * $this->random($this->spacing[0], $this->spacing[1]) : $this->random(0, $this->width /(($this->spacing[0]+ $this->spacing[1] + $this->size[0] + $this->size[1])/1.4));
+			$y = isset($y) ? ($y <= $size ? $y * $this->random(1,1.2) : ($y >= $this->height ? $y * $this->random(0.8, 1) : $y * $this->random(0.9,1.1))) : $this->random($size, $this->height);
 			$text = mb_substr($this->code, $i, 1);
 			imagettftext($this->im, $size, $angle, $x, $y, $color, $font, $text);
-			$line && ($i%2) === 0 && imagettftext($this->im, $size + $this->rand(-3, 3), $this->rand($this->angle[0], $this->angle[1]), $x, $y, $color, $line, mt_rand(0, 9));
+			$line && ($i%2) === 0 && imagettftext($this->im, $size + $this->random(-3, 3), $this->random($this->angle[0], $this->angle[1]), $x, $y, $color, $line, mt_rand(0, 9));
 		}
 	}
 }

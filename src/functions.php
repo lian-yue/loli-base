@@ -12,11 +12,12 @@
 /* ************************************************************************** */
 function parse_string($string) {
 	if (is_array($string) || is_object($string)) {
-		$results = (array) $string;
-		foreach ($results as &$value) {
+		$results =[];
+		foreach ($string as $key => $value) {
 			if (is_array($value) || is_object($value)) {
 				$value = parse_string($value);
 			}
+			$results[$key]= $value;
 		}
 	} else {
 		parse_str($string, $results);
@@ -33,6 +34,21 @@ function merge_string($array) {
 }
 
 
+
+function to_string($string) {
+	if (is_string($string)) {
+
+	} elseif (is_array($string)) {
+		$string = $string ? '1' : '';
+	} elseif (is_object($string)) {
+		$string = method_exists($string, '__toString') ? $string->__toString() : 'object';
+	} else {
+		$string = (string) $string;
+	}
+	return $string;
+}
+
+
 function to_array($array) {
 	$results = [];
 	foreach ((is_array($array) || is_object($array) ? $array : (array)  $array) as $key => $value) {
@@ -44,7 +60,6 @@ function to_array($array) {
 	}
 	return $results;
 }
-
 
 
 /**
@@ -63,55 +78,6 @@ function to_object($a) {
 	}
 	return $a;
 }
-
-
-/**
-*	url 合并 parse_url 的反响函数
-*
-*	1 参数 parse 解析后的数组
-*
-*	返回 合并后的字符串
-**/
-
-function merge_url(array $parse) {
-	$url = '';
-	if (isset($parse['scheme'])) {
-		$url .= $parse['scheme'] . '://';
-	} elseif (isset($parse['host'])) {
-		$url .= '//';
-	}
-	if (isset($parse['user'])) {
-		$url .= $parse['user'];
-	}
-	if (isset($parse['pass'])) {
-		$url .= ':' . $parse['pass'];
-	}
-	if (isset($parse['user']) || isset($parse['pass'])) {
-		$url .= '@';
-	}
-	if (isset($parse['host'])) {
-		$url .= $parse['host'];
-	}
-	if (isset($parse['port'])) {
-		$url .= ':'. $parse['port'];
-	}
-	if (isset($parse['path'])) {
-		$url .= $parse['path'];
-	} else {
-		$url .= '/';
-	}
-	if (isset($parse['query']) && $parse['query'] !== '') {
-		$url .= '?'. $parse['query'];
-	}
-
-	if (isset($parse['fragment'])) {
-		$url .= '#'. $parse['fragment'];
-	}
-	return $url;
-}
-
-
-
 
 
 
@@ -134,4 +100,38 @@ function simplexml_uncdata($xml) {
 	}
 
 	return $xml;
+}
+
+
+
+function studly($value) {
+	static $cache = [];
+	$key = $value;
+	if (isset($cache[$key])) {
+		return $cache[$key];
+	}
+	$value = ucwords(str_replace(['-', '_'], ' ', $value));
+	return $cache[$key] = str_replace(' ', '', $value);
+}
+
+
+function snake($value, $delimiter = '_') {
+	static $cache = [];
+	$key = $value . $delimiter;
+
+	if (isset($cache[$key])) {
+	    return $cache[$key];
+	}
+	if (!ctype_lower($value)) {
+		$value = preg_replace('/\s+/', '', $value);
+		$value = strtolower(preg_replace('/(.)(?=[A-Z])/', '$1'.$delimiter, $value));
+	}
+	return $cache[$key] = $value;
+}
+
+
+
+
+function htmlencode($string) {
+	return str_replace(['"', '\'', '<', '>'], ['&quot;', '&#039;', '&lt;', '&gt;'], $string);
 }

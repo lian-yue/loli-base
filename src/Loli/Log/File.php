@@ -23,16 +23,20 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Log;
-class_exists('Loli\Log\Base') || exit;
+
 class File extends Base{
 	protected $path = './$date/$level-$time.log';
 
 	public function write($message, $level = self::LEVEL_ACCESS) {
+		// 不允许写入的
 		if (!in_array($level, $this->writes, true)) {
 			return false;
 		}
+
 		// 进度
-		$message = $this->getProgress($message, $level);
+		if (!$message = $this->getProgress($message, $level)) {
+			return false;
+		}
 
 		// 时间
 		$datetime = explode(' ', gmdate('Y-m-d H-i'));

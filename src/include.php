@@ -25,7 +25,7 @@
 namespace Loli;
 
 // PHP 版本检测
-version_compare('5.4', phpversion(), '>') && trigger_error('php version less than 5.4', E_USER_ERROR);
+version_compare('5.6', phpversion(), '>') && trigger_error('php version less than 5.6', E_USER_ERROR);
 
 // 修改默认时区
 date_default_timezone_set('UTC');
@@ -35,9 +35,6 @@ mb_internal_encoding('UTF-8');
 
 // 禁用 XML 外部实体
 libxml_disable_entity_loader(true);
-
-// 内存限制
-@ini_set('memory_limit', empty($_SERVER['LOLI']['MEMORYLIMIT']) ? '256M' : $_SERVER['LOLI']['MEMORYLIMIT']);
 
 // 激活引用计数器
 @gc_enable();
@@ -54,7 +51,6 @@ const VERSION = '0.0.2';
 const POWERED_BY = 'Loli.Net';
 
 
-
 if (!headers_sent()) {
 	// 默认 编码
 	header('Content-Type: text/html; charset=UTF-8');
@@ -67,5 +63,5 @@ if (!headers_sent()) {
 }
 
 // 数据流
-stream_wrapper_register('storage', __NAMESPACE__ . '\\Storage');
+stream_wrapper_register('storage',  Storage::class);
 

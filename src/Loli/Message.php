@@ -11,8 +11,9 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-use ArrayIterator, IteratorAggregate, JsonSerializable;
-class_exists('Loli\Route') || exit;
+use IteratorAggregate;
+use JsonSerializable;
+
 /*
 消息模块
 1000 以前是系统预留的
@@ -33,9 +34,18 @@ class_exists('Loli\Route') || exit;
 200 － 399 执行成功 并且要设置http状态码的
 400 － 599 ＝ 执行失败 并且 要设置 http 状态码的
 
-*/
 
-class Message extends Exception implements IteratorAggregate, JsonSerializable, RouteInterface{
+1000-1099  验证消息
+1000-1099 默认状态码
+
+
+ 组  表(模块) 字段 状态
+ 00   00     00  00
+
+组 不能 未 0
+
+*/
+class Message extends Exception implements IteratorAggregate, JsonSerializable{
 	const NOTICE = 1;
 	const WARNING = 2;
 	const ERROR = 3;
@@ -51,10 +61,11 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable, 
 	protected $redirect = false;
 
 	protected $refresh = 3;
+
 	protected $hosts = [];
 
 	public function __construct($message = [], $type = self::NOTICE, $data = [], $redirect = true, $refresh = 3, Message $previous = NULL) {
-		$this->hosts = empty($_SERVER['LOLI']['MESSAGE']['hosts']) ? [] : (array) $_SERVER['LOLI']['MESSAGE']['hosts'];
+		$this->hosts = empty($_SERVER['LOLI']['message']['hosts']) ? [] : (array) $_SERVER['LOLI']['message']['hosts'];
 
 		// previous　变量自动缩进
 		foreach(['type' => self::NOTICE, 'data' => [], 'redirect' => false, 'refresh' => 3] as $key => $value) {
@@ -91,71 +102,22 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable, 
 
 		// args
 		$this->args = $message;
-
 		unset($this->args[key($this->args)]);
 
-
-		$this->redirect = $redirect;
-
-		// refresh 刷新
-		$this->redirect = isset($data['redirect']) ? $data['redirect'] : $redirect;
-		if (!$this->redirect || !is_string($this->redirect)) {
-			$this->redirect = (bool) $this->redirect;
-		}
-		$this->refresh = (int) (isset($data['refresh']) ? $data['refresh'] : $refresh);
-
+		// 消息
+		$message = self::translate([$code] + $this->args);
 
 		// 注册父级
-		parent::__construct($code . '.' . $this->type, $code, $previous);
+		parent::__construct($message, $code, $previous);
+
+		// refresh 刷新
+		$this->setRefresh(isset($data['refresh']) ? $data['refresh'] : $refresh);
+
+		// redirect
+		$this->setRedirect($redirect = isset($data['redirect']) ? $data['redirect'] : $redirect, isset($data['redirect']));
+
 	}
 
-	public function route(Route &$route) {
-		$previous = $this->getPrevious();
-		$previous && $previous->route($route);
-		$this->message = $route->localize->translate([$this->code] + $this->args, ['message']);
-		$whiteList = !isset($this->data['redirect']);
-		if ($this->redirect) {
-			if ($this->redirect !== true) {
-
-			} elseif ($this->redirect = $route->request->getParam('redirect', '')) {
-
-			} elseif ($this->redirect = $route->request->getCookie('redirect', '')) {
-
-			} elseif ($this->redirect = $route->request->getHeader('Referer')) {
-
-			} else {
-				$this->redirect = '//'. $route->request->getHeader('Host');
-			}
-
-			if ($whiteList) {
-				$parse = parse_url($this->redirect);
-				if (!empty($parse['scheme']) && !in_array($parse['scheme'], ['http', 'https'], true)) {
-					$parse = [];
-				}
-
-				if ((!empty($parse['scheme']) || !empty($parse['host'])) && (empty($parse['host']) || !preg_match('/(^|\.)('. implode('|', array_map(function($host){ return preg_quote($host, '/'); }, $this->hosts)) .')$/i', $parse['host']))) {
-					$parse = [];
-				}
-
-				if (isset($parse['user']) || isset($parse['pass'])) {
-					$parse = [];
-				}
-
-				if (empty($parse['host']) && (stripos($this->redirect, ':') !== false || stripos($this->redirect, '&#') !== false || stripos($this->redirect, ';') !== false)) {
-					$parse = [];
-				}
-				if (empty($parse['host'])) {
-					$parse['host'] = reset($this->hosts);
-				}
-
-				$parse['query'] = empty($parse['query']) ? [] : parse_string($parse['query']);
-				$parse['query']['_r'] = mt_rand();
-				$parse['query']['_message'] = $this->code . '.' . $this->type;
-				$parse['query'] = merge_string($parse['query']);
-				$this->redirect = merge_url($parse);
-			}
-		}
-	}
 
 
 
@@ -186,6 +148,7 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable, 
 	public function getRedirect() {
 		return $this->redirect;
 	}
+
 	public function getRefresh() {
 		return $this->refresh;
 	}
@@ -199,10 +162,53 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable, 
 		return $this;
 	}
 
-	public function setRedirect($redirect) {
+	public function setRedirect($redirect, $whiteList = false) {
+
+
+		if ($redirect) {
+			$request = Route::request();
+			if (!$redirect instanceof URL) {
+				if (is_string($redirect) || is_object($redirect)) {
+					$redirect = (string) $redirect;
+				} elseif ($redirect = $request->getParam('redirect', '')) {
+
+				} elseif ($redirect = $request->getCookie('redirect', '')) {
+
+				} elseif ($redirect = $request->getHeader('Referer')) {
+
+				} else {
+					$redirect = '//'. $request->getHeader('Host');
+				}
+				$redirect = new URL($redirect);
+			}
+
+
+			if (!$whiteList) {
+				if ($redirect->scheme && !in_array($redirect->scheme, ['http', 'https'], true)) {
+					// 协议不是 http https
+					$error = true;
+				} elseif ($redirect->host && !preg_match('/(^|\.)('. implode('|', array_map(function($host){ return preg_quote($host, '/'); }, $this->hosts)) .')$/i', $redirect->host)) {
+					// host 无效
+					$error = true;
+				} elseif ($redirect->user || $redirect->pass) {
+					// 带用户名和密码
+					$error = true;
+				} elseif (stripos($redirect->path, ':') !== false || stripos($redirect->path, ';') !== false) {
+					$error = true;
+				}
+				if (isset($error)) {
+					$redirect = new URL('//' . $request->getHeader('Host'));
+				}
+				$redirect->query('_r', mt_rand());
+				$redirect->query('_message', $this->code . '.' . $this->type);
+			}
+		} else {
+			$redirect = false;
+		}
 		$this->redirect = $redirect;
 		return $this;
 	}
+
 	public function setRefresh($refresh) {
 		$this->refresh = $refresh;
 		return $this;
@@ -215,4 +221,23 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable, 
 	public function jsonSerialize() {
 		return ['message' => $this->getMessage(), 'code' => $this->getCode(), 'type' => $this->getType(), 'args' => $this->getArgs()];
     }
+
+    public function __toString() {
+    	switch ($this->type) {
+    		case self::ERROR:
+    			$type = 'error';
+    			break;
+			case self::WARNING:
+    			$type = 'warning';
+    			break;
+    		default:
+    			$type = 'notice';
+    	}
+		return '<p class="message message-type-'. $this->type .'message-'. $type .'">'. $this->getMessage() .'</p>';
+    }
+
+
+	public static function translate($text, $original = true) {
+		return Language::translate($text, ['message'], $original);
+	}
 }

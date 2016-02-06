@@ -23,6 +23,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Crypt;
+
 class Code{
 
 	// 生成 字符串 KEY
@@ -45,17 +46,13 @@ class Code{
 		return substr($r, 0, $len);
 	}
 
-
-
-
-
 	/**
-	 * rand 随机字符串
+	 * random 随机字符串
 	 * @param  [type]  $length [description]
 	 * @param  boolean $string [description]
 	 * @return [type]          [description]
 	 */
-	public static function rand($length, $string = false) {
+	public static function random($length, $string = false) {
 		if (!$string) {
 			$string = '0123456789abcdefghijklmnopqrstuvwxyz';
 		}
@@ -66,7 +63,6 @@ class Code{
 		}
 		return $r;
 	}
-
 
 
 
@@ -104,7 +100,7 @@ class Code{
 	public static function encode($value, $password = '', $ttl = 0) {
 
 		// 随机
-		$rand = self::rand(6, '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM_-');
+		$rand = self::random(6, '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM_-');
 
 		$type = 9;
 		foreach (['is_null', 'is_bool', 'is_int', 'is_float', 'is_string'] as $key => $function) {
@@ -150,7 +146,7 @@ class Code{
 		}
 
 		// 解密
-		if (count($arrays = explode(chr(0), self::_code(base64_decode(strtr($code, '-_', '+/')), $rand . $password), 3)) != 3) {
+		if (count($arrays = explode(chr(0), self::_code(base64_decode(strtr($code, '-_', '+/')), $rand . $password), 3)) !== 3) {
 			return false;
 		}
 		list($type, $time, $value) = $arrays;
@@ -188,4 +184,4 @@ class Code{
 	}
 }
 
-Code::$key = isset($_SERVER['LOLI']['CRYPT']['key']) ? $_SERVER['LOLI']['CRYPT']['key'] : '';
+Code::$key = isset($_SERVER['LOLI']['key']) ? $_SERVER['LOLI']['key'] : '';

@@ -23,7 +23,10 @@
 /*
 /* ************************************************************************** */
 namespace Loli\HTTP;
-use Loli\Crypt\Code, Loli\Storage, Loli\IP;
+use Loli\IP;
+use Loli\Storage;
+use Loli\Crypt\Code;
+
 class Request{
 	const TOKEN_HEADER = 'X-Token';
 
@@ -152,6 +155,8 @@ class Request{
 			$method = $_SERVER['HTTP_X_METHOD_OVERRIDE'];
 		} elseif (isset($_SERVER['HTTP_X_HTTP_METHOD'])) {
 			$method = $_SERVER['HTTP_X_HTTP_METHOD'];
+		} elseif (isset($_POST['_method'])) {
+			$method = $_POST['_method'];
 		} elseif (isset($_SERVER['REQUEST_METHOD'])) {
 			$method = $_SERVER['REQUEST_METHOD'];
 		} else {
@@ -701,7 +706,7 @@ class Request{
 
 	public function setFile($key, $tmp_name, $name, $type = NULL, $error = UPLOAD_ERR_OK, $size = NULL) {
 		unset($this->files[$key]);
-		return call_user_func_array([$this, 'addFile'], func_get_args());
+		return $this->addFile(...func_get_args());
 	}
 
 	public function addFile($key, $tmp_name, $name, $type = NULL, $error = UPLOAD_ERR_OK, $size = NULL) {
@@ -770,11 +775,9 @@ class Request{
 	}
 
 
-
-
 	public function newToken() {
 		$token = uniqid();
-		$token .= Code::rand(16 - strlen($token), '0123456789qwertyuiopasdfghjklzxcvbnm');
+		$token .= Code::random(16 - strlen($token), '0123456789qwertyuiopasdfghjklzxcvbnm');
 		$token .= Code::key(__CLASS__ . self::TOKEN_HEADER . $token, 16);
 		return $token;
 	}
@@ -805,7 +808,7 @@ class Request{
 		if ($token === NULL || $token === false) {
 			$this->token = NULL;
 		} else {
-			if (!is_string($token) || strlen($token) != 32 || Code::key(__CLASS__ . self::TOKEN_HEADER . substr($token, 0, 16), 16) !== substr($token, 16)) {
+			if (!is_string($token) || strlen($token) !== 32 || Code::key(__CLASS__ . self::TOKEN_HEADER . substr($token, 0, 16), 16) !== substr($token, 16)) {
 				throw new Exception('Access token is invalid', 403);
 			}
 			$this->token = $token;
@@ -891,7 +894,7 @@ class Request{
 		if (empty($this->params['__publicKey']) || !is_string($this->params['__publicKey'])) {
 			return '';
 		}
-		return $hash ? base64_encode(hash('sha256', $this->params['__publicKey'], true)) : base64_decode($this->params['__publicKey']);
+		return $hash ? hash('sha256', $this->params['__publicKey'], true) : base64_decode($this->params['__publicKey']);
 	}
 
 

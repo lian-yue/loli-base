@@ -11,7 +11,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
-class_exists('Loli\Storage\Base') || exit;
+
 class FTP extends Base{
 
 

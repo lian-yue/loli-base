@@ -24,12 +24,31 @@
 /* ************************************************************************** */
 namespace Loli;
 class Cache{
-	private static $_link;
-	public static function __callstatic($method, $args) {
-		if (!isset(self::$_link)) {
-			$class = __NAMESPACE__ . '\Cache\\' . (empty($_SERVER['LOLI']['CACHE']['mode']) ? 'File' : $_SERVER['LOLI']['CACHE']['mode']);
-			self::$_link = new $class($_SERVER['LOLI']['CACHE']['args'], empty($_SERVER['LOLI']['CACHE']['key']) ? '' : $_SERVER['LOLI']['CACHE']['key']);
+	public static function __callStatic($method, $args) {
+		return self::group('default')->$method(...$args);
+	}
+
+	public static function group($group) {
+		static $links = [], $configs = [];
+		if (empty($configs)) {
+			foreach (empty($_SERVER['LOLI']['cache']) ? [[]] : $_SERVER['LOLI']['cache'] as $key => $value) {
+				$configs[is_int($key) ? 'default' : $key] = (array) $value;
+			}
 		}
-		return call_user_func_array([self::$_link, $method], $args);
+
+
+		if (!$group) {
+			$group = 'default';
+		}
+
+		if (empty($links[$group])) {
+			$config = isset($configs[$group]) ? $configs[$group] : reset($configs);
+			$class = empty($config['type']) ? 'Memory' : $config['type'];
+			if ($class[0] !== '\\') {
+				$class = __NAMESPACE__ . '\Cache\\' . $class;
+			}
+			$links[$group] = new $class(empty($config['args']) ? [] : (array) $config['args'], $group . (empty($_SERVER['LOLI']['key']) ? '' : $_SERVER['LOLI']['key']));
+		}
+		return $links[$group];
 	}
 }

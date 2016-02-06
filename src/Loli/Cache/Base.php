@@ -31,75 +31,70 @@ abstract class Base{
 	// KEY
 	protected $key = '';
 
-
-	abstract public function __construct(array $args, $key = '');
+	public function __construct(array $args, $key = '') {
+		$this->key = $key;
+		$this->addServers($args);
+	}
 
 
 	/**
 	 * get
 	 * @param  string $key
-	 * @param  string $group 分组
 	 * @return
 	 */
-	abstract public function get($key, $group = 'default');
+	abstract public function get($key);
 
 	/**
 	 * add
 	 * @param  *       $value
 	 * @param  string  $key
-	 * @param  string  $group
 	 * @param  integer $ttl   0秒 只在内存中缓存  -1 = 永久缓存
 	 * @return boolean
 	 */
-	abstract public function add($value, $key, $group = 'default', $ttl = 0);
+	abstract public function add($value, $key, $ttl = 0);
 
 	/**
 	 * set
 	 * @param  *       $value
 	 * @param  string  $key
-	 * @param  string  $group
 	 * @param  integer $ttl   0秒 只在内存中缓存  -1 = 永久缓存
 	 * @return boolean
 	 */
-	abstract public function set($value, $key, $group = 'default', $ttl = 0);
+	abstract public function set($value, $key, $ttl = 0);
 
 
 	/**
 	 * incr
 	 * @param  integer $n
 	 * @param  string  $key
-	 * @param  string  $group
 	 * @return boolean
 	 */
-	abstract public function incr($n, $key, $group = 'default');
+	abstract public function incr($n, $key);
 
 	/**
 	 * decr
 	 * @param  integer $n
 	 * @param  string  $key
-	 * @param  string  $group
 	 * @return boolean
 	 */
-	abstract public function decr($n, $key, $group = 'default');
+	abstract public function decr($n, $key);
 
 
 	/**
 	 * delete
 	 * @param  string  $key
-	 * @param  string  $group
 	 * @param  integer $ttl 如果设定了时间就是延迟删除
 	 * @return boolean
 	 */
-	abstract public function delete($key, $group = 'default', $ttl = 0);
+	abstract public function delete($key, $ttl = 0);
 
 
 	/**
 	 * ttl  获得有效期
 	 * @param  string  $key
-	 * @param  string  $group
 	 * @return boolean
 	 */
-	abstract public function ttl($key, $group = 'default');
+	abstract public function ttl($key);
 
 
 	/**
@@ -112,15 +107,12 @@ abstract class Base{
 
 	/**
 	 * addServers
-	 * @param string $group
 	 * @param array  $servers
 	 */
-	abstract public function addServers($group, array $servers);
+	abstract public function addServers(array $servers);
 
 
 	public function statistics($key = false) {
 		return $key === false ? $this->statistics : (isset($this->statistics[$key]) ? $this->statistics[$key] : false);
 	}
 }
-
-

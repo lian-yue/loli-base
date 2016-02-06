@@ -24,39 +24,25 @@
 /* ************************************************************************** */
 namespace Loli\Cache;
 use RedisException;
-class_exists('Loli\Cache\Base') || exit;
+
+
 class Redis extends Base{
 
 	private $_data = [];
 
 	private $_servers = [];
 
-	public function __construct(array $args, $key = '') {
-		$this->_key = $key;
-		foreach ($args as $group => $servers) {
-			$group = is_int($group) ? 'default' : $group;
-			$servers = (array) $servers;
-			foreach ($servers as $k => $v) {
-				$v = is_array($v) ? $v : explode(':', $v, 3);
-				$v[1] = empty($v[1]) ? 6379 : $v[1];
-				$servers[$k] = $v;
-			}
-			$this->addServers($group, $servers);
-		}
-	}
-
-
-	public function get($key, $group = 'default') {
+	public function get($key) {
 		++$this->statistics['get'];
-		if (isset($this->_data[$group][$key])) {
-			if (is_object($this->_data[$group][$key])) {
-				return clone $this->_data[$group][$key];
+		if (isset($this->_data[$key])) {
+			if (is_object($this->_data[$key])) {
+				return clone $this->_data[$key];
 			}
-			return $this->_data[$group][$key];
+			return $this->_data[$key];
 		}
 
 		try {
-			if (($value = $this->_obj($key, $group)->get($this->_key($key, $group))) !== false) {
+			if (($value = $this->_obj($key)->get($this->_key($key))) !== false) {
 				return is_numeric($value) ? (int) $value : @unserialize($value);
 			}
 		} catch (RedisException $e) {
@@ -66,7 +52,7 @@ class Redis extends Base{
 	}
 
 
-	public function add($value, $key, $group = 'default', $ttl = 0) {
+	public function add($value, $key, $ttl = 0) {
 		++$this->statistics['add'];
 		if ($value === NULL || $value === false) {
 			return false;
@@ -74,8 +60,8 @@ class Redis extends Base{
 
 		if ($ttl) {
 			try {
-				$obj = $this->_obj($key, $group);
-				if ($obj->setnx($k = $this->_key($key, $group), is_int($value) ? $value : serialize($value))) {
+				$obj = $this->_obj($key);
+				if ($obj->setnx($k = $this->_key($key), is_int($value) ? $value : serialize($value))) {
 					$ttl == -1 || $obj->expire($k, $ttl);
 				}
 			} catch (RedisException $e) {
@@ -83,19 +69,19 @@ class Redis extends Base{
 				return false;
 			}
 		} else {
-			if (isset($this->_data[$group][$key])) {
+			if (isset($this->_data[$key])) {
 				return false;
 			}
 			if (is_object($value)) {
 				$value = clone $value;
 			}
-			$this->_data[$group][$key] = $value;
+			$this->_data[$key] = $value;
 		}
 		return true;
 	}
 
 
-	public function set($value, $key, $group = 'default', $ttl = 0) {
+	public function set($value, $key, $ttl = 0) {
 		++$this->statistics['set'];
 		if ($value === NULL || $value === false) {
 			return false;
@@ -103,8 +89,8 @@ class Redis extends Base{
 
 		if ($ttl) {
 			try {
-				$obj = $this->_obj($key, $group);
-				if ($obj->set($k = $this->_key($key, $group), is_int($value) ? $value : serialize($value))) {
+				$obj = $this->_obj($key);
+				if ($obj->set($k = $this->_key($key), is_int($value) ? $value : serialize($value))) {
 					$ttl == -1 || $obj->expire($k, $ttl);
 				}
 			} catch (RedisException $e) {
@@ -115,24 +101,26 @@ class Redis extends Base{
 			if (is_object($value)) {
 				$value = clone $value;
 			}
-			$this->_data[$group][$key] = $value;
+			$this->_data[$key] = $value;
 		}
 		return true;
 	}
 
-	public function incr($n, $key, $group = 'default') {
+	public function incr($n, $key) {
 		++$this->statistics['incr'];
 		if (($n = intval($n)) < 1) {
 			return false;
 		}
-		if (isset($this->_data[$group][$key])) {
-			$this->_data[$group][$key] += $n;
-			return true;
+		if (isset($this->_data[$key])) {
+			$this->_data[$key] += $n;
+			return $this->_data[$key];
 		}
 
 		try {
-			$obj = $this->_obj($key, $group);
-			return $obj->exists($k = $this->_key($key, $group)) && $obj->incrby($k, $n);
+			$obj = $this->_obj($key);
+			if ($obj->exists($k = $this->_key($key))) {
+				return $obj->incrby($k, $n);
+			}
 		} catch (RedisException $e) {
 			new Exception($e->getMessage(), $e->getCode());
 		}
@@ -140,19 +128,21 @@ class Redis extends Base{
 	}
 
 
-	public function decr($n, $key, $group = 'default') {
+	public function decr($n, $key) {
 		++$this->statistics['decr'];
 		if (($n = intval($n)) < 1) {
 			return false;
 		}
-		if (isset($this->_data[$group][$key])) {
-			$this->_data[$group][$key] -= $n;
-			return true;
+		if (isset($this->_data[$key])) {
+			$this->_data[$key] -= $n;
+			return $this->_data[$key];
 		}
 
 		try {
-			$obj = $this->_obj($key, $group);
-			return $obj->exists($k = $this->_key($key, $group)) && $obj->decrby($k, $n);
+			$obj = $this->_obj($key);
+			if ($obj->exists($k = $this->_key($key))) {
+				return $obj->decrby($k, $n);
+			}
 		} catch (RedisException $e) {
 			new Exception($e->getMessage(), $e->getCode());
 		}
@@ -160,18 +150,18 @@ class Redis extends Base{
 	}
 
 
-	public function delete($key, $group = 'default', $ttl = 0) {
+	public function delete($key, $ttl = 0) {
 		++$this->statistics['delete'];
 		if ($ttl > 0) {
-			$obj = $this->_obj($key, $group);
+			$obj = $this->_obj($key);
 			try {
-				if (isset($this->_data[$group][$key])) {
-					$value = $this->_data[$group][$key];
-					$obj->set($k = $this->_key($key, $group), is_int($value) ? $value : serialize($value));
+				if (isset($this->_data[$key])) {
+					$value = $this->_data[$key];
+					$obj->set($k = $this->_key($key), is_int($value) ? $value : serialize($value));
 					$obj->expire($k, $ttl);
 					return true;
 				}
-				if (($objTtl = $obj->ttl($k = $this->_key($key, $group))) == -2 || $ttl === false) {
+				if (($objTtl = $obj->ttl($k = $this->_key($key))) == -2 || $ttl === false) {
 					return false;
 				}
 				if ($objTtl == -1 || $objTtl > $ttl) {
@@ -183,24 +173,26 @@ class Redis extends Base{
 			return true;
 		}
 
-		$isset = isset($this->_data[$group][$key]);
-		unset($this->_data[$group][$key]);
+		$isset = isset($this->_data[$key]);
+		unset($this->_data[$key]);
 		try {
-			$del = $this->_obj($key, $group)->del($this->_key($key, $group));
+			$del = $this->_obj($key)->del($this->_key($key));
 		} catch (RedisException $e) {
 			new Exception($e->getMessage(), $e->getCode());
 		}
 		return $isset || !empty($del);
 	}
 
-	public function ttl($key, $group = 'default') {
+
+
+	public function ttl($key) {
 		++$this->statistics['ttl'];
-		if (isset($this->_data[$group][$key])) {
+		if (isset($this->_data[$key])) {
 			return 0;
 		}
 
 		try {
-			if (($ttl = $this->_obj($key, $group)->ttl($this->_key($key, $group))) == -2) {
+			if (($ttl = $this->_obj($key)->ttl($this->_key($key))) == -2) {
 				return false;
 			} else {
 				return $ttl;
@@ -228,32 +220,34 @@ class Redis extends Base{
 		return true;
 	}
 
-	public function addServers($group, array $servers) {
-		$this->_servers[$group] = array_merge(array_values($servers), empty($this->_servers[$group]) ? [] : $this->_servers[$group]);
+	public function addServers(array $servers) {
+		foreach ($servers as $key => $value) {
+			$value = is_array($value) ? $value : explode(':', $value, 3);
+			$value[1] = empty($value[1]) ? 6379 : $v[1];
+			$servers[$key] = $value;
+		}
+		$this->_servers = array_merge($this->_servers, array_values($servers));
 	}
 
 
-	private function _obj($key, $group) {
-		if (empty($this->_servers[$group])) {
-			$group = 'default';
+	private function _obj($key) {
+		if (empty($this->_servers[$key])) {
+			$key = sprintf('%u', crc32($key)) % count($this->_servers);
 		}
-		if (empty($this->_servers[$group][$key])) {
-			$key = sprintf('%u', crc32($key)) % count($this->_servers[$group]);
-		}
-		if (empty($this->_servers[$group][$key]['obj'])) {
+		if (empty($this->_servers[$key]['obj'])) {
 			try {
-				$this->_servers[$group][$key]['obj'] = new \Redis;
-				if ($this->_servers[$group][$key]['obj']->pconnect($this->_servers[$group][$key][0], $this->_servers[$group][$key][1])) {
-					empty($this->_servers[$group][$key][2]) || $this->_servers[$group][$key]['obj']->auth($this->_servers[$group][$key][2]);
+				$this->_servers[$key]['obj'] = new \Redis;
+				if ($this->_servers[$key]['obj']->pconnect($this->_servers[$key][0], $this->_servers[$key][1])) {
+					empty($this->_servers[$key][2]) || $this->_servers[$key]['obj']->auth($this->_servers[$key][2]);
 				}
 			} catch (RedisException $e) {
-				new Exception('Host: ' . $this->_servers[$group][$key][0] .':' .  $this->_servers[$group][$key][1]. '   '. $e->getMessage(), $e->getCode());
+				new Exception('Host: ' . $this->_servers[$key][0] .':' .  $this->_servers[$key][1]. '   '. $e->getMessage(), $e->getCode());
 			}
 		}
-		return $this->_servers[$group][$key]['obj'];
+		return $this->_servers[$key]['obj'];
 	}
 
-	private function _key($key, $group) {
-		return md5($key . $this->_key) . substr(md5($this->_key . $key), 12, 8) . $group;
+	private function _key($key) {
+		return md5($key . $this->key) . substr(md5($this->key . $key), 12, 8);
 	}
 }

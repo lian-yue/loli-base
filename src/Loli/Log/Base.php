@@ -7,12 +7,24 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2015-08-21 13:42:16
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2015-02-25 08:56:16
 /*	Updated: UTC 2015-03-23 10:11:04
 /*
 /* ************************************************************************** */
 namespace Loli\Log;
 use Loli\Exception;
+
 abstract class Base{
 
 	// 信息 访问日志什么的
@@ -43,26 +55,25 @@ abstract class Base{
 		9 => 'debug',
 	];
 
-	// 允许写入的级别
-	protected $writes = [0, 1, 2, 3, 4, 5 ,9];
-
-
 	protected $dateFormat = 'c';
 
 	// 进度
 	protected $progress = [];
 
+	// 允许写入的级别
+	protected $writes = [0, 1, 2, 3, 4, 5 ,9];
+
 	// 实例化并传入参数
 	public function __construct(array $args) {
 		foreach ($args as $key => $value) {
-			if ($value !== NULL && $key != 'levels' && isset($this->$key)) {
+			if ($value !== NULL && $key !== 'levels' && isset($this->$key)) {
 				$this->$key = $value;
 			}
 		}
 	}
 
-	public function __invoke() {
-		return call_user_func_array([$this, 'write'], func_get_args());
+	public function __invoke(...$args) {
+		return $this->write(...$args);
 	}
 
 	public function __call($method, $args) {
@@ -71,8 +82,6 @@ abstract class Base{
 
 	// 写入日志
 	abstract public function write($message, $level = self::LEVEL_ACCESS);
-
-
 
 	// 级别
 	protected function getLevelName($level) {
@@ -87,14 +96,20 @@ abstract class Base{
 	protected function getProgress($message, $level) {
 		if (is_array($message)) {
 			$message = var_export($message, true);
-		} elseif (is_object($message) && !method_exists($message, '__toString')) {
-			$message = json_encode($message);
+		} elseif (is_object($message)) {
+			if (method_exists($message, '__toString')) {
+				$message = (string) $message->__toString();
+			} else {
+				$message = json_encode($message);
+			}
 		} else {
 			$message = (string) $message;
 		}
 		$levelName = $this->getLevelName($level);
 		foreach ($this->progress as $value) {
-			$message = call_user_func($value, $message, $level, $levelName);
+			if (!$message = call_user_func($value, $message, $level, $levelName)) {
+				return false;
+			}
 		}
 		return $message;
 	}

@@ -23,7 +23,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-class_exists('Loli\Exception') || exit;
+
 class LogException extends Exception{
 
 	protected $level = 1;

@@ -11,40 +11,38 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-use Loli\HTTP\Request;
-class_exists('Loli\HTTP\Request') || exit;
 class Session{
-	private $_token;
+	const GROUP = 'session';
 
-	public function __construct($token) {
-		$this->_token = $token;
+	private static function _token() {
+		return Route::request()->getToken();
 	}
 
-	public function get($key) {
-		return Cache::get($this->_token . $key, __CLASS__);
+	public static function get($key) {
+		return Cache::group(self::GROUP)->get(self::_token() . $key);
 	}
 
-	public function add($value, $key, $ttl = 1800) {
-		return Cache::add($value, $this->_token . $key, __CLASS__, $ttl);
+	public static function add($value, $key, $ttl = 1800) {
+		return Cache::group(self::GROUP)->add($value, self::_token() . $key, $ttl);
 	}
 
-	public function set($value, $key, $ttl = 1800) {
-		return Cache::set($value, $this->_token . $key, __CLASS__, $ttl);
+	public static function set($value, $key, $ttl = 1800) {
+		return Cache::group(self::GROUP)->set($value, self::_token() . $key, $ttl);
 	}
 
-	public function incr($n, $key) {
-		return Cache::incr($value, $this->_token . $key, __CLASS__);
+	public static function incr($n, $key) {
+		return Cache::group(self::GROUP)->incr($value, self::_token() . $key);
 	}
 
-	public function decr($n, $key) {
-		return Cache::decr($value, $this->_token . $key, __CLASS__);
+	public static function decr($n, $key) {
+		return Cache::group(self::GROUP)->decr($value, self::_token() . $key);
 	}
 
-	public function delete($key, $ttl = 0) {
-		return Cache::delete($value, $this->_token . $key, __CLASS__, $ttl);
+	public static function delete($key, $ttl = 0) {
+		return Cache::group(self::GROUP)->delete(self::_token() . $key, $ttl);
 	}
 
-	public function ttl($key) {
-		return Cache::delete($value, $this->_token . $key, __CLASS__);
+	public static function ttl($key) {
+		return Cache::group(self::GROUP)->ttl(self::_token() . $key);
 	}
 }

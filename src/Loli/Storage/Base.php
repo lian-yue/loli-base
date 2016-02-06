@@ -23,7 +23,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
-use streamWrapper;
+
 /*
 没有DIR 函数 扁平化 存放  可以比如放数据库什么的
 */
@@ -32,7 +32,7 @@ abstract class Base{
 
 	public function __construct(array $args = []) {
 		foreach ($args as $key => $value) {
-			if ($key && $key{0} != '_' && $value !== NULL && isset($this->$key)) {
+			if ($key && $key{0} !== '_' && $value !== NULL && isset($this->$key)) {
 				$this->$key = $value;
 			}
 		}

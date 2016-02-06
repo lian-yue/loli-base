@@ -24,7 +24,7 @@
 /* ************************************************************************** */
 namespace Loli;
 use Loli\Log\Base;
-class_exists('Loli\Log\Base') || exit;
+
 class Log{
 	const LEVEL_ACCESS = Base::LEVEL_ACCESS;
 	const LEVEL_NOTICE = Base::LEVEL_NOTICE;
@@ -33,14 +33,15 @@ class Log{
 	const LEVEL_ALERT = Base::LEVEL_ALERT;
 	const LEVEL_DEBUG = Base::LEVEL_DEBUG;
 
-	public static function __callStatic($method, $params) {
+	public static function __callStatic($method, $args) {
 		static $link;
 		if (empty($link)) {
-			$class = __NAMESPACE__ . '\Log\\' . (empty($_SERVER['LOLI']['LOG']['type']) ? 'File' : $_SERVER['LOLI']['LOG']['type']);
-			$args = empty($_SERVER['LOLI']['LOG']) ? [] : $_SERVER['LOLI']['LOG'];
-			$args['writes'] = isset($args['writes']) ? $args['writes'] : [];
-			$link = new $class($args);
+			$class = (empty($_SERVER['LOLI']['log']['type']) ? 'File' : $_SERVER['LOLI']['log']['type']);
+			if ($class[0] !== '\\') {
+				$class = __NAMESPACE__ . '\Log\\' . $class;
+			}
+			$link = new $class(empty($_SERVER['LOLI']['log']) ? [] : $_SERVER['LOLI']['log']);
 		}
-		return call_user_func_array([$link, $method], $params);
+		return $link->$method(...$args);
 	}
 }

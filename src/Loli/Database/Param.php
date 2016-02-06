@@ -18,14 +18,13 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2015-04-03 07:05:11
-/*	Updated: UTC 2015-04-03 07:05:16
+/*	Created: UTC 2015-05-04 11:42:33
+/*	Updated: UTC 2015-05-23 11:47:41
 /*
 /* ************************************************************************** */
-namespace Loli\HTTP;
-use Loli\LogException;
-class Exception extends LogException{
-	public function __construct($message, $code = 500, $level = 3, Exception $previous = NULL) {
-		parent::__construct($message, $code ? $code : 500, $level, $previous);
-	}
+namespace Loli\Database;
+use Loli\ArrayObject;
+
+class Param extends ArrayObject{
+
 }

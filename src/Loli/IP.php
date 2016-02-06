@@ -7,6 +7,17 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
+/*	Created: UTC 2016-01-28 06:51:53
+/*
+/* ************************************************************************** */
+/* ************************************************************************** */
+/*
+/*	Lian Yue
+/*
+/*	Url: www.lianyue.org
+/*	Email: admin@lianyue.org
+/*	Author: Moon
+/*
 /*	Created: UTC 2014-04-18 18:43:50
 /*	Updated: UTC 2015-04-03 07:03:36
 /*
@@ -57,7 +68,7 @@ class IP{
 		$binary = self::binary($ip);
 
 		foreach ($network as $v) {
-			if ($ip == $v) {
+			if ($ip === $v) {
 				return $v;
 			}
 			if (((bool)strpos($v, ':')) === $ipv6) {

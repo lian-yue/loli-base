@@ -7,308 +7,205 @@
 /*	Email: admin@lianyue.org
 /*	Author: Moon
 /*
-/*	Created: UTC 2015-09-04 07:54:16
+/*	Created: UTC 2016-02-02 07:00:30
 /*
 /* ************************************************************************** */
 namespace Loli;
-use ArrayAccess;
-class_exists('Loli\Route') || exit;
-class Model{
+use Loli\Database\Param;
+use Loli\Database\Document;
+use Loli\Database\Exception as DatabaseException;
+class Model extends Document{
 
-	protected $route;
+	// indexs 索引 重命名 键信息的
+	protected static $indexs = [];
 
-	// 表单验证
-	protected $form = [
-		/*[
-			'title' => '',				//  表单标题
-			'name' => '',				//  表单 name
-			'type' => 'email',			//  表单类型
-			'pattern' => '',			// 正则验证
-			'value' => '',				// 默认值
-			'required' => true,			// 是否允许空
-			'option' => [],				// 允许的 isset()
-			'min' => -1,				// 允许的最小值
-			'max' => 10,				// 允许的最大值
-			'step' => 3,				// 合法的数字间隔
-			'placeholder' => 3,			// 表单的输入提示
-			'minlength' => 1,			// 最小字符串长度
-			'maxlength' => 1,			// 最大字符串长度
-			'errorMessage' => '',		// 错误消息
-		],*/
-	];
+	// 列创建用
+	protected static $columns = [];
 
-	protected $tokens = [];
-
-	protected $permissions = [];
-
-	protected $logins = [];
-
-	protected $viewModel = false;
+	// 表名
+	protected static $tables = [];
 
 
-	public function __construct(Route &$route, $viewModel = false) {
-		$this->route = &$route;
-		$this->viewModel = $viewModel;
-		if ($this->viewModel) {
-			$method = strtolower($this->route->model[1]);
+	protected static $table;
 
-			// permission 权限判断
-			if (!isset($this->permissions[$this->model[1]]) || !empty($this->permissions[$this->model[1]])) {
-				$this->permissionMessage();
-			}
+	// 自动递增id
+	protected static $insertId;
 
-			// token 判断
-			in_array($method, array_map('strtolower', $this->tokens), true) && $this->tokenMessage();
+	// 主键
+	protected static $primary = [];
 
+	// 主键缓存有效期
+	protected static $primaryCache = 0;
 
-			// 登录判断
-			$login = 0;
-			foreach ($this->logins as $key => $value) {
-				if ($method === strtolower($key)) {
-					$login = $value;
-					break;
-				}
-			}
-			$login && $this->loginMessage($login >= 1 ? 1 : -1);
-		}
+	// 模块组
+	protected static $group = 'default';
+
+	// 模块验证表格
+	protected static $rules = [];
+
+	public static function __callStatic($name, $args) {
+		return static::database()->$name(...$args);
 	}
 
-	public function __get($name) {
-		return $this->route->$name;
+	public static function database() {
+		return Database::group(static::$group)->tables(static::$tables ? static::$tables : (array)static::$table)->className(static::class)->indexs(static::$indexs)->columns(static::$columns)->insertId(static::$insertId)->primary(static::$primary, static::$primaryCache);
+	}
+
+
+
+	public static function validator(&$data = [], array $rules = [], $merge = false, $message = NULL) {
+		static $static = [];
+		if (!isset($static[static::class])) {
+			$static[static::class] = (new Validator(static::$rules, static::$group === 'default' ? static::$group : [static::$group, 'default']))->model(static::class);
+		}
+		if (func_num_args()) {
+			return $static[static::class]->make($data, $rules, $merge, $message);
+		}
+		return $static[static::class];
+	}
+
+
+
+
+
+	protected static function columnInfo($name) {
+		static $static = [];
+		if (!isset($static[static::class])) {
+			$columns = [];
+			foreach (static::$columns as $key => $value) {
+				if (!empty($value['name'])) {
+					$key = $value['name'];
+				}
+				$columns[$key] = (object) ['readonly' => !empty($value['readonly']), 'process' => !isset($value['process']) || $value['process'], 'hidden' => !empty($value['hidden']), 'type' => empty($value['type']) ? 'text' : $value['type']];
+			}
+			$static[static::class] = $columns;
+		}
+		if (empty($static[static::class][$name])) {
+			throw new DatabaseException('Model.columnInfo('. $name .')', 'Unknown column');
+		}
+		return $static[static::class][$name];
+	}
+
+
+
+	protected function primary() {
+		if (!static::$primary) {
+			throw new DatabaseException('Model.primary()', 'Primary key cannot be empty');
+		}
+		$args = [];
+		foreach (static::$primary as $primary) {
+			$value = $this[$primary];
+			if ($value === NULL) {
+				throw new DatabaseException('Model.primary()', $this);
+			}
+			$args[] = $value;
+		}
+		return $args;
 	}
 
 	public function __set($name, $value) {
-		$this->route->$name = $value;
+		if ($name === NULL) {
+			throw new DatabaseException('Model.__set()', 'The column name cannot be null');
+		}
+		if ($value !== NULL && !$value instanceof Param && static::columnInfo($name)->process) {
+			switch (static::columnInfo($name)->type) {
+				case 'timestamp':
+				case 'datetime':
+					if (!$value instanceof DateTime) {
+						$value = new DateTime($value);
+					}
+					break;
+				case 'json':
+				case 'array':
+					if (is_array($value)) {
+
+					} elseif (is_object($value)) {
+						$value = to_array($value);
+					} elseif ($value) {
+						$value = json_decode($value, true);
+					} else {
+						$value = [];
+					}
+					break;
+				case 'boolean':
+					$value = (boolean) $value;
+					break;
+				case 'tinyint':
+				case 'smallint':
+				case 'mediumint':
+				case 'int':
+				case 'integer':
+				case 'bigint':
+					$value = (int) $value;
+					break;
+				case 'float':
+				case 'real':
+				case 'double':
+				case 'decimal':
+					$value = (float) $value;
+			}
+		}
+		return parent::__set($name, $value);
 	}
 
-	public function __isset($name) {
-		return isset($this->route->$name);
+	public function select() {
+		if (!$select = static::database()->selectRow(...$this->primary())) {
+			throw new DatabaseException('Model.select()', $this);
+		}
+		$this->clear()->merge($select);
+		return $this;
 	}
 
-	public function __unset($name) {
-		unset($this->route->$name);
+	public function insert() {
+		$cursor = static::database();
+		if (!$cursor->values($this->data())->insert()) {
+			throw new DatabaseException('Model.insert()', $this);
+		}
+
+		if (static::$insertId) {
+			$this[static::$insertId] = $cursor->lastInsertId();
+		}
+		$this->select();
+		return $this;
+	}
+
+	public function update() {
+		$update = [];
+		foreach ($this as $key => $value) {
+			if (!static::columnInfo($key)->readonly && !in_array($key, static::$primary, true)) {
+				$update[$key] = $value;
+			}
+		}
+		static::database()->values($update)->update(...$this->primary());
+		$this->select();
+		return $this;
+	}
+
+	public function delete() {
+		static::database()->delete(...$this->primary());
+		$this->clear();
+		return $this;
+	}
+
+
+	public function can() {
 		return true;
 	}
 
-
-	public function __call($name, array $args) {
-		throw new Message(404, Message::ERROR);
-	}
-
-	protected function permissionMessage() {
-		if (!empty($_SERVER['LOLI']['MODEL']['permission'])) {
-			return call_user_func($_SERVER['LOLI']['MODEL']['permission'], $this->route);
-		}
-		if ($this->route->table['Access']->hasPermission($this->route->model[0], $this->route->model[1])) {
-			return true;
-		}
-
-		$this->route->response->setStatus(403);
-		throw new Message([90, 'Permission'], Message::ERROR);
-	}
-
-	protected function tokenMessage() {
-		if (!empty($_SERVER['LOLI']['MODEL']['token'])) {
-			return call_user_func($_SERVER['LOLI']['MODEL']['token'], $this->route);
-		}
-		if ($this->route->request->getToken(false, false) !== $this->route->request->getParam('_token', '')) {
-			$this->route->response->setStatus(403);
-			throw new Message([90, 'Token'], Message::ERROR);
+	public function throwCan(...$args) {
+		if (!$this->can(...$args)) {
+			throw new Message([90]);
 		}
 	}
 
-	protected function loginMessage($is) {
-		if (!empty($_SERVER['LOLI']['MODEL']['login'])) {
-			return call_user_func($_SERVER['LOLI']['MODEL']['login'], $this->route, $is);
-		}
-		$userID = $this->route->table['Access']->userID();
-		if (($userID && $is === 1) || (!$userID && $is === -1)) {
-			return true;
-		}
-		if ($is === 1) {
-			throw new Message(91, Message::ERROR, [], '/user/login?redirect=' . urlencode($this->route->request->getURL()), new Message([90, 'Login'], Message::ERROR));
-		}
-		throw new Message(92, Message::NOTICE, ['userID' => $userID], true, 0);
-	}
 
-
-	protected function getForm($name = []) {
-		$form = [];
-		foreach ($this->form as $input) {
-			if ($name && !in_array($input['name'], (array)$name, true)) {
-				continue;
-			}
-			$input['title'] = $this->localize->translate(empty($input['title']) ? $input['name'] : $input['title']);
-			if (!empty($input['errorMessage'])) {
-				$input['errorMessage'] = $this->route->localize->translate([$input['errorMessage'],  $input['name'], $input['title']], ['message']);
-			}
-			if (!empty($input['errorMessage'])) {
-				$input['placeholder'] = $this->route->localize->translate($input['errorMessage']);
-			}
-			if (!empty($input['option'])) {
-				foreach ($input['option'] as &$value) {
-					$value = $this->route->localize->translate($value);
-				}
-			}
-			$form[$input['name']] = $input;
-		}
-		return $form;
-	}
-
-	// 表单验证
-	protected function formVerify(array &$array, $message = NULL) {
-		foreach ($this->form as $input) {
-			if (empty($input['errorMessage'])) {
-				$input['errorMessage'] = 1000;
-			}
-			if (in_array($input['type'], ['checkbox', 'radio', 'select'], true)) {
-				$input['option'] = empty($input['option']) ? [] : (array) $input['option'];
-			}
-			$input['title'] = isset($input['title']) ? $this->route->localize->translate($input['title']) : $input['name'];
-
-
-			if (!isset($array[$input['name']])) {
-				continue;
-			}
-
-			$value = &$array[$input['name']];
-
-
-			if (isset($input['value'])) {
-				settype($value, gettype($input['value']));
-			}
-
-			// 空检查
-			$empty = empty($value) && $value !== '0' && $value !== 0;
-			if (!empty($input['required']) && $empty) {
-				$message = new Message([$input['errorMessage'] + 1, $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-
-			// 表单类型检查
-			$continue = false;
-			switch ($input['type']) {
-				case 'text':
-				case 'password':
-					$value = str_replace(["\r", "\n"], '', (string) $value);
-					break;
-				case 'textarea':
-					$value = (string) $value;
-					break;
-				case 'email':
-					$continue = !$empty && !filter_var($value, FILTER_VALIDATE_EMAIL);
-					break;
-				case 'number':
-				case 'range':
-					$value = (int) $value;
-					break;
-				case 'search':
-					$value = is_array($value) ? implode(' ', $value) : (string) $value;
-					break;
-				case 'url':
-					$continue = !$empty && !preg_match('/^[a-z]+\:\/\/\w+/i', $value);
-				case 'tel':
-					$continue = !$empty && !preg_match('/^\+?[0-9]+(\s[0-9]+)*$/i', $value);
-				case 'color':
-					$continue = !$empty && !preg_match('/^\#([0-9a-f]{3}|[0-9a-f]{6})$/i', $value = strtolower($value));
-					break;
-				case 'year':
-					$continue = !$empty && preg_match('/^\d{4}$/', $value);
-					break;
-				case 'month':
-					$continue = !$empty && preg_match('/^\d{4}\-(?:0\d|1[0-2])$/', $value);
-					break;
-				case 'week':
-					$continue = !$empty && preg_match('/^\d{4}\-W(?:0\d|1[0-2])$/', $value = strtoupper($value));
-					break;
-				case 'date':
-					if (!$empty) {
-						if (preg_match('/^\d{4}\-(\d{2})\-(\d{2})$/', $value) && ($time = strtotime($value))) {
-							$value = date('Y-m-d', $value);
-						} else {
-							$continue = true;
-						}
-					}
-					break;
-				case 'datetime':
-					if (!$empty) {
-						if ($time = strtotime($value)) {
-							$value = date('Y-m-d h:i:s', $value);
-						} else {
-							$continue = true;
-						}
-					}
-					break;
-				case 'datetime-local':
-					break;
-				case 'radio':
-					if (!is_scalar($value) || !isset($input['option'][$value])) {
-						$continue = true;
-					}
-					break;
-				case 'checkbox':
-					$value = array_values((array) $value);
-					$value = array_intersect($value, $input['option']);
-					if (!$value) {
-						$continue = true;
-					}
-					break;
-				case 'select':
-					if (empty($input['multiple'])) {
-						if (!is_scalar($value)) {
-							$value = reset($value);
-						}
-						$continue = !is_scalar($value) || !isset($input['option'][$value]);
-					} elseif (!$$value = array_intersect(array_values((array) $value), $input['option'])) {
-						$continue = true;
-					}
-					break;
-			}
-
-
-			// 表单类型错误
-			if ($continue) {
-				$message = new Message([$input['errorMessage'], $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-			// 最大 最小长度
-			if ((!empty($input['maxlength']) && mb_strlen($value) > $input['maxlength']) || (!empty($input['minlength']) && mb_strlen($value) > $input['minlength'])) {
-				$message = new Message([$input['errorMessage'] + 2, $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-			// 范围
-			if ((isset($input['min']) && $input['min'] > $value) || (isset($input['max']) && $input['max'] < $value) || (!empty($input['step']) && ($value % $input['step']) !== 0)) {
-				$message = new Message([$input['errorMessage'] + 3, $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-			// 规定数据
-			if (isset($input['option']) && count((array)$value) === count(array_intersect((array)$value, array_keys($input['option'])))) {
-				$message = new Message([$input['errorMessage'] + 3, $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-			// 正则
-			if (isset($input['pattern']) && preg_match('/'. str_replace('/', '\\/', $input['pattern']) .'/', $value)) {
-				$message = new Message([$input['errorMessage'], $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
+	public function jsonSerialize() {
+		$data = parent::jsonSerialize();
+		foreach ($data as $key => $value) {
+			if (static::columnInfo($key)->hidden) {
+				unset($data[$key]);
 			}
 		}
-
-		if ($message) {
-			throw $message;
-		}
-	}
-
-	protected function getView($files , array $data = [], $cache = false) {
-		return new View($files, $data, $cache);
-	}
-
-	protected function getModel($name) {
-		$className = 'Model\\' . strtr($name, '/.', '\\\\');
-		return new $className($this->route);
+		return $data;
 	}
 }

@@ -105,12 +105,12 @@ abstract class Base {
 	}
 
 	/**
-	 * rand float
+	 * random float
 	 * @param  float|integer $min
 	 * @param  float|integer $max
 	 * @return float
 	 */
-	protected function rand($min = 1, $max = 1) {
+	protected function random($min = 1, $max = 1) {
 		return $min + mt_rand() / mt_getrandmax() * ($max - $min);
 	}
 
@@ -187,5 +187,8 @@ abstract class Base {
 			'green' => hexdec(substr($rgb, 2, 2)),
 			'blue' => hexdec(substr($rgb, 4, 2)),
 		];
+	}
+	public function __invoke() {
+		return $this->display();
 	}
 }

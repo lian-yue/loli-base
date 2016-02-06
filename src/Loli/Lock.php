@@ -63,4 +63,4 @@ class Lock{
 	}
 }
 
-Lock::$dir = empty($_SERVER['LOLI']['LOCK']['dir']) ? './' : $_SERVER['LOLI']['LOCK']['dir'];
+Lock::$dir = empty($_SERVER['LOLI']['lock']['dir']) ? './' : $_SERVER['LOLI']['lock']['dir'];
