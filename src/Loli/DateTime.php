@@ -62,16 +62,18 @@ class DateTime extends \DateTime implements JsonSerializable{
 
 
 		$diff = 0;
-		foreach (['y' => 'year', 'm' => 'month', 'd' => 'day', 'h' => 'hour', 's' => 'second'] as $key => $value) {
+		foreach (['y' => 'year', 'm' => 'month', 'd' => 'day', 'h' => 'hour', 'i' => 'minute', 's' => 'second'] as $key => $value) {
 			if ($dateInterval->$key) {
 				$diff = $dateInterval->$key;
 				break;
 			}
 		}
 
+
 		if ($diff === 0) {
 			return self::translate('Now');
 		}
+
 		$since = self::translate(['{1} ' .$value . ($diff > 1 ? 's' : ''), $diff]);
 
  		return self::translate(['{1} ' . ($dateInterval->invert ? 'later' : 'ago'), $since]);
