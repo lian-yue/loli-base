@@ -362,12 +362,12 @@ class Validator {
 			$column = $input['unique'][1];
 		}
 		$model = $class::query($column, $value, '=');
-		if (!empty($input['unique'][2])) {
-			foreach (parse_string($input['unique'][2]) as $column => $value) {
-				if (is_array($value) && isset($value['value'])) {
-					$model->query($column, $value['value'] === 'NULL' ? 'NULL' : $value['value'], isset($value['compare']) ? $value['compare'] : '');
+		if (!empty($input['unique'][2]) && ($json = json_decode($input['unique'][2]))) {
+			foreach ($json as $column => $value) {
+				if (is_object($value) && property_exists($value, 'value')) {
+					$model->query($column, $value->value, isset($value->compare) ? $value->compare : '');
 				} else {
-					$model->query($column, $value === 'NULL' ? 'NULL' : $value);
+					$model->query($column, $value);
 				}
 			}
 		}
