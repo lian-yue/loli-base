@@ -175,17 +175,31 @@ class Route extends ArrayObject{
 			if (!class_exists($class = 'App\Controllers\\' . strtr($controller[0], '/.', '\\\\'))) {
 				throw new Message(404, Message::ERROR, new Message([1, 'Controller not exists'], Message::ERROR));
 			}
-			$class = new $class(true);
+			$class = new $class;
 
-			$params += $this->request->getParams();
+			$params +=  $this->request->getParams();
+
+			// 中间键 请求
+			$this->handle($class, $params, 'request');
 
 			// 执行方法
 			$view = $class->$controller[1]($params);
 
 			// 数组
 			if (is_array($view)) {
-				$view = new View($this->controller[0] . '/' . $this->controller[1], $view);
+				$views = [];
+				foreach(explode('/', $this->controller[0] . '/' . $this->controller[1]) as $value) {
+					if ($value) {
+						$value{0} = strtolower($value{0});
+					}
+					$views[] = $value;
+				}
+				$view = new View($views, $view);
 			}
+
+
+			// 中间键 响应
+			$this->handle($class, $view, 'response');
 		} catch (Message $view) {
 			// Message
 		} catch (HTTP\Exception $e) {
@@ -263,10 +277,35 @@ class Route extends ArrayObject{
 	}
 
 
+
+	protected function handle(Controller $controller, &$params, $name) {
+		$method = strtolower($this->controller[1]);
+		foreach (empty($controller->middleware) ? [] : $controller->middleware as $key => $middleware) {
+			if ($is = (strtolower($key) === $method)) {
+				break;
+			}
+		}
+		if (empty($is)) {
+			$middleware = empty($controller->defaultMiddleware) ? [] : $controller->defaultMiddleware;
+		}
+		if (!empty($controller->mustMiddleware)) {
+			$middleware = $middleware + $controller->mustMiddleware;
+		}
+		foreach ($middleware as $key => $config) {
+			$class = 'App\Middleware\\' . $key;
+			$class = new $class;
+			if ($class->$name($params, $config) === false) {
+				break;
+			}
+		}
+	}
+
+
+
+
 	public static function __callStatic($name, $args) {
 		return self::$self->$name;
 	}
-
 
 	public static function get($name = NULL) {
 		return $name === NULL ? self::$self : self::$self->$name;

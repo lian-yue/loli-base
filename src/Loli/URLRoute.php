@@ -14,7 +14,11 @@ namespace Loli;
 class URLRoute extends URL{
 
 	public function __construct($controller = false, array $query = [], $method = 'GET') {
-		$controller && $this->__set('controller', (array) $controller);
+		$controller = (array) $controller;
+		if (empty($controller[1])) {
+			$controller[1] = 'index';
+		}
+		$this->__set('controller', $controller);
 		$this->__set('query', $query);
 		$this->__set('method', $method ? $method : 'GET');
 	}
@@ -52,7 +56,7 @@ class URLRoute extends URL{
 		foreach ($args[0]['hostRule'][0][2] as $name => $value) {
 			$hostSearch[] = '"'.$name.'"';
 			if (isset($args[1][$name])) {
-				$hostReplace[] = $args[1][$name] === '' ? '' : $value . $args[1][$name] . $args[0]['hostRule'][0][3][$name];
+				$hostReplace[] = $args[1][$name] === '' || $args[1][$name] === 'index' ? '' : $value . $args[1][$name] . $args[0]['hostRule'][0][3][$name];
 			} elseif (isset($this->query[$name])) {
 				$hostReplace[] = $this->query[$name] === '' ? '' : $value . urlencode($this->query[$name]) . $args[0]['hostRule'][0][3][$name];
 			} else {
@@ -65,7 +69,7 @@ class URLRoute extends URL{
 		foreach ($args[0]['pathRule'][2] as $name => $value) {
 			$pathSearch[] = '"'.$name.'"';
 			if (isset($args[1][$name])) {
-				$pathReplace[] = $args[1][$name] === '' ? '' : $value . $args[1][$name] . $args[0]['pathRule'][3][$name];
+				$pathReplace[] = $args[1][$name] === '' || $args[1][$name] === 'index' ? '' : $value . $args[1][$name] . $args[0]['pathRule'][3][$name];
 			} elseif (isset($this->query[$name])) {
 				$pathReplace[] = $this->query[$name] === '' ? '' : $value . urlencode($this->query[$name]). $args[0]['pathRule'][3][$name];
 			} else {

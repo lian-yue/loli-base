@@ -12,5 +12,8 @@
 /* ************************************************************************** */
 namespace Loli;
 abstract class Middleware{
-	abstract public function handle();
+	abstract public function request(&$params, $config);
+	abstract public function response(&$params, $config);
 }
+
+
