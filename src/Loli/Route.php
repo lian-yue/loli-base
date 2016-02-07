@@ -175,12 +175,22 @@ class Route extends ArrayObject{
 			if (!class_exists($class = 'App\Controllers\\' . strtr($controller[0], '/.', '\\\\'))) {
 				throw new Message(404, Message::ERROR, new Message([1, 'Controller not exists'], Message::ERROR));
 			}
+
+			// 控制器
 			$class = new $class;
+
+			// 中间键
+			$middleware = $this->middleware($class);
+
 
 			$params +=  $this->request->getParams();
 
 			// 中间键 请求
-			$this->handle($class, $params, 'request');
+			foreach ($middleware as $value) {
+				if ($value->request($params) === false) {
+					break;
+				}
+			}
 
 			// 执行方法
 			$view = $class->$controller[1]($params);
@@ -196,10 +206,6 @@ class Route extends ArrayObject{
 				}
 				$view = new View($views, $view);
 			}
-
-
-			// 中间键 响应
-			$this->handle($class, $view, 'response');
 		} catch (Message $view) {
 			// Message
 		} catch (HTTP\Exception $e) {
@@ -232,7 +238,14 @@ class Route extends ArrayObject{
 			$this->response->setStatus(500);
 		}
 
-
+		// 中间键 响应
+		if (!empty($middleware)) {
+			foreach ($middleware as $value) {
+				if ($value->response($view) === false) {
+					break;
+				}
+			}
+		}
 
 		//  消息对象
 		if ($view instanceof Message) {
@@ -278,7 +291,7 @@ class Route extends ArrayObject{
 
 
 
-	protected function handle(Controller $controller, &$params, $name) {
+	protected function middleware(Controller $controller) {
 		$method = strtolower($this->controller[1]);
 		foreach (empty($controller->middleware) ? [] : $controller->middleware as $key => $middleware) {
 			if ($is = (strtolower($key) === $method)) {
@@ -291,13 +304,12 @@ class Route extends ArrayObject{
 		if (!empty($controller->mustMiddleware)) {
 			$middleware = $middleware + $controller->mustMiddleware;
 		}
+		$results = [];
 		foreach ($middleware as $key => $config) {
 			$class = 'App\Middleware\\' . $key;
-			$class = new $class;
-			if ($class->$name($params, $config) === false) {
-				break;
-			}
+			$results[] = new $class($config);
 		}
+		return $results;
 	}
 
 

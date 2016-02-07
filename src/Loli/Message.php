@@ -118,6 +118,25 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable{
 
 	}
 
+	public function hasError() {
+		$message = $this;
+		do {
+			if ($message->getType() === self::ERROR) {
+				return true;
+			}
+		} while ($message = $message->getPrevious());
+		return false;
+	}
+
+	public function hasWarning() {
+		$message = $this;
+		do {
+			if ($message->getType() === self::WARNING) {
+				return true;
+			}
+		} while ($message = $message->getPrevious());
+		return false;
+	}
 
 
 
