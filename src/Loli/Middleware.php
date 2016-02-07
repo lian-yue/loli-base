@@ -12,14 +12,5 @@
 /* ************************************************************************** */
 namespace Loli;
 abstract class Middleware{
-
-	public function __construct(Route $route, $viewModel = false) {
-		$this->route = $route;
-		$this->viewModel = $viewModel;
-		if ($this->viewModel) {
-			$this->pretreatment();
-		}
-	}
-
 	abstract public function handle();
 }

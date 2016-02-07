@@ -192,6 +192,7 @@ class Model extends Document{
 		return true;
 	}
 
+
 	public function throwCan(...$args) {
 		if (!$this->can(...$args)) {
 			throw new Message([90]);

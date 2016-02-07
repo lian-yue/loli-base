@@ -143,49 +143,48 @@ class Route extends ArrayObject{
 				}
 
 
-				$model = [];
-				foreach ($route['modelRule'] as $modelRule) {
-					$modelReplace = [];
-					foreach ($modelRule[2] as $name => $value) {
-						$modelReplace['"' .$name. '"'] = $replace[$name] === '' ? '' : $value . $replace[$name] . $modelRule[3][$name];
+				$controller = [];
+				foreach ($route['controllerRule'] as $controllerRule) {
+					$controllerReplace = [];
+					foreach ($controllerRule[2] as $name => $value) {
+						$controllerReplace['"' .$name. '"'] = $replace[$name] === '' ? '' : $value . $replace[$name] . $controllerRule[3][$name];
 					}
-					$model[] = strtr($modelRule[0], $modelReplace);
+					$controller[] = strtr($controllerRule[0], $controllerReplace);
 				}
-				$model[0] = trim(preg_replace('/[\\\\\/>.]+/', '\\', $model[0]), '\\');
-				if ($model[1] === '') {
-					$model[1] = 'index';
+				$controller[0] = trim(preg_replace('/[\\\\\/>.]+/', '\\', $controller[0]), '\\');
+				if ($controller[1] === '') {
+					$controller[1] = 'index';
 				}
 				break;
 			}
 
 
-			if (empty($model)) {
+			if (empty($controller)) {
 				throw new Message(404, Message::ERROR);
 			}
 
-			if (empty($model[1]) || $model[1]{0} === '_') {
+			if (empty($controller[1]) || $controller[1]{0} === '_') {
 				throw new Message(404, Message::ERROR, new Message([1, 'Model not exists'], Message::ERROR));
 			}
 
-			$this->model = $model;
-			$this->model = [strtr($this->model[0], '\\', '/'), $this->model[1]];
-			$this->nodes = explode('/', implode('/', $this->model));
+			$this->controller = $controller;
+			$this->controller = [strtr($this->controller[0], '\\', '/'), $this->controller[1]];
+			$this->nodes = explode('/', implode('/', $this->controller));
 
-			$class = $this->viewModel($model[0], true);
+
+			if (!class_exists($class = 'App\Controllers\\' . strtr($controller[0], '/.', '\\\\'))) {
+				throw new Message(404, Message::ERROR, new Message([1, 'Controller not exists'], Message::ERROR));
+			}
+			$class = new $class(true);
 
 			$params += $this->request->getParams();
 
-			// 过滤
-			if (!empty($route['filter'])) {
-				$params = call_user_func($route['filter'], $params, $this);
-			}
-
 			// 执行方法
-			$view = $class->$model[1]($params);
+			$view = $class->$controller[1]($params);
 
 			// 数组
 			if (is_array($view)) {
-				$view = new View($this->model[0] . '/' . $this->model[1], $view);
+				$view = new View($this->controller[0] . '/' . $this->controller[1], $view);
 			}
 		} catch (Message $view) {
 			// Message
@@ -263,13 +262,6 @@ class Route extends ArrayObject{
 		$this->response->setContent($view);
 	}
 
-	public static function viewModel($model, $view = false) {
-		if (!class_exists($class = 'App\ViewModel\\' . strtr($model, '/.', '\\\\'))) {
-			throw new Message(404, Message::ERROR, new Message([1, 'Model not exists'], Message::ERROR));
-		}
-		return new $class(self::$self, $view);
-	}
-
 
 	public static function __callStatic($name, $args) {
 		return self::$self->$name;
@@ -280,13 +272,13 @@ class Route extends ArrayObject{
 		return $name === NULL ? self::$self : self::$self->$name;
 	}
 
-	public static function callback($model, $callback) {
+	public static function callback($controller, $callback) {
 		self::$callback[$name] = $callback;
 		return true;
 	}
 
-	public static function URL(array $model, array $query = [], $method = 'GET') {
-		return new URLRoute($model, $query, $method);
+	public static function URL(array $controller, array $query = [], $method = 'GET') {
+		return new URLRoute($controller, $query, $method);
 	}
 
 
@@ -331,16 +323,16 @@ class Route extends ArrayObject{
 	protected static function rules() {
 		self::$rules = [];
 		$defaultHost = empty($_SERVER['LOLI']['route']['hosts']) ? [self::request()->getHeader('Host')] : (array) $_SERVER['LOLI']['route']['hosts'];
-		foreach (empty($_SERVER['LOLI']['route']['rules']) ? [] : $_SERVER['LOLI']['route']['rules'] as $model => $route) {
+		foreach (empty($_SERVER['LOLI']['route']['rules']) ? [] : $_SERVER['LOLI']['route']['rules'] as $controller => $route) {
 			// 模块
-			if (empty($route['model'])) {
-				$route['model'] = $model;
+			if (empty($route['controller'])) {
+				$route['controller'] = $controller;
 			}
-			if (!is_array($route['model'])) {
-				$route['model'] = strtr($route['model'], '.\\@', '/');
-				$route['model'] = ($length = strrpos($route['model'], '/')) ? [substr($route['model'], 0, $length), substr($route['model'], $length + 1)] : [$model];
+			if (!is_array($route['controller'])) {
+				$route['controller'] = strtr($route['controller'], '.\\@', '/');
+				$route['controller'] = ($length = strrpos($route['controller'], '/')) ? [substr($route['controller'], 0, $length), substr($route['controller'], $length + 1)] : [$controller];
 			}
-			$route['model'] += [1 => 'index'];
+			$route['controller'] += [1 => 'index'];
 			if (!isset($route['defaults']) || !is_array($route['defaults'])) {
 				$route['defaults'] = [];
 			}
@@ -409,8 +401,8 @@ class Route extends ArrayObject{
 				continue;
 			}
 
-			$route['modelRule'] = [];
-			foreach ($route['model'] as $value) {
+			$route['controllerRule'] = [];
+			foreach ($route['controller'] as $value) {
 				if (!$rule = self::_parseRule($value, $route)) {
 					$continue = true;
 					break;
@@ -424,7 +416,7 @@ class Route extends ArrayObject{
 					}
 				}
 				$rule[4] = '/^'. strtr(preg_quote($rule[0], '/'), $replace) . '$/';;
-				$route['modelRule'][] = $rule;
+				$route['controllerRule'][] = $rule;
 			}
 			if ($continue) {
 				continue;

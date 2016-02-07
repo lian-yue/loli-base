@@ -13,8 +13,8 @@
 namespace Loli;
 class URLRoute extends URL{
 
-	public function __construct($model = false, array $query = [], $method = 'GET') {
-		is_array($model) && $this->__set('model', $model);
+	public function __construct($controller = false, array $query = [], $method = 'GET') {
+		$controller && $this->__set('controller', (array) $controller);
 		$this->__set('query', $query);
 		$this->__set('method', $method ? $method : 'GET');
 	}
@@ -22,13 +22,14 @@ class URLRoute extends URL{
 
 	public function __toString() {
 		static $static = [];
-		$model[0] = strtr($model[0], '.', '/');
+		$controller = $this->controller;
+		$controller[0] = strtr($controller[0], '.', '/');
 
-		if (!isset($static[$model[0]][$model[1]][$this->method])) {
+		if (!isset($static[$controller[0]][$controller[1]][$this->method])) {
 			$args = [];
-			$static[$model[0]][$model[1]][$this->method] = &$args;
+			$static[$controller[0]][$controller[1]][$this->method] = &$args;
 			foreach (Route::$rules as &$route) {
-				if (in_array($this->method, $route['method'], true) && preg_match($route['modelRule'][0][4], $model[0], $match) && preg_match($route['modelRule'][1][4], $model[1], $match2)) {
+				if (in_array($this->method, $route['method'], true) && preg_match($route['controllerRule'][0][4], $controller[0], $match) && preg_match($route['controllerRule'][1][4], $controller[1], $match2)) {
 					$args = [&$route, []];
 					foreach ($match + $match2 as $key => $value) {
 						if (!is_int($key)) {
@@ -41,12 +42,11 @@ class URLRoute extends URL{
 			}
 		}
 
-		if (empty($static[$model[0]][$model[1]][$method])) {
+		if (empty($static[$controller[0]][$controller[1]][$this->method])) {
 			return '';
 		}
 
-
-		$args = &$static[$model[0]][$model[1]][$method];
+		$args = &$static[$controller[0]][$controller[1]][$this->method];
 
 		$hostSearch = $hostReplace = $pathSearch = $pathReplace = [];
 		foreach ($args[0]['hostRule'][0][2] as $name => $value) {

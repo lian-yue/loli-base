@@ -82,7 +82,15 @@ class Validator {
 			$this->input($name, $input);
 			$_rules[$input['name']] = $input;
 		}
-		$rules = array_merge($this->rules, $_rules);
+		$rules = $_rules;
+		foreach ($this->rules as $name => $rule) {
+			if (empty($rules[$name])) {
+				$rules[$name] = $rule;
+			} else {
+				$rules[$name] = array_merge($rule, $rules[$name]);
+			}
+		}
+
 		if ($merge) {
 			foreach ($_rules as $value) {
 				if (!isset($data[$value['name']])) {
@@ -109,6 +117,7 @@ class Validator {
 		}
 
 		unset($value);
+
 
 		foreach ($rules as $input) {
 			if (!isset($data[$input['name']]) || !empty($input['readonly']) || !empty($input['disabled'])) {

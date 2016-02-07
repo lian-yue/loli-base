@@ -11,25 +11,22 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-class ViewModel{
+class Controller{
 
-	protected $route;
 
-	protected $middleware = [
+	protected $middleware = [];
 
-	];
 	protected $defaultMiddleware = [];
 
-	public function __construct(Route $route, $viewModel = false) {
-		$this->route = $route;
-		$this->viewModel = $viewModel;
-		if ($this->viewModel) {
-			$this->handle();
-		}
+	protected $mustMiddleware = [];
+
+	public function __construct($handle = false) {
+		$this->handle = $handle;
+		$handle && $this->handle();
 	}
 
 	protected function handle() {
-		$method = strtolower($this->route->model[1]);
+		$method = strtolower(Route::controller()[1]);
 		foreach ($this->middleware as $key => $middleware) {
 			if ($is = (strtolower($key) === $method)) {
 				break;
@@ -37,13 +34,14 @@ class ViewModel{
 		}
 
 		if (empty($is)) {
-			$middleware = $this->middleware;
+			$middleware = $this->defaultMiddleware;
 		}
+		$middleware = $middleware + $this->mustMiddleware;
 
-		foreach ($middleware as $value) {
-			$class = 'App\Middleware\\' . $value;
+		foreach ($middleware as $name => $value) {
+			$class = 'App\Middleware\\' . $name;
 			$class = new $class;
-			if ($class->handle($this->route) === false) {
+			if ($class->handle($value) === false) {
 				break;
 			}
 		}
@@ -51,6 +49,6 @@ class ViewModel{
 	}
 
 	public function __call($name, $args) {
-		throw new Message([404, 'Model does not exist'], Message::ERROR);
+		throw new Message([404, 'Controller does not exist'], Message::ERROR);
 	}
 }
