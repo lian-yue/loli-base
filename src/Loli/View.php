@@ -64,15 +64,14 @@ class View extends ArrayObject{
 		$response = Route::response();
 
 		if ($ajax = $request->getAjax()) {
-			$json = json_encode($this);
 			if (Route::ajaxJS() && !in_array($ajax, ['true', 'json'], true) && !intval(substr($ajax, 0, 1)) && ($function = preg_replace('/[^0-9a-z_.-]/i', '', $ajax))) {
 				$response->setHeader('Content-Type', 'application/x-javascript');
-				$json = $function . '(' . $json. ');';
+				$json = $function . '(' . json_encode($this). ');';
 			} else {
 				if ($request->getMethod() === 'GET' || strtolower($request->getHeader('X-Requested-with')) === 'xmlhttprequest') {
 					$response->setHeader('Content-Type', 'application/json');
 				}
-				$this->data = json_encode($this->data);
+				$json =  json_encode($this);
 			}
 			echo $json;
 		} else {

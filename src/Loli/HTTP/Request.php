@@ -92,7 +92,7 @@ class Request{
 	protected $trustedProxy = false;
 
 
-	public function __construct($method = NULL, $URI = NULL, array $headers = NULL, array $posts = NULL, array $files = NULL) {
+	public function __construct($method = NULL, $URI = NULL, array $headers = NULL, array $posts = NULL) {
 		$this->time = empty($_SERVER['REQUEST_TIME_FLOAT']) ? microtime(true) : $_SERVER['REQUEST_TIME_FLOAT'];
 
 		$this->trustedProxy = !isset($_SERVER['REMOTE_ADDR']) || (filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP) && !filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP, FILTER_FLAG_NO_RES_RANGE)) || (!empty($_SERVER['LOLI']['trustedProxy']) && IP::match($_SERVER['LOLI']['trustedProxy'], $_SERVER['REMOTE_ADDR']));
@@ -230,22 +230,18 @@ class Request{
 
 
 
-		if ($posts !== NULL) {
-		} elseif ($_POST || empty($_SERVER['CONTENT_TYPE']) || empty($_SERVER['CONTENT_LENGTH']) || $_SERVER['CONTENT_LENGTH'] < 1 || $_SERVER['CONTENT_LENGTH'] > $this->postLength) {
-			$posts = $_POST;
-		} elseif (in_array($_SERVER['CONTENT_TYPE'], ['application/json', 'text/json'])) {
-			$posts = ($jsons = json_decode(trim(file_get_contents('php://input', 'rb')), true)) ? $jsons : [];
-		} else {
-			$posts = [];
+		if ($posts === NULL) {
+			if ($_POST || empty($_SERVER['CONTENT_TYPE']) || empty($_SERVER['CONTENT_LENGTH']) || $_SERVER['CONTENT_LENGTH'] < 1 || $_SERVER['CONTENT_LENGTH'] > $this->postLength) {
+				$posts = $_POST;
+			} elseif (in_array($_SERVER['CONTENT_TYPE'], ['application/json', 'text/json'])) {
+				$posts = ($jsons = json_decode(trim(file_get_contents('php://input', 'rb')), true)) ? $jsons : [];
+			} else {
+				$posts = [];
+			}
+			foreach ($_FILES as $key => $file) {
+				$posts[$key] = new Files($file);
+			}
 		}
-
-
-		// 文件
-		if ($files === NULL) {
-			$files = $_FILES;
-		}
-
-
 
 
 		//  地址
@@ -271,13 +267,12 @@ class Request{
 
 		// 表单
 		$this->setPosts($posts);
-
-		// 文件
-		$this->setFiles($files);
-
-		// 设置 param
-		$this->setParams(array_merge($this->getQuerys(), $this->getPosts()));
 	}
+
+
+
+
+
 
 
 
@@ -580,14 +575,19 @@ class Request{
 		}
 	}
 
-	public function setPosts(array $requests) {
-		$this->posts = parse_string(merge_string($requests));
+	public function setPosts(array $posts) {
+		$this->posts = [];
+		foreach ($posts as $key => $value) {
+			$this->setPost($name, $value);
+		}
 		return true;
 	}
 
 	public function setPost($name, $value) {
 		if ($value === NULL) {
 			unset($this->posts[$name]);
+		} elseif ($value instanceof Files) {
+			$this->posts[$name] = $value;
 		} else {
 			$this->posts[$name] = is_array($value) || is_object($value) ? parse_string(merge_string($value)) : (string) $value;
 		}
@@ -597,137 +597,15 @@ class Request{
 
 
 
-	public function setParams(array $params) {
-		$this->params = parse_string(merge_string($params));
-		return $this;
-	}
-
-	public function setParam($name, $defaultValue = NULL) {
-		if ($value === NULL) {
-			unset($this->params[$name]);
-		} else {
-			$this->params[$name] = is_array($value) || is_object($value) ? parse_string(merge_string($value)) : (string) $value;
-		}
-		return true;
-	}
-
 
 	public function getParams() {
-		return $this->params;
+		return array_merge($this->posts, $this->querys);
 	}
 
 
 	public function getParam($name, $defaultValue = NULL) {
-		if (isset($this->params[$name])) {
-			if ($defaultValue === NULL) {
-				return $this->params[$name];
-			}
-			$value = $this->params[$name];
-			settype($value, gettype($defaultValue));
-			return $value;
-		} else {
-			return $defaultValue;
-		}
+		return $this->getPost($name, $this->getQuery($name, $defaultValue));
 	}
-
-
-
-	public function getFiles($size = 0, array $mimeType = NULL, $multiple = 1) {
-		$files = [];
-		foreach ($this->files as $key => $values) {
-			foreach ($values as $value) {
-				if ($multiple > 0 || $multiple == -1) {
-					if ($multiple != -1) {
-						--$multiple;
-					}
-					$files[$key][] = $this->_getFile($value, $size, $mimeType);
-				}
-			}
-		}
-		return $files;
-	}
-
-
-	public function getFile($key, $size = 0, array $mimeType = NULL, $multiple = 1) {
-		if (empty($this->files[$key])) {
-			return [];
-		}
-		$files = [];
-		foreach ($this->files[$key] as $value) {
-			if ($multiple > 0 || $multiple == -1) {
-				if ($multiple != -1) {
-					--$multiple;
-				}
-				$files[] = $this->_getFile($value, $size, $mimeType);
-			}
-		}
-		return $files;
-	}
-
-	private function _getFile($file, $size, array $mimeType) {
-		$file += pathinfo($file['name']) + ['dirname' =>'', 'basename' => '', 'extension' => '', 'filename' => '', 'encoding' => ''];
-
-		if ($file['error'] !== UPLOAD_ERR_OK) {
-			// 有错误的
-		} elseif (!is_file($file['tmp_name'])) {
-			// 文件不存在
-			$file['error'] = UPLOAD_ERR_NO_FILE;
-		} elseif (!$mime = Storage::mime($file['tmp_name'])) {
-			// 后缀
-			$file['error'] = UPLOAD_ERR_EXTENSION;
-		} elseif ($mimeType && !in_array($mime['type'], $mimeType) && !in_array(strtolower($file['extension']), $mimeType)) {
-			// 后缀
-			$file['error'] = UPLOAD_ERR_EXTENSION;
-		} elseif ($size && $file['size'] > $size) {
-			// 文件大小
-			$file['error'] = UPLOAD_ERR_FORM_SIZE;
-		}
-		// 合并
-		if (!empty($mime)) {
-			$file = $mime + $file;
-		}
-		return $file;
-	}
-
-
-
-	public function setFiles(array $files) {
-		$this->files = [];
-		foreach ($this->files as $key => $value) {
-			if (!$value) {
-				continue;
-			}
-			if (empty($value['tmp_name'])) {
-				throw new Exception('Set file path can not be empty');
-			}
-			$this->addFile($key, $value['tmp_name'], empty($value['name']) ? NULL : $value['name'], empty($value['type']) ? NULL : $value['type'], isset($value['error']) ? $value['error'] : UPLOAD_ERR_OK, isset($value['size']) ? $value['size'] : NULL);
-		}
-	}
-
-	public function setFile($key, $tmp_name, $name, $type = NULL, $error = UPLOAD_ERR_OK, $size = NULL) {
-		unset($this->files[$key]);
-		return $this->addFile(...func_get_args());
-	}
-
-	public function addFile($key, $tmp_name, $name, $type = NULL, $error = UPLOAD_ERR_OK, $size = NULL) {
-		if (is_array($tmp_name)) {
-			foreach ($tmp_name as $k => $value) {
-				$this->addFile($key, $value, $name ? (is_array($name) ? (isset($name[$k]) ? $name[$k] : NULL) : $name) : NULL, $type ? (is_array($type) ? (isset($type[$k]) ? $type[$k] : NULL) : $type) : NULL, $error ? (is_array($error) ? (isset($error[$k]) ? $error[$k] : UPLOAD_ERR_OK) : $error) : UPLOAD_ERR_OK, $size ? (is_array($size) ? (isset($size[$k]) ? $size[$k] : UPLOAD_ERR_OK) : $size) : UPLOAD_ERR_OK);
-			}
-		} else {
-			$error = abs((int) $error);
-			$error = $error ? $error : UPLOAD_ERR_OK;
-			if ($error === UPLOAD_ERR_OK && !is_file($tmp_name)) {
-				throw new Exception('File does not exist');
-			}
-			$size = $size === false || $size === NULL && $error === UPLOAD_ERR_OK ? filesize($tmp_name) : abs((int)$size);
-			$name = $name ? (string) pathinfo((string) $name, PATHINFO_BASENAME) : 'Unknown';
-			$type = $type ? (string) $type : 'application/octet-stream';
-			$this->files[$key][] = ['tmp_name' => $tmp_name, 'name' => $name, 'type' => $type, 'error' => $error];
-		}
-		return $this;
-	}
-
 
 
 
@@ -891,18 +769,18 @@ class Request{
 
 
 	public function getPublicKey($hash = true) {
-		if (empty($this->params['__publicKey']) || !is_string($this->params['__publicKey'])) {
+		if (empty($this->posts['__publicKey']) || !is_string($this->posts['__publicKey'])) {
 			return '';
 		}
-		return $hash ? hash('sha256', $this->params['__publicKey'], true) : base64_decode($this->params['__publicKey']);
+		return $hash ? hash('sha256', $this->posts['__publicKey'], true) : base64_decode($this->posts['__publicKey']);
 	}
 
 
 	public function getPrivateKey($hash = true) {
-		if (empty($this->params['__privateKey']) || !is_string($this->params['__privateKey'])) {
+		if (empty($this->posts['__privateKey']) || !is_string($this->posts['__privateKey'])) {
 			return '';
 		}
-		return $hash ? $this->params['__privateKey'] : base64_decode($this->params['__privateKey']);
+		return $hash ? $this->posts['__privateKey'] : base64_decode($this->posts['__privateKey']);
 	}
 
 

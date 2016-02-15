@@ -80,6 +80,45 @@ function to_object($a) {
 }
 
 
+function format_size($value, $precision = 2) {
+	if ($size > 1024 * 1024 * 1024 * 1024) {
+		return round($size / 1024 / 1024, $precision).' TB';
+	} elseif ($size > 1024 * 1024 * 1024) {
+		return round($size / 1024 / 1024, $precision).' GB';
+	} elseif ($size > 1024 * 1024) {
+		return round($size / 1024 / 1024, $precision).' MB';
+	} elseif ($size > 1024) {
+		return round($size / 1024, $precision).' KB';
+	}
+	return intval($size) . ' B';
+}
+
+function parse_size($value) {
+	$value = trim($value);
+	$value = strtoupper($value);
+	switch (substr($value, -2, 2)) {
+		case 'TB':
+			return trim(substr($value, 0, -2)) * 1024 * 1024 * 1024 * 1024;
+			break;
+		case 'GB':
+			return trim(substr($value, 0, -2)) * 1024 * 1024 * 1024;
+			break;
+		case 'MB':
+			return trim(substr($value, 0, -2)) * 1024 * 1024;
+			break;
+		case 'KB':
+			return trim(substr($value, 0, -2)) * 1024;
+			break;
+		default:
+			if (substr($value, -1, 1) === 'B') {
+				$value = substr($value, 0, -1);
+			} elseif (substr($value, -5, 5) === 'BYTES') {
+				$value = substr($value, 0, -5);
+			}
+			return trim($value) * 1;
+	}
+}
+
 
 /**
 *	移除 xml 中的 CDATA
@@ -110,8 +149,7 @@ function studly($value) {
 	if (isset($cache[$key])) {
 		return $cache[$key];
 	}
-	$value = ucwords(str_replace(['-', '_'], ' ', $value));
-	return $cache[$key] = str_replace(' ', '', $value);
+	return $cache[$key] = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $value)));
 }
 
 

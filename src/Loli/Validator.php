@@ -11,6 +11,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
+use Loli\HTTP\Files;
 class Validator {
 	// 模块验证表格
 	protected $rules = [
@@ -30,12 +31,32 @@ class Validator {
 			'maxlength' => 1,			// 最大字符串长度
 			'unique' => '',				// 必须不存在
 			'exists' => '',				// 必须存在
+			'accept' => '',				// 允许的文件类型
 			'disabled' => '',			// 禁用
 			'readonly' => '',			// 禁用
 			'errormessage' => '',		// 错误消息
 			'errorcode' => '',			// 错误消息代码
 		],*/
 	];
+
+	protected $attributes = [
+		'name',
+		'required',
+		'minLength',
+		'maxLength',
+		'size',
+		'min',
+		'max',
+		'step',
+		'option',
+		'pattern',
+		'accept',
+		'exists',
+		'unique',
+	];
+
+
+
 
 	protected $model;
 
@@ -53,20 +74,28 @@ class Validator {
 		}
 	}
 
-	public function rules(...$args) {
-		if (!$args) {
-			return $this->rules;
+	public function rules($rules = [], $merge = false) {
+		$_rules = [];
+		$order = 0;
+		foreach ($rules as $name => $input) {
+			$this->input($name, $input);
+			$_rules[$input['name']] = ['order' => $order] + $input;
+			++$order;
 		}
-		$rules = [];
-		foreach ($args as $arg) {
-			foreach ((array)$arg as $key => $value) {
-				if (!empty($this->rules[$value])) {
-					$rules[$value] = $this->rules[$value];
+		$rules = $_rules;
+		foreach ($this->rules as $name => $rule) {
+			if (empty($rules[$name])) {
+				if (!$merge) {
+					$rules[$name] = ['order' => $order] + $rule;
+					++$order;
 				}
+			} else {
+				$rules[$name] = array_merge($rule, $rules[$name]);
 			}
 		}
 		return $rules;
 	}
+
 
 	public function model($model) {
 		$this->model = is_object($model) ? get_class($model) : $model;
@@ -77,39 +106,28 @@ class Validator {
 		if (is_scalar($data)) {
 			throw new Message(500, new Message([1, 'Verification data is scalar'], Message::ERROR));
 		}
-		$_rules = [];
-		foreach ($rules as $name => $input) {
-			$this->input($name, $input);
-			$_rules[$input['name']] = $input;
-		}
-		$rules = $_rules;
-		foreach ($this->rules as $name => $rule) {
-			if (empty($rules[$name])) {
-				$rules[$name] = $rule;
-			} else {
-				$rules[$name] = array_merge($rule, $rules[$name]);
-			}
-		}
+		$rules = $this->rules($rules, $merge);
 
 		if ($merge) {
-			foreach ($_rules as $value) {
-				if (!isset($data[$value['name']])) {
-					if (isset($rules[$value['name']]['value'])) {
-						$data[$value['name']] = $rules[$value['name']]['value'];
+			foreach ($rules as $input) {
+				if (!isset($data[$input['name']])) {
+					if (isset($rules[$input['name']]['value'])) {
+						$data[$input['name']] = $rules[$input['name']]['value'];
 					} else {
-						unset($data[$value['name']]);
+						unset($data[$input['name']]);
 					}
 				}
 			}
 		}
+
 		foreach ($data as $key => $value) {
-			if ($merge && !isset($_rules[$key])) {
+			if ($merge && !isset($rules[$key])) {
 				unset($data[$key]);
 				continue;
 			}
 			if ($value === NULL) {
 				if (isset($rules[$key]['value'])) {
-					$data[$value] = $rules[$key]['value'];
+					$data[$key] = $rules[$key]['value'];
 				} else {
 					unset($data[$value]);
 				}
@@ -117,7 +135,6 @@ class Validator {
 		}
 
 		unset($value);
-
 
 		foreach ($rules as $input) {
 			if (!isset($data[$input['name']]) || !empty($input['readonly']) || !empty($input['disabled'])) {
@@ -127,183 +144,50 @@ class Validator {
 
 			$value = &$data[$input['name']];
 
-
+			 // 设置类型
 			if (isset($input['value'])) {
 				settype($value, gettype($input['value']));
 			} elseif (isset($merge[$key]['value'])) {
 				settype($value, gettype($merge[$key]['value']));
 			}
 
-			// 空检查
-			$empty = empty($value) && $value !== '0' && $value !== 0;
-			if (!empty($input['required']) && $empty) {
-				$message = new Message([$input['errorcode'] + 1, $input['title'], $input['name']], Message::ERROR, $message);
+			// 类型检查
+			$empty = $value === '' || $value === false || $value === [] || ($value instanceof Files && $value->count() === 0);
+
+			$method = studly($input['type']) . 'Type';
+			if (!method_exists($this, $method)) {
+				throw new Exception('Validator form type does not exist');
+			}
+
+			if (is_int($errorcode = $this->$method($value, $empty, $input, $data, $message))) {
+				$message = new Message([$input['errorcode'] + $errorcode, $input['title'], $input['name'], $input['type']], Message::ERROR, $message);
+				continue;
+			} elseif ($errorcode instanceof Message) {
+				$message = $errorcode;
 				continue;
 			}
 
-			if (in_array($input['type'], ['text', 'email', 'search', 'password', 'tel'], true)) {
-				$value = to_string($value);
-				// 长度截断
-				if (!empty($input['size'])) {
-					$value = mb_substr($value, 0, $input['size']);
-				}
-			}
 
 
-			// 表单类型检查
+			// 属性
+			$empty = $value === '' || $value === false || $value === [] || ($value instanceof Files && $value->count() === 0);
 			$continue = false;
-			switch ($input['type']) {
-				case 'text':
-				case 'password':
-				case 'hidden':
-					$value = str_replace(["\r", "\n"], '', $value);
-					break;
-				case 'textarea':
-					$value = (string) $value;
-					break;
-				case 'email':
-					$continue = !$empty && !filter_var($value, FILTER_VALIDATE_EMAIL);
-					break;
-				case 'number':
-				case 'range':
-					$value = (int) $value;
-					break;
-				case 'search':
-					$value = is_array($value) ? implode(' ', $value) : $value;
-					break;
-				case 'url':
-					$continue = !$empty && !preg_match('/^[a-z]+\:\/\/\w+/i', $value = trim($value));
-					break;
-				case 'tel':
-				case 'phone':
-					$continue = !$empty && !preg_match('/^(\+?\d+ ?)?(\(\d+\))?\d+([- ]?\d+){0,3}$/i', $value = preg_replace('/\-+/', '-', preg_replace('/\s+/', ' ', trim($value)))) && strlen($value) <= 24;
-					break;
-				case 'color':
-					$continue = !$empty && !preg_match('/^\#([0-9a-f]{3}|[0-9a-f]{6})$/i', $value = strtolower(trim($value)));
-					break;
-				case 'year':
-					$continue = !$empty && preg_match('/^\d{4}$/', $value);
-					break;
-				case 'month':
-					$continue = !$empty && preg_match('/^\d{4}\-(?:0\d|1[0-2])$/', $value);
-					break;
-				case 'week':
-					$continue = !$empty && preg_match('/^\d{4}\-W(?:0\d|1[0-2])$/', $value = strtoupper($value));
-					break;
-				case 'date':
-					if (!$empty) {
-						if (preg_match('/^\d{4}\-(\d{2})\-(\d{2})$/', $value) && ($time = strtotime($value))) {
-							$value = date('Y-m-d', $value);
-						} else {
-							$continue = true;
-						}
-					}
-					break;
-				case 'datetime':
-					if (!$empty) {
-						if ($time = strtotime($value)) {
-							$value = date('Y-m-d h:i:s', $value);
-						} else {
-							$continue = true;
-						}
-					}
-					break;
-				case 'datetime-local':
-					break;
-				case 'radio':
-					if (!is_scalar($value) || !isset($input['option'][$value])) {
-						$continue = true;
-					}
-					break;
-				case 'checkbox':
-					$value = array_values((array) $value);
-					$value = array_intersect($value, $input['option']);
-					if (!$value) {
-						$continue = true;
-					}
-					break;
-				case 'select':
-					if (empty($input['multiple'])) {
-						if (!is_scalar($value)) {
-							$value = reset($value);
-						}
-						$continue = !is_scalar($value) || !isset($input['option'][$value]);
-					} elseif (!$value = array_intersect(array_values((array) $value), $input['option'])) {
-						$continue = true;
-					}
-					break;
-				case 'file':
-
-
-			}
-
-
-			// 表单类型错误
-			if ($continue) {
-				$message = new Message([$input['errorcode'], $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-			// 重复字段错误
-			if (substr($input['name'], -6) === '_again') {
-				if (isset($data[$again = substr($input['name'], 0, -6)]) && $value != $data[$again]) {
-					$message = new Message([$input['errorcode'] + 9, empty($this->rules[$again]['title']) ? $input['title'] : $this->rules[$again]['title'] , $input['name']], Message::ERROR, $message);
+			foreach($this->attributes as $attribute) {
+				if (!isset($input[$attribute]) || $input[$attribute] === false) {
+					continue;
 				}
-				unset($data[$input['name']]);
-				continue;
-			}
-
-			// 最小长度
-			if (!empty($input['minlength']) && mb_strlen($value) < $input['minlength']) {
-				$message = new Message([$input['errorcode'] + 2, $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-			// 最大长度
-			if (!empty($input['maxlength']) && mb_strlen($value) > $input['maxlength']) {
-				$message = new Message([$input['errorcode'] + 3, $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-			// 范围小
-			if (isset($input['min']) && $input['min'] > $value) {
-				$message = new Message([$input['errorcode'] + 6, $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-			// 范围大
-			if (isset($input['max']) && $input['max'] < $value) {
-				$message = new Message([$input['errorcode'] + 7, $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-			// 合法
-			 if (!empty($input['step']) && ($value % $input['step']) !== 0) {
-			 	$message = new Message([$input['errorcode'], $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			 }
-
-			// 规定数据
-			if (isset($input['option']) && count((array) $value) !== count(array_intersect((array)$value, array_keys($input['option'])))) {
-				$message = new Message([$input['errorcode'] + 7, $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-			// 正则
-			if (isset($input['pattern']) && preg_match('/'. str_replace('/', '\\/', $input['pattern']) .'/', $value)) {
-				$message = new Message([$input['errorcode'], $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-			// 不存在
-			if (isset($input['exists']) && !$this->query($input['exists'], $input['name'], $value)) {
-				$message = new Message([$input['errorcode'] + 4, $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
-			}
-
-			// 存在
-			if (isset($input['unique']) && $this->query($input['unique'], $input['name'], $value)) {
-				$message = new Message([$input['errorcode'] + 5, $input['title'], $input['name']], Message::ERROR, $message);
-				continue;
+				$method = studly($attribute) . 'Attribute';
+				if (!method_exists($this, $method)) {
+					throw new Exception('Validator form attribute does not exist');
+				}
+				$attributeValue = $input[$attribute];
+				if (is_int($errorcode = $this->$method($value, $attributeValue, $empty, $input, $data, $message))) {
+					$message = new Message([$input['errorcode'] + $errorcode, $input['title'], $input['name'], $attributeValue], Message::ERROR, $message);
+					break;
+				} elseif ($errorcode instanceof Message) {
+					$message = $errorcode;
+					break;
+				}
 			}
 		}
 
@@ -312,6 +196,449 @@ class Validator {
 		}
 		return $this;
 	}
+
+
+
+
+
+
+
+
+
+
+	protected function textType(&$value) {
+		if (is_string($value)) {
+			$value = str_replace(["\r", "\n"], '', $value);
+		}
+	}
+	protected function hiddenType(&$value) {
+		return $this->textType($value);
+	}
+	protected function passwordType(&$value) {
+		$value = to_string($value);
+		return $this->textType($value);
+	}
+
+	protected function numberType(&$value) {
+		$value = (int) $value;
+	}
+	protected function rangeType(&$value) {
+		return $this->rangeType($value);
+	}
+
+	protected function emailType(&$value, $empty) {
+		if ($empty) {
+			$value = '';
+			return;
+		}
+		if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+			return 0;
+		}
+	}
+
+	protected function searchType(&$value) {
+		if (is_scalar($value)) {
+			$value = (string) $value;
+		} elseif (is_array($value)) {
+			$value = implode(' ', $value);
+		} elseif (is_object($value) && method_exists($value, '__toString')) {
+			$value = $value->__toString();
+		} else {
+			return 0;
+		}
+	}
+
+	protected function telType(&$value, $empty) {
+		if ($empty) {
+			$value = '';
+			return;
+		}
+		$value = preg_replace('/\-+/', '-', preg_replace('/\s+/', ' ', trim($value)));
+		if (!preg_match('/^(\+?\d+ ?)?(\(\d+\))?\d+([- ]?\d+){0,3}$/i', $value)) {
+			return 0;
+		}
+		if (strlen($value) > 24) {
+			return 0;
+		}
+	}
+
+	protected function colorType(&$value, $empty) {
+		if ($empty) {
+			$value = '';
+			return;
+		}
+		$value = strtolower(trim($value));
+		if (!preg_match('/^\#([0-9a-f]{3}|[0-9a-f]{6})$/i', $value)) {
+			return 0;
+		}
+	}
+
+	protected function yearType(&$value, $empty) {
+		if ($empty) {
+			$value = '';
+			return;
+		}
+		if (!preg_match('/^\d{4}$/', $value)) {
+			return 0;
+		}
+	}
+
+	protected function monthType(&$value, $empty) {
+		if ($empty) {
+			$value = '';
+			return;
+		}
+		if (!preg_match('/^\d{4}\-(?:0\d|1[0-2])$/', $value)) {
+			return 0;
+		}
+	}
+
+	protected function weekType(&$value, $empty) {
+		if ($empty) {
+			$value = '';
+			return;
+		}
+
+		$value = strtoupper(trim($value));
+		if (!preg_match('/^\d{4}\-W(?:0\d|1[0-2])$/', $value)) {
+			return 0;
+		}
+	}
+	protected function dateType(&$value, $empty) {
+		if ($empty) {
+			$value = '';
+			return;
+		}
+
+		$value = trim($value);
+		if (!preg_match('/^\d{4}\-(\d{2})\-(\d{2})$/', $value)) {
+			return 0;
+		}
+
+		try {
+			$datetime = new DateTime($date);
+		} catch (\Exception $e) {
+			return 0;
+		}
+		$value = $datetime->format('Y-m-d');
+	}
+
+	protected function datetimeType(&$value, $empty) {
+		if ($empty) {
+			$value = '';
+			return;
+		}
+		$value = trim($value);
+
+		try {
+			$datetime = new DateTime($date);
+		} catch (\Exception $e) {
+			return 0;
+		}
+		$value = $datetime->format('Y-m-d h:i:s');
+	}
+
+	protected function datetimeLocalType(&$value, $empty) {
+		if ($empty) {
+			$value = '';
+			return;
+		}
+		$value = trim($value);
+
+		try {
+			$datetime = new DateTime($date);
+		} catch (\Exception $e) {
+			return 0;
+		}
+		$value = $datetime->format('Y-m-d h:i:s');
+	}
+
+	protected function radioType(&$value) {
+		if (!is_scalar($value) || !isset($input['option'][$value])) {
+			return 0;
+		}
+	}
+
+
+	protected function checkboxType(&$value, $empty) {
+		if ($empty) {
+			$value = [];
+			return;
+		}
+		$value = array_values((array) $value);
+		$value = array_intersect($value, $input['option']);
+	}
+
+
+
+
+	protected function selectType(&$value, $empty, &$input) {
+ 		if (empty($input['multiple'])) {
+			if ($empty) {
+				if (!is_scalar($value)) {
+					$value = '';
+				}
+				if (isset($input['value'])) {
+					settype($value, gettype($input['value']));
+				}
+				return;
+			}
+
+			if (!is_scalar($value)) {
+				$value = reset($value);
+			}
+			if (!is_scalar($value) || !isset($input['option'][$value])) {
+				return 0;
+			}
+		}
+
+		if ($empty) {
+			$value = [];
+			return;
+		}
+		$value = array_unique(array_values((array) $value));
+		$value = array_intersect($value, array_keys($input['option']));
+	}
+
+	protected function fileType(&$value, $empty, &$input, &$data, $message) {
+		if ($empty) {
+			if (!$value instanceof Files) {
+				$value = new Files();
+			}
+			return;
+		}
+		if (!$value instanceof Files) {
+			return 0;
+		}
+		if (empty($input['multiple']) && $value->count() > 1) {
+			return new Message([$input['errorcode'] + 9, $input['title']. $input['name'], 1], Message::ERROR, $message);
+		}
+		foreach($value as $file) {
+			if ($file->error !== UPLOAD_ERR_OK) {
+				return new Message([$input['errorcode'] + 40 + $file->error, $input['title'], $input['name'], $file->error], Message::ERROR, $message);
+			}
+		}
+	}
+
+
+	protected function textareaType(&$value) {
+		$value = (string) $value;
+	}
+
+	protected function nameAttribute(&$value, $attributeValue, $empty, &$input, &$data, $message) {
+		// 重复字段错误
+		if (substr($attributeValue, -6) === '_again') {
+			if (isset($data[$again = substr($attributeValue, 0, -6)]) && $value != $data[$again]) {
+				return new Message([$input['errorcode'] + 20, empty($this->rules[$again]['title']) ? $input['title'] : $this->rules[$again]['title'], $input['name'], $attributeValue], Message::ERROR, $message);
+			}
+			unset($data[$attributeValue]);
+		}
+	}
+
+	protected function requiredAttribute(&$value, $attributeValue, $empty) {
+		if ($empty) {
+			return 1;
+		}
+	}
+
+	protected function minLengthAttribute(&$value, $attributeValue) {
+		if ($empty) {
+			return;
+		}
+
+		if ($value instanceof Files) {
+			$size = parse_size($attributeValue);
+			foreach ($value as $file) {
+				if ($file->size < $size) {
+					return 10;
+				}
+			}
+			return;
+		}
+		if (is_scalar($value) && mb_strlen($value) < $attributeValue) {
+			return 7;
+		}
+	}
+
+	protected function maxLengthAttribute(&$value, $attributeValue) {
+		if ($empty) {
+			return;
+		}
+		if ($value instanceof Files) {
+			$size = parse_size($attributeValue);
+			foreach ($value as $file) {
+				if ($file->size > $size) {
+					return 11;
+				}
+			}
+			return;
+		}
+		if (is_scalar($value) && mb_strlen($value) > $attributeValue) {
+			return 7;
+		}
+	}
+
+	protected function sizeAttribute(&$value, $attributeValue, $empty, &$input) {
+		if ($empty) {
+			return;
+		}
+
+		if ($input['type'] === 'text') {
+			$value = mb_substr($value, 0, $attributeValue);
+			return;
+		}
+
+		if ($value instanceof Files) {
+			$size = parse_size($attributeValue);
+			foreach ($value as $file) {
+				if ($file->size > $size) {
+					return 11;
+				}
+			}
+			return;
+		}
+
+		if (is_scalar($value) && mb_strlen($value) > $attributeValue) {
+			return 7;
+		}
+	}
+
+	protected function minAttribute(&$value, $attributeValue, $empty) {
+		if ($empty) {
+			return;
+		}
+		if ($value instanceof Files) {
+			if ($value->count() < $attributeValue) {
+				return 7;
+			}
+			return;
+		}
+		if ($value < $attributeValue) {
+			return 4;
+		}
+		if ($value < $attributeValue) {
+			return 4;
+		}
+	}
+
+	protected function maxAttribute(&$value, $attributeValue, $empty) {
+		if ($empty) {
+			return;
+		}
+		if ($value instanceof Files) {
+			if ($value->count() > $attributeValue) {
+				return 8;
+			}
+			return;
+		}
+		if ($value > $attributeValue) {
+			return 5;
+		}
+		if ($value > $attributeValue) {
+			return 5;
+		}
+	}
+
+	protected function stepAttribute(&$value, $attributeValue, $empty) {
+		if ($empty) {
+			return;
+		}
+		if ($value instanceof Files) {
+			if ($value->count() % $attributeValue) {
+				return 21;
+			}
+			return;
+		}
+
+		if (is_array($value)) {
+			if (count($value) % $attributeValue) {
+				return 21;
+			}
+			return;
+		}
+
+		if ($value % $attributeValue) {
+			return 21;
+		}
+		if ($value % $attributeValue) {
+			return 21;
+		}
+	}
+
+	protected function optionAttribute() {
+	}
+
+
+	protected function patternAttribute(&$value, $attributeValue, $empty) {
+		if (is_scalar($value)) {
+			$subjects = [$value];
+		} else {
+			$subjects = $value;
+		}
+		$pattern = '/'. str_replace('/', '\\/', $attributeValue) .'/';
+		foreach ($subjects as $subject) {
+			if (preg_match($pattern,  $subject)) {
+				return 0;
+			}
+		}
+	}
+
+	protected function acceptAttribute(&$value, $attributeValue, $empty, &$input) {
+		if (!$value instanceof Files) {
+			return 0;
+		}
+		$accept = array_map('trim', explode(',', strtolower($attributeValue)));
+
+		$image = in_array('image/*', $accept, true);
+		$audio = in_array('audio/*', $accept, true);
+		$video = in_array('video/*', $accept, true);
+
+		foreach($value as $file) {
+			if ($file->error !== UPLOAD_ERR_OK) {
+				return new Message([$input['errorcode'] + 40 + $file->error, $input['title'], $input['name'], $file->error], Message::ERROR, $message);
+			}
+			if (in_array($file->mime, $accept, true)) {
+
+			} elseif ($image && in_array($file->mime, ['image/png', 'image/jpeg', 'image/webp', 'image/bmp', 'image/gif', 'image/svg', 'image/svg+xml'], true)) {
+
+			} elseif ($audio && explode('/', $file->mime)[0] === 'audio') {
+
+			} elseif ($video && explode('/', $file->mime)[0] === 'video') {
+
+			} else {
+				if (count(array_filter([$image, $audio, $video])) === 1) {
+					if ($image) {
+						return 31;
+					}
+					if ($audio) {
+						return 32;
+					}
+					if ($video) {
+						return 33;
+					}
+				}
+				return 30;
+			}
+		}
+		return;
+	}
+
+
+	protected function existsAttribute(&$value, $attributeValue, $empty, &$input) {
+		// 不存在
+		if (!$this->query($attributeValue, $input['name'], $value)) {
+			return 2;
+		}
+	}
+
+	protected function uniqueAttribute(&$value, $attributeValue, $empty, &$input) {
+		if ($this->query($attributeValue, $input['name'], $value)) {
+			return 3;
+		}
+	}
+
+
+
 
 	protected function input($name, &$input) {
 		if (!is_array($input) || ($input && is_int(key($input)))) {

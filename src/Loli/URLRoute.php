@@ -125,10 +125,6 @@ class URLRoute extends URL{
 			}
 		}
 
-		if ($this->query) {
-			$url .= '?'. merge_string($this->query);
-		}
-
 		if ($this->fragment) {
 			$url .= '#'. $this->fragment;
 		}

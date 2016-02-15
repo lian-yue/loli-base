@@ -1564,10 +1564,10 @@ class SQLBuilder extends Builder{
 
 		if (empty($this->_data['selectReplaces']) || empty($this->_data['selectCommand'])) {
 			// 替换
-			$this->_data['selectReplaces'] = [':field' => $this->_fields(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union()];
+			$this->_data['selectReplaces'] = [':field' => $this->_fields(), ':form' => $this->_from('SELECT'), ':where' => $this->_where(), ':group' => $this->_group('SELECT'), ':having' => $this->_having(), ':order' => $this->_order(), ':offset' => $this->_offset(), ':limit' => $this->_limit(), ':union' => $this->_union(), ':lock' => $this->_lock()];
 
 			// 命令行
-			$this->_data['selectCommand'] = strtr('SELECT :rows :field :form :where :group :having :order :offset :limit :lock :union;', $this->_data['selectReplaces'] + [':lock' => $this->_lock(), ':rows' => $this->_rows()]);
+			$this->_data['selectCommand'] = strtr('SELECT :rows :field :form :where :group :having :order :offset :limit :lock :union;', $this->_data['selectReplaces'] + [':rows' => $this->_rows()]);
 		}
 
 		// 不需要执行的
@@ -1576,6 +1576,7 @@ class SQLBuilder extends Builder{
 		}
 
 		if ($this->cache[0] && $this->_isCache && !$this->_lock() && (($this->_data['select'] = Cache::group('database.' . $this->database->database())->get($cacheKey = json_encode(['cache' => $this->cache, 'class' => $this->class] + $this->_data['selectReplaces']))) !== false && ($this->cache[1] < 1 || $this->cache[0] === -1 || (Cache::group('database.' . $this->database->database())->ttl($cacheKey) > $this->cache[1] || !Cache::group('database.' . $this->database->database())->add(true, 'TTL' . $cacheKey, $this->cache[1] + 1))))) {
+
 			// 用缓存的
 		} else {
 

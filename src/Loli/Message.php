@@ -46,7 +46,7 @@ use JsonSerializable;
 
 */
 class Message extends Exception implements IteratorAggregate, JsonSerializable{
-	const NOTICE = 1;
+	const SUCCESS = 1;
 	const WARNING = 2;
 	const ERROR = 3;
 
@@ -64,11 +64,11 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable{
 
 	protected $hosts = [];
 
-	public function __construct($message = [], $type = self::NOTICE, $data = [], $redirect = true, $refresh = 3, Message $previous = NULL) {
+	public function __construct($message = [], $type = self::SUCCESS, $data = [], $redirect = true, $refresh = 3, Message $previous = NULL) {
 		$this->hosts = empty($_SERVER['LOLI']['message']['hosts']) ? [] : (array) $_SERVER['LOLI']['message']['hosts'];
 
 		// previous　变量自动缩进
-		foreach(['type' => self::NOTICE, 'data' => [], 'redirect' => false, 'refresh' => 3] as $key => $value) {
+		foreach(['type' => self::SUCCESS, 'data' => [], 'redirect' => false, 'refresh' => 3] as $key => $value) {
 			if ($$key instanceof Message) {
 				$previous = $$key;
 				$$key = $value;
@@ -87,7 +87,7 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable{
 				$this->type = self::WARNING;
 				break;
 			default:
-				$this->type = self::NOTICE;
+				$this->type = self::SUCCESS;
 		}
 
 
@@ -104,7 +104,7 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable{
 		$this->args = $message;
 		unset($this->args[key($this->args)]);
 
-		// 消息
+
 		$message = self::translate([$code] + $this->args);
 
 		// 注册父级
@@ -187,7 +187,9 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable{
 		if ($redirect) {
 			$request = Route::request();
 			if (!$redirect instanceof URL) {
-				if (is_string($redirect) || is_object($redirect)) {
+				if (is_string($redirect) && $redirect !== '1' && $redirect !== 'true') {
+
+				} elseif (is_object($redirect)) {
 					$redirect = (string) $redirect;
 				} elseif ($redirect = $request->getParam('redirect', '')) {
 
@@ -257,6 +259,9 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable{
 
 
 	public static function translate($text, $original = true) {
+		if ($original === true && is_array($text) && is_int($code = reset($text)) && $code >= 1000000) {
+			$original = Language::translate([1000 + substr($code, -2, 2)] + $text, ['message'], $code);
+		}
 		return Language::translate($text, ['message'], $original);
 	}
 }

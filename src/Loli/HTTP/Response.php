@@ -89,9 +89,9 @@ class Response{
 		return $this;
 	}
 
-	public function addCookie($name, $value, $ttl = 0,  $httponly = NULL, $secure = NULL, $path = NULL, $domain = NULL) {
-		if (empty($this->cookies[$name])) {
-			return $this->setCookie(...func_get_args());
+	public function addCookie(...$args) {
+		if ($args && empty($this->cookies[$args[0]])) {
+			return $this->setCookie(...$args);
 		}
 		return $this;
 	}
@@ -148,6 +148,9 @@ class Response{
 			if ($values === NULL) {
 				continue;
 			}
+			if (is_object($values) && method_exists($values, '__toString')) {
+				$values = [(string) $values];
+			}
 			foreach ((array)$values as $value) {
 				$value = (string) $value;
 				$this->sendHeader && $this->sendHeader($name, $value, empty($this->headers[$name]));
@@ -163,6 +166,9 @@ class Response{
 
 	public function addHeader($name, $values, $exists = true) {
 		if ($exists || empty($this->headers[$name])) {
+			if (is_object($values) && method_exists($values, '__toString')) {
+				$values = [(string) $values];
+			}
 			foreach ((array)$values as $value) {
 				$this->sendHeader && $this->sendHeader($name, $value, empty($this->headers[$name]));
 				$this->headers[$name][] = (string) $value;
@@ -173,6 +179,9 @@ class Response{
 
 	public function setHeader($name, $values) {
 		if ($values !== NULL) {
+			if (is_object($values) && method_exists($values, '__toString')) {
+				$values = [(string) $values];
+			}
 			foreach ((array)$values as $value) {
 				$value = (string) $value;
 				$this->sendHeader && $this->sendHeader($name, $value, empty($this->headers[$name]));
@@ -286,7 +295,7 @@ class Response{
 			case 'Location':
 				$replace = true;
 				if (substr($value, 0, 2) === '//') {
-					$value = $request->getScheme() . ':'. $value;
+					$value = $this->request->getScheme() . ':'. $value;
 				}
 				break;
 		}

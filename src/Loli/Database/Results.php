@@ -138,18 +138,18 @@ class Results extends ArrayObject{
 		} elseif (strtoupper($order) === 'DESC' || $order == -1) {
 			$array = $this->data();
 			usort($array, function($a, $b) use($column) {
-				 if ($a == $b) {
+				 if ($a->$column == $b->$column) {
 			        return 0;
 			    }
-			    return ($a < $b) ? 1 : -1;
+			    return ($a->$column < $b->$column) ? 1 : -1;
 			});
 		} else {
 			$array = $this->data();
 			usort($array, function($a, $b) use($column) {
-				 if ($a == $b) {
+				 if ($a->$column == $b->$column) {
 			        return 0;
 			    }
-			    return ($a < $b) ? -1 : 1;
+			    return ($a->$column < $b->$column) ? -1 : 1;
 			});
 		}
 		return $this->clear()->write($array);

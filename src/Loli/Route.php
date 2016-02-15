@@ -11,6 +11,8 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
+use App\Auth;
+use App\User;
 
 class Route extends ArrayObject{
 
@@ -18,6 +20,8 @@ class Route extends ArrayObject{
 		'request' => 'Loli\\Route::load',
 		'response' => 'Loli\\Route::load',
 		'ajaxJS' => 'Loli\\Route::load',
+		'auth' => 'Loli\\Route::load',
+		'user' => 'Loli\\Route::load',
 	];
 
 	public static $rules = [];
@@ -70,6 +74,7 @@ class Route extends ArrayObject{
 			if (substr($dirPath, -1, 1) !== '/') {
 				$dirPath .= '/';
 			}
+
 			foreach (self::$rules as $route) {
 
 				// 协议
@@ -120,7 +125,7 @@ class Route extends ArrayObject{
 
 				// 是目录就跳到目录去
 				if (!$route['isFile'] && in_array($method, ['GET', 'HEAD']) && substr($route['path'], -1, 1) === '/' && substr($path, -1, 1) !== '/') {
-					throw new Message(301, Message::NOTICE, ['redirect' => $scheme .'://' . $host . $path . '/' . (($queryString = merge_string($this->request->getQuerys())) ? '?' . $queryString: '')], '', 0);
+					throw new Message(301, Message::SUCCESS, ['redirect' => $scheme .'://' . $host . $path . '/' . (($queryString = merge_string($this->request->getQuerys())) ? '?' . $queryString: '')], '', 0);
 				}
 
 				$params = $replace = [];
@@ -169,7 +174,8 @@ class Route extends ArrayObject{
 
 			$this->controller = $controller;
 			$this->controller = [strtr($this->controller[0], '\\', '/'), $this->controller[1]];
-			$this->nodes = explode('/', implode('/', $this->controller));
+			$this->node = explode('/', implode('/', $this->controller));
+
 
 
 			if (!class_exists($class = 'App\Controllers\\' . strtr($controller[0], '/.', '\\\\'))) {
@@ -180,8 +186,7 @@ class Route extends ArrayObject{
 			$class = new $class;
 
 			// 中间键
-			$middleware = $this->middleware($class);
-
+			$middleware = $this->middleware($class, $this->controller[1]);
 
 			$params +=  $this->request->getParams();
 
@@ -247,10 +252,12 @@ class Route extends ArrayObject{
 			}
 		}
 
+
 		//  消息对象
 		if ($view instanceof Message) {
 			$data = ['messages' => []];
 			$message = $view;
+			$codes = [];
 			while ($message) {
 				$data += $message->getData();
 				$data['messages'][] = $message;
@@ -262,6 +269,8 @@ class Route extends ArrayObject{
 					$data['refresh'] = $message->getRefresh();
 				}
 				$this->response->addHeader('X-Message', $message->getCode() . '.' . $message->getType());
+				$codes[] = $message->getCode();
+
 
 				$message = $message->getPrevious();
 			}
@@ -274,12 +283,26 @@ class Route extends ArrayObject{
 					$this->response->addHeader('Location', $data['redirect'], false);
 				} else {
 					// 是 200-599 的状态码 设置 http 状态码
-					if (is_int($code = $view->getCode()) && $code >= 200 && $code < 600) {
-						$this->response->setStatus($code);
+					$message = $view;
+					while ($message) {
+						if (is_int($code = $message->getCode()) && $code >= 200 && $code < 600) {
+							$this->response->setStatus($code);
+							break;
+						}
+						$message = $message->getPrevious();
 					}
 				}
 			}
-			$view = new View($this->response->getStatus() >= 400 &&  $this->response->getStatus() < 600 ? ['errors/' . $this->response->getStatus(), 'errors', 'messages'] : ['messages'], $data);
+
+			$views = [];
+			if (($code = min($codes)) < 100) {
+				$views[] = 'messages/' . $code;
+			}
+			if ($this->response->getStatus() >= 200 &&  $this->response->getStatus() < 600) {
+				$views[] = 'messages/' . $this->response->getStatus();
+			}
+			$views[] = 'messages';
+			$view = new View($views, $data);
 		}
 		$this->request->getToken();
 		if ($this->response->hasMessage()) {
@@ -291,18 +314,15 @@ class Route extends ArrayObject{
 
 
 
-	protected function middleware(Controller $controller) {
-		$method = strtolower($this->controller[1]);
-		foreach (empty($controller->middleware) ? [] : $controller->middleware as $key => $middleware) {
+	protected function middleware(Controller $controller, $method = __FUNCTION__) {
+		$method = strtolower($method);
+		foreach (isset($controller->middleware) ? $controller->middleware : [] as $key => $middleware) {
 			if ($is = (strtolower($key) === $method)) {
 				break;
 			}
 		}
 		if (empty($is)) {
-			$middleware = empty($controller->defaultMiddleware) ? [] : $controller->defaultMiddleware;
-		}
-		if (!empty($controller->mustMiddleware)) {
-			$middleware = $middleware + $controller->mustMiddleware;
+			$middleware = isset($controller->defaultMiddleware) ? $controller->defaultMiddleware : [];
 		}
 		$results = [];
 		foreach ($middleware as $key => $config) {
@@ -492,6 +512,28 @@ class Route extends ArrayObject{
 			case 'ajaxJS':
 				// 请求对象
 				$result = self::request()->getParam('_token') === self::request()->getToken();
+				break;
+			case 'auth':
+				// 验证信息
+				if (!$result = Auth::selectRow(self::request()->getToken())) {
+					$request = self::request();
+					$result = new Auth(['token' => $request->getToken(), 'ip' => $request->getClientAddr(), 'user_id' => 0, 'user_agent' => substr($request->getHeader('User-Agent'), 0, 255)]);
+					$result->insert();
+				}
+				break;
+			case 'user':
+				// 用户信息
+				$auth = self::auth();
+				$result = new User(['id' => $auth->user_id]);
+				if ($result->id) {
+					$result->select();
+				} else {
+					foreach ($auth as $key => $value) {
+						if (in_array($key, ['timezone', 'language'], true)) {
+							$result->$key = $value;
+						}
+					}
+				}
 				break;
 			default:
 				throw new Exception('Unregistered route object');

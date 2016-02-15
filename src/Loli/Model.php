@@ -81,7 +81,7 @@ class Model extends Document{
 			$static[static::class] = $columns;
 		}
 		if (empty($static[static::class][$name])) {
-			throw new DatabaseException('Model.columnInfo('. $name .')', 'Unknown column');
+			throw new DatabaseException(static::class . '.columnInfo('. $name .')', 'Unknown column');
 		}
 		return $static[static::class][$name];
 	}
@@ -188,14 +188,18 @@ class Model extends Document{
 	}
 
 
-	public function can() {
+	public function can($name, ...$args) {
 		return true;
+	}
+
+	public function cant(...$args) {
+		return !$this->can(...$args);
 	}
 
 
 	public function throwCan(...$args) {
-		if (!$this->can(...$args)) {
-			throw new Message([90]);
+		if (!$this->cant(...$args)) {
+			throw new Message([50, 'Permission'], Message::ERROR);
 		}
 	}
 
