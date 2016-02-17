@@ -62,7 +62,7 @@ class Files extends ArrayObject{
 		if (($key = $this->key()) !== NULL) {
 			return parent::__get($key)->__call($name, $args);
 		}
-		throw new Exception('files.'. $name .'()', 'The results is empty');
+		throw new Exception(__METHOD__.'('.$name.')', 'The results is empty');
 	}
 
 	public function __toString() {

@@ -35,7 +35,7 @@ class MySQLi extends Base{
 		shuffle($server['hostname']);
 
 		if (!empty($server['protocol']) && !in_array($server['protocol'], ['mysql', 'mysqli', 'mariadb'], true)) {
-			throw new ConnectException('this.connect()', 'Does not support this protocol');
+			throw new ConnectException(__METHOD__.'()', 'Does not support this protocol');
 		}
 
 		$hostname = explode(':', reset($server['hostname']), 2) + [1 => 3306];
@@ -46,12 +46,12 @@ class MySQLi extends Base{
 
 		// 链接出错
 		if ($link->connect_errno) {
-			throw new ConnectException('this.MySQLi()', $link->connect_error, '', $link->connect_errno);
+			throw new ConnectException(__METHOD__.'().MySQLi()', '', $link->connect_error, '', $link->connect_errno);
 		}
 
 		// 选择数据库出错
 		if ($link->error) {
-			throw new ConnectException('this.MySQLi().select_db()', $link->error, '', $link->errno);
+			throw new ConnectException(__METHOD__.'().MySQLi().select_db()', $link->error, '', $link->errno);
 		}
 
 		$link->set_charset('utf8');
@@ -73,7 +73,7 @@ class MySQLi extends Base{
 
 		// 查询为空
 		if (!$query = trim($query)) {
-			throw new Exception('Query', 'Query is empty');
+			throw new Exception(__METHOD__.'()', 'Query is empty');
 		}
 		$query = trim($query, ';') . ';';
 		$this->statistics[] = $query;
@@ -114,41 +114,41 @@ class MySQLi extends Base{
 
 	public function beginTransaction() {
 		if ($this->inTransaction) {
-			throw new Exception('this.beginTransaction()', 'There is already an active transaction');
+			throw new Exception(__METHOD__.'()', 'There is already an active transaction');
 		}
 		$this->statistics[] = 'beginTransaction;';
 		$this->inTransaction = true;
 		$link = $this->link(false);
 		if (!$link->autoCommit(false) && $link->errno) {
-			throw new Exception('this.beginTransaction()', $link->error, '', $link->errno);
+			throw new Exception(__METHOD__.'()', $link->error, '', $link->errno);
 		}
 		return $this;
 	}
 
 	public function commit() {
 		if (!$this->inTransaction) {
-			throw new Exception('this.commit()', 'There is no active transaction');
+			throw new Exception(__METHOD__.'()', 'There is no active transaction');
 		}
 		$this->statistics[] = 'commit;';
 		$this->inTransaction = false;
 		$link = $this->link(false);
 		$link->commit();
 		if (!$link->commit() && $link->errno) {
-			throw new Exception('this.commit()', $link->error, '', $link->errno);
+			throw new Exception(__METHOD__.'()', $link->error, '', $link->errno);
 		}
 		return $this;
 	}
 
 	public function rollBack() {
 		if (!$this->inTransaction) {
-			throw new Exception('this.rollBack()', 'There is no active transaction');
+			throw new Exception(__METHOD__.'()', 'There is no active transaction');
 		}
 		$this->statistics[] = 'rollBack;';
 		$this->inTransaction = false;
 		$link = $this->link(false);
 		$rollback = $link->rollBack();
 		if (!$link->rollBack() && $link->errno) {
-			throw new Exception('this.rollBack()', $link->error, '', $link->errno);
+			throw new Exception(__METHOD__.'()', $link->error, '', $link->errno);
 		}
 		return $this;
 	}
@@ -164,7 +164,7 @@ class MySQLi extends Base{
 		$link = $this->link();
 		$this->statistics[] = 'Ping;';
 		if (!$link->ping()) {
-			throw new ConnectException('this.ping()', $link->error, '', $link->errno);
+			throw new ConnectException(__METHOD__.'()', $link->error, '', $link->errno);
 		}
 		return $this;
 	}
@@ -173,7 +173,7 @@ class MySQLi extends Base{
 	public function key($key, $throw = false) {
 		if (!$key || !is_string($key) || !preg_match('/^(?:([0-9a-z_]+)\.)?([0-9a-z_]+|\*)$/i', $key, $matches) || ($matches[1] && is_numeric($matches[1])) || is_numeric($matches[2])) {
 			if ($throw) {
-				throw new Exception('this.key('.$key.')', 'Key name is not formatted correctly');
+				throw new Exception(__METHOD__.'('.$key.')', 'Key name is not formatted correctly');
 			}
 			return false;
 		}

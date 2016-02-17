@@ -322,7 +322,7 @@ class Cursor implements IteratorAggregate{
 	 */
 	public function values($values) {
 		if ($values instanceof Param) {
-			throw new Exception('cursor.values', 'Class name can not be (Param)');
+			throw new Exception(__METHOD__.'()', 'Class name can not be (Param)');
 		}
 		if (!$this->documents) {
 			$this->documents[] = new $this->class;
@@ -373,7 +373,7 @@ class Cursor implements IteratorAggregate{
 	 */
 	public function document($document) {
 		if ($document instanceof Param) {
-			throw new Exception('cursor.document', 'Class name can not be (Param)');
+			throw new Exception(__METHOD__.'()', 'Class name can not be (Param)');
 		}
 		++$this->increment;
 		$this->documents[] = $document instanceof $this->class ? $document : new $this->class($document);
@@ -552,7 +552,7 @@ class Cursor implements IteratorAggregate{
 
 		// 无数据库信息
 		if (!$this->database) {
-			throw new Exception('cursor.database', 'No database objects');
+			throw new Exception(__METHOD__.'()', 'No database objects');
 		}
 
 		// 构造器
@@ -564,7 +564,6 @@ class Cursor implements IteratorAggregate{
 			$this->builder->clear();
 			$this->current = $this->increment;
 		}
-
 
 		// 构造器无方法
 		if (!method_exists($this->builder, $name)) {
@@ -579,7 +578,7 @@ class Cursor implements IteratorAggregate{
 		$lowerName = strtolower($name);
 		if ($args && in_array($lowerName, ['update', 'delete', 'select', 'selectrow', 'count', 'insert'], true)) {
 			if (count($args) !== count($this->primary)) {
-				throw new Exception('cursor.' . $name, 'The primary key is not the same number of parameters');
+				throw new Exception(__METHOD__.'('.$name.')', 'The primary key is not the same number of parameters');
 			}
 			$i = 0;
 			foreach($this->primary as $primary) {

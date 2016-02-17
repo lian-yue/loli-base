@@ -34,26 +34,26 @@ class PDO extends Base{
 		shuffle($server['hostname']);
 		// 不支持的驱动器
 		if (!in_array($server['protocol'], \PDO::getAvailableDrivers())) {
-			throw new ConnectException('this.PDO()', 'Does not support this protocol');
+			throw new ConnectException(__METHOD__.'().PDO()', 'Does not support this protocol');
 		}
 		$hostname = explode(':', reset($server['hostname']), 2);
 		try {
 			switch ($server['protocol']) {
 				case 'mysql':
-					$dsnQuery = 'this.PDO(mysql:host='. $hostname[0] . (empty($hostname[1]) ? '' : ';port=' . $hostname[1]) . ')';
+					$dsnQuery = __METHOD__.'().PDO(mysql:host='. $hostname[0] . (empty($hostname[1]) ? '' : ';port=' . $hostname[1]) . ')';
 					$link = new \PDO('mysql:host='. $hostname[0] . (empty($hostname[1]) ? '' : ';port=' . $hostname[1]) .';dbname='.  $server['database'] . ';charset=UTF8', $server['username'], $server['password'], [\PDO::ATTR_PERSISTENT => true, \PDO::ATTR_AUTOCOMMIT => true, \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
 					$link->exec('SET TIME_ZONE = `+0:00`');
 					break;
 				case 'sqlite':
 					// sqlite 需要当前 文件目录的写入权限
 					if (!is_writable(dirname($server['database']))) {
-						throw new ConnectException('this.PDO()', 'File directory is not writable');
+						throw new ConnectException(__METHOD__.'().PDO()', 'File directory is not writable');
 					}
 					$link = new \PDO('sqlite:' . $server['database'] . ';charset=UTF8', $server['username'], $server['password'], [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
-					$dsnQuery = 'this.PDO(sqlite:'.$this->database().')';
+					$dsnQuery = __METHOD__.'().PDO(sqlite:'.$this->database().')';
 					break;
 				default:
-					throw new ConnectException('this.PDO()', 'Unknown database protocol');
+					throw new ConnectException(__METHOD__.'().PDO()', 'Unknown database protocol');
 			}
 		} catch (PDOException $e) {
 			throw new ConnectException($dsnQuery, $e->getMessage());
@@ -65,10 +65,10 @@ class PDO extends Base{
 		$this->statistics[] = 'Ping';
 		try {
 			if (!($status = $this->link()->getAttribute(\PDO::ATTR_CONNECTION_STATUS)) || stripos($status, 'has gone away')) {
-				throw new ConnectException('this.ping()', $status);
+				throw new ConnectException(__METHOD__.'()', $status);
 			}
 		} catch (PDOException $e) {
-			throw new ConnectException('this.ping()', $e->getMessage());
+			throw new ConnectException(__METHOD__.'()', $e->getMessage());
 		}
 		return $this;
 	}
@@ -84,7 +84,7 @@ class PDO extends Base{
 
 		// 查询为空
 		if (!$query = trim($query)) {
-			throw new Exception('Query', 'Query is empty');
+			throw new Exception(__METHOD__.'()', 'Query is empty');
 		}
 		$query = trim($query, ';') . ';';
 		$this->statistics[] = $query;
@@ -113,7 +113,7 @@ class PDO extends Base{
 
 	public function beginTransaction() {
 		if ($this->inTransaction) {
-			throw new Exception('this.beginTransaction()', 'There is already an active transaction');
+			throw new Exception(__METHOD__.'()', 'There is already an active transaction');
 		}
 		$this->statistics[] = 'beginTransaction;';
 		try {
@@ -121,14 +121,14 @@ class PDO extends Base{
 			$this->link(false)->beginTransaction();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
-			throw new Exception('this.beginTransaction()', $e->getMessage(), $info[0], $info[1]);
+			throw new Exception(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]);
 		}
 		return $this;
 	}
 
 	public function commit() {
 		if (!$this->inTransaction) {
-			throw new Exception('this.commit()', 'There is no active transaction');
+			throw new Exception(__METHOD__.'()', 'There is no active transaction');
 		}
 		$this->statistics[] = 'commit;';
 		try {
@@ -136,14 +136,14 @@ class PDO extends Base{
 			$this->link(false)->commit();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
-			throw new Exception('this.commit()', $e->getMessage(), $info[0], $info[1]);
+			throw new Exception(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]);
 		}
 		return $this;
 	}
 
 	public function rollBack() {
 		if (!$this->inTransaction) {
-			throw new Exception('this.rollBack()', 'There is no active transaction');
+			throw new Exception(__METHOD__.'()', 'There is no active transaction');
 		}
 		$this->statistics[] = 'rollBack;';
 		try {
@@ -151,7 +151,7 @@ class PDO extends Base{
 			$this->link(false)->rollBack();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
-			throw new Exception('this.rollBack()', $e->getMessage(), $info[0], $info[1]);
+			throw new Exception(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]);
 		}
 		return $this;
 	}
@@ -164,7 +164,7 @@ class PDO extends Base{
 			return $this->link(false)->lastInsertId(...$args);
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['IM001', 0];
-			throw new Exception('this.lastInsertId()', $e->getMessage(), $info[0], $info[1]);
+			throw new Exception(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]);
 		}
 	}
 
@@ -172,7 +172,7 @@ class PDO extends Base{
 	public function key($key, $throw = false) {
 		if (!$key || !is_string($key) || !preg_match('/^(?:([0-9a-z_]+)\.)?([0-9a-z_]+|\*)$/i', $key, $matches) || ($matches[1] && is_numeric($matches[1])) || is_numeric($matches[2])) {
 			if ($throw) {
-				throw new Exception('this.key('.$key.')', 'Key name is not formatted correctly');
+				throw new Exception(__METHOD__.'('.$key.')', 'Key name is not formatted correctly');
 			}
 			return false;
 		}

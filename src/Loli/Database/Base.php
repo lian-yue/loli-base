@@ -79,10 +79,10 @@ abstract class Base {
 
 		$this->default = reset($servers) + ['protocol' => '', 'hostname' => ['localhost'], 'username' => 'root', 'password' => '', 'readonly' => false];
 		if (!$this->default['protocol'] && !$this->protocol) {
-			throw new ConnectException('this.__construct()', 'Link protocol is empty');
+			throw new ConnectException(__METHOD__.'()', 'Link protocol is empty');
 		}
 		if (!$this->default['database']) {
-			throw new ConnectException('this.__construct()', 'Database is not selected');
+			throw new ConnectException(__METHOD__.'()', 'Database is not selected');
 		}
 		if (!$this->protocol) {
 			$this->protocol = $this->default['protocol'];
@@ -187,7 +187,7 @@ abstract class Base {
 		}
 
 		if (!$this->_writeLink) {
-			throw new ConnectException('this.link()', 'Database link is unavailable');
+			throw new ConnectException(__METHOD__.'()', 'Database link is unavailable');
 		}
 
 		// 自动 ping

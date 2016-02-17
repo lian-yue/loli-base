@@ -208,6 +208,9 @@ class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableI
 		if (method_exists($this, '_call')) {
 			return $this->_call($name, $args);
 		}
-		throw new Exception('Method or function does not exist');
+		throw new Exception(static::class .'::'. __FUNCTION__ .'('. $name .') Method or function does not exist');
+	}
+	public function __debugInfo() {
+		return $this->_data;
 	}
 }

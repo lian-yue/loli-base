@@ -39,7 +39,7 @@ abstract class Builder{
 	public function __construct(Cursor $cursor) {
 		$this->cursor = $cursor;
 		if (!$this->database) {
-			throw new Exception('Builder.__construct()', 'Database connection can not be empty');
+			throw new Exception(__METHOD__.'()', 'Database connection can not be empty');
 		}
 	}
 

@@ -652,7 +652,7 @@ class Validator {
 			$input['title'] = Language::translate(empty($input['title']) ? trim(ucfirst(strtolower(str_replace(['-', '_'], ' ', $input['name'])))) : $input['title']);
 		}
 
-		if (isset($input['errorcode']) || !isset($this->rules[$input['name']]['errorcode'])) {
+		if (!isset($input['errorcode']) && !isset($this->rules[$input['name']]['errorcode'])) {
 			if (!empty($input['errormessage']) && is_int($input['errormessage'])) {
 				$input['errorcode'] = $input['errormessage'];
 			} else {

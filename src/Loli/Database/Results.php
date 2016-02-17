@@ -64,7 +64,7 @@ class Results extends ArrayObject{
 		if (($key = $this->key()) !== NULL) {
 			return parent::__get($key)->__call($name, $args);
 		}
-		throw new Exception('results.'. $name .'()', 'The results is empty');
+		throw new Exception(__METHOD__.'('.$name.')', 'The results is empty');
 	}
 
 	public function query($column, $value, $compare = '=') {
@@ -124,7 +124,7 @@ class Results extends ArrayObject{
 				}
 				break;
 			default:
-				throw new Exception('Results.query()', 'Unknown query compare');
+				throw new Exception(__METHOD__. '()', 'Unknown query compare');
 		}
 		return $this->clear()->write($array);
 	}

@@ -19,7 +19,7 @@ class Route extends ArrayObject{
 	protected static $callback = [
 		'request' => 'Loli\\Route::load',
 		'response' => 'Loli\\Route::load',
-		'ajaxJS' => 'Loli\\Route::load',
+		'csrf' => 'Loli\\Route::load',
 		'auth' => 'Loli\\Route::load',
 		'user' => 'Loli\\Route::load',
 	];
@@ -509,9 +509,9 @@ class Route extends ArrayObject{
 				// 响应对象
 				$result = new HTTP\Response($route->request);
 				break;
-			case 'ajaxJS':
+			case 'csrf':
 				// 请求对象
-				$result = self::request()->getParam('_token') === self::request()->getToken();
+				$result = self::request()->getParam('_csrf') !== self::request()->getToken();
 				break;
 			case 'auth':
 				// 验证信息

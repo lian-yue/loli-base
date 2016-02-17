@@ -1024,7 +1024,7 @@ class SQLBuilder extends Builder{
 				$command = 'SELECT * FROM sqlite_master WHERE type=\'table\' AND name=:table;';
 				break;
 			default:
-				throw new Exception('builder.exists()', 'Does not support this protocol');
+				throw new Exception(__METHOD__.'()', 'Does not support this protocol');
 		}
 
 		$command = strtr($command, [':table' => $table]);
@@ -1099,7 +1099,7 @@ class SQLBuilder extends Builder{
 					];
 					break;
 				default:
-					throw new Exception('builder.create()', 'Does not support this protocol');
+					throw new Exception(__METHOD__.'()', 'Does not support this protocol');
 			}
 
 			foreach ($this->_columns() as $column) {
@@ -1188,7 +1188,7 @@ class SQLBuilder extends Builder{
 								break;
 							}
 							if (empty($value['type'])) {
-								throw new Exception('builder.create() :' . $value['type'], 'Unknown data type');
+								throw new Exception(__METHOD__.'() :' . $value['type'], 'Unknown data type');
 							}
 						}
 						if (empty($commandValues['unique'])) {
@@ -1550,7 +1550,7 @@ class SQLBuilder extends Builder{
 
 	public function select() {
 		// 读缓存数据
-		if ($this->_isCache) {
+		if (!$this->_isCache) {
 
 		} elseif ($this->execute) {
 			if (!$this->_lock() && isset($this->_data['select'])) {
@@ -1614,9 +1614,8 @@ class SQLBuilder extends Builder{
 
 
 	public function count() {
-
 		// 读缓存数据
-		if ($this->_isCache) {
+		if (!$this->_isCache) {
 
 		} elseif ($this->execute) {
 			if (!$this->_lock() && isset($this->_data['count'])) {
@@ -1647,7 +1646,6 @@ class SQLBuilder extends Builder{
 			// 用缓存的
 		} else {
 			// 需要读取数据的
-
 			// rows 的
 			if ($this->_isCache && $this->_rows()) {
 				$this->_isCache = false;
@@ -1656,11 +1654,22 @@ class SQLBuilder extends Builder{
 			}
 
 			// 数量
-			$this->_data['count'] = 0;
-			foreach ((array)$this->database->command($this->_data['countCommand'], $this->getReadonly(), $this->class) as $row) {
-				$this->_data['count'] += array_sum((array) $row);
+			$result = $this->database->command($this->_data['countCommand'], $this->getReadonly());
+			if (is_scalar($result)) {
+				$this->_data['count'] = $result;
+			} else {
+				$this->_data['count'] = 0;
+				foreach ($result as $row) {
+					if (is_scalar($row)) {
+						$this->_data['count'] += $row;
+					} else {
+						$this->_data['count'] += array_sum(to_array($row));
+					}
+				}
 			}
-			$this->cache[0] ($this->_data['count'] || $this->cache[2]) && Cache::group('database.' . $this->database->database())->set($this->_data['count'], json_encode(['cache' => $this->cache, 'class' => $this->class] + $this->_data['countReplaces']), $this->cache[0]);
+			if ($this->cache[0] && ($this->_data['count'] || $this->cache[2])) {
+				Cache::group('database.' . $this->database->database())->set($this->_data['count'], json_encode(['cache' => $this->cache, 'class' => $this->class] + $this->_data['countReplaces']), $this->cache[0]);
+			}
 		}
 
 		return $this->_data['count'];
