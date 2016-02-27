@@ -13,7 +13,7 @@
 namespace Loli;
 use Loli\Database\Param;
 use Loli\Database\Document;
-use Loli\Database\Exception as DatabaseException;
+use Loli\Database\QueryException;
 class Model extends Document{
 
 	// indexs 索引 重命名 键信息的
@@ -53,7 +53,7 @@ class Model extends Document{
 
 
 
-	public static function validator(&$data = [], array $rules = [], $merge = false, $message = NULL) {
+	public static function validator($data = [], array $rules = [], $merge = false, $message = NULL) {
 		static $static = [];
 		if (!isset($static[static::class])) {
 			$static[static::class] = (new Validator(static::$rules, static::$group === 'default' ? static::$group : [static::$group, 'default']))->model(static::class);
@@ -81,7 +81,7 @@ class Model extends Document{
 			$static[static::class] = $columns;
 		}
 		if (empty($static[static::class][$name])) {
-			throw new DatabaseException(static::class . '.columnInfo('. $name .')', 'Unknown column');
+			throw new QueryException(static::class . '::columnInfo('. $name .')', 'Unknown column');
 		}
 		return $static[static::class][$name];
 	}
@@ -90,13 +90,13 @@ class Model extends Document{
 
 	protected function primary() {
 		if (!static::$primary) {
-			throw new DatabaseException('Model.primary()', 'Primary key cannot be empty');
+			throw new QueryException('Model.primary()', 'Primary key cannot be empty');
 		}
 		$args = [];
 		foreach (static::$primary as $primary) {
 			$value = $this[$primary];
 			if ($value === NULL) {
-				throw new DatabaseException('Model.primary()', $this);
+				throw new QueryException('Model.primary()', $this);
 			}
 			$args[] = $value;
 		}
@@ -105,7 +105,7 @@ class Model extends Document{
 
 	public function __set($name, $value) {
 		if ($name === NULL) {
-			throw new DatabaseException('Model.__set()', 'The column name cannot be null');
+			throw new QueryException('Model.__set(NULL)', 'The column name cannot be null');
 		}
 		if ($value !== NULL && !$value instanceof Param && static::columnInfo($name)->process) {
 			switch (static::columnInfo($name)->type) {
@@ -150,7 +150,7 @@ class Model extends Document{
 
 	public function select() {
 		if (!$select = static::database()->selectRow(...$this->primary())) {
-			throw new DatabaseException('Model.select()', $this);
+			throw new QueryException('Model.select()', $this);
 		}
 		$this->clear()->merge($select);
 		return $this;
@@ -158,8 +158,8 @@ class Model extends Document{
 
 	public function insert() {
 		$cursor = static::database();
-		if (!$cursor->values($this->data())->insert()) {
-			throw new DatabaseException('Model.insert()', $this);
+		if (!$cursor->values($this->toArray())->insert()) {
+			throw new QueryException('Model.insert()', $this);
 		}
 
 		if (static::$insertId) {
@@ -196,13 +196,11 @@ class Model extends Document{
 		return !$this->can(...$args);
 	}
 
-
 	public function throwCan(...$args) {
 		if (!$this->cant(...$args)) {
-			throw new Message([50, 'Permission'], Message::ERROR);
+			throw new Message(['message' => 'permission_denied', 'name' => 'Permission'], 403);
 		}
 	}
-
 
 	public function jsonSerialize() {
 		$data = parent::jsonSerialize();

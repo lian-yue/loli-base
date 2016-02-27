@@ -14,45 +14,25 @@ namespace Loli;
 use IteratorAggregate;
 use JsonSerializable;
 
+use Psr\Http\Message\UriInterface;
+
+
+use GuzzleHttp\Psr7\Uri;
+
+
 /*
-消息模块
-1000 以前是系统预留的
 
-1	- 99 系统错误代码(%s)
+1 = 系统错误 {value} ({code})
 
-1 ＝ 基本错误(%s)
-2 ＝ HTTP错误(%s)
-3 ＝ 权限错误(文件权限什么的)(%s)
-4 ＝ 缓存错误(%s)
-5 ＝ 数据库错误(%s)
-6 ＝ 储存错误(%s)
-7 ＝ 通讯错误(%s)
-90 ＝ 无权限(%s)
-99 ＝ Exception错误(%s)
 
+50 = 验证器错误 {name} {title} {type}
+51 =
 
 200 － 399 执行成功 并且要设置http状态码的
-400 － 599 ＝ 执行失败 并且 要设置 http 状态码的
 
-
-1000-1099  验证消息
-1000-1099 默认状态码
-
-
- 组  表(模块) 字段 状态
- 00   00     00  00
-
-组 不能 未 0
-
+400 － 599 = 执行失败 并且 要设置 http 状态码的
 */
-class Message extends Exception implements IteratorAggregate, JsonSerializable{
-	const SUCCESS = 1;
-	const WARNING = 2;
-	const ERROR = 3;
-
-	protected $type = 1;
-
-	protected $code = 200;
+class Message extends \RuntimeException implements IteratorAggregate, JsonSerializable{
 
 	protected $args = [];
 
@@ -64,11 +44,11 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable{
 
 	protected $hosts = [];
 
-	public function __construct($message = [], $type = self::SUCCESS, $data = [], $redirect = true, $refresh = 3, Message $previous = NULL) {
+	public function __construct($message = [], $code = 200, $data = [], $redirect = true, $refresh = 3, Message $previous = NULL) {
 		$this->hosts = empty($_SERVER['LOLI']['message']['hosts']) ? [] : (array) $_SERVER['LOLI']['message']['hosts'];
 
 		// previous　变量自动缩进
-		foreach(['type' => self::SUCCESS, 'data' => [], 'redirect' => false, 'refresh' => 3] as $key => $value) {
+		foreach(['code' => 200, 'data' => [], 'redirect' => false, 'refresh' => 3] as $key => $value) {
 			if ($$key instanceof Message) {
 				$previous = $$key;
 				$$key = $value;
@@ -79,66 +59,33 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable{
 			}
 		}
 
-		switch ($type) {
-			case self::ERROR:
-				$this->type = self::ERROR;
-				break;
-			case self::WARNING:
-				$this->type = self::WARNING;
-				break;
-			default:
-				$this->type = self::SUCCESS;
-		}
-
-
-
-		$message = $message && $message !== true && $message !== 1 ? (array) $message : [$this->type === self::ERROR ? 500 : 200];
-
-		// code
-		$code = (int) reset($message);
-
 		// data
 		$this->data = $data ? (array) $data : [];
 
 		// args
-		$this->args = $message;
-		unset($this->args[key($this->args)]);
-
-
-		$message = self::translate([$code] + $this->args);
+		$this->args = is_array($message) ? $message : ['message' => $message];
 
 		// 注册父级
-		parent::__construct($message, $code, $previous);
+		parent::__construct(self::translate($message), $code, $previous);
 
 		// refresh 刷新
 		$this->setRefresh(isset($data['refresh']) ? $data['refresh'] : $refresh);
 
 		// redirect
-		$this->setRedirect($redirect = isset($data['redirect']) ? $data['redirect'] : $redirect, isset($data['redirect']));
+		$this->setRedirect(isset($data['redirect']) ? $data['redirect'] : $redirect, isset($data['redirect']));
 
 	}
 
-	public function hasError() {
+	public function getErrors() {
+		$errors = [];
 		$message = $this;
 		do {
-			if ($message->getType() === self::ERROR) {
-				return true;
+			if (($message->getCode() > 0 && $message->getCode() < 100) || ($message->getCode() >= 400 && $message->getCode() < 600)) {
+				$errors[] = $message->getCode();
 			}
 		} while ($message = $message->getPrevious());
-		return false;
+		return $errors;
 	}
-
-	public function hasWarning() {
-		$message = $this;
-		do {
-			if ($message->getType() === self::WARNING) {
-				return true;
-			}
-		} while ($message = $message->getPrevious());
-		return false;
-	}
-
-
 
 	public function hasCode($codes = []) {
 		if (!$codes) {
@@ -153,12 +100,6 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable{
 		} while ($message = $message->getPrevious());
 		return false;
 	}
-
-
-	public function getType() {
-		return $this->type;
-	}
-
 
 	public function getArgs() {
 		return $this->args;
@@ -181,47 +122,86 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable{
 		return $this;
 	}
 
+
+
+
+	public function getParsedRedirect($redirect) {
+		if (!$redirect) {
+			return false;
+		}
+
+		if ($redirect instanceof UriInterface) {
+			return clone $redirect;
+		}
+
+		if (is_object($redirect)) {
+			return new Uri((string) $redirect);
+		}
+
+		$request = Route::request();
+		if ($parsedbody = $request->getParsedBody()) {
+			if (is_array($parsedbody) && !empty($parsedbody['redirect'])) {
+				return new Uri($parsedbody['redirect']);
+			}
+			if (is_object($parsedbody) && !empty($parsedbody->redirect)) {
+				return new Uri($parsedbody->redirect);
+			}
+		}
+
+		if (($params = $request->getQueryParams()) && !empty($params['redirect'])) {
+			return new Uri($params['redirect']);
+		}
+
+		if (($params = $request->getCookieParams()) && !empty($params['redirect'])) {
+			return new Uri($params['redirect']);
+		}
+
+		if ($referer = $request->getHeaderLine('Referer')) {
+			return new Uri($referer);
+		}
+
+		return new Uri('//'. $request->getUri()->getHost() . '/');
+	}
+
 	public function setRedirect($redirect, $whiteList = false) {
-
-
 		if ($redirect) {
-			$request = Route::request();
-			if (!$redirect instanceof URL) {
-				if (is_string($redirect) && $redirect !== '1' && $redirect !== 'true') {
 
-				} elseif (is_object($redirect)) {
-					$redirect = (string) $redirect;
-				} elseif ($redirect = $request->getParam('redirect', '')) {
-
-				} elseif ($redirect = $request->getCookie('redirect', '')) {
-
-				} elseif ($redirect = $request->getHeader('Referer')) {
-
-				} else {
-					$redirect = '//'. $request->getHeader('Host');
-				}
-				$redirect = new URL($redirect);
+			try {
+				$redirect = $this->getParsedRedirect($redirect);
+			} catch (\Exception $e) {
+				$redirect = new Uri('//'. $request->getUri()->getHost() . '/');
 			}
 
 
 			if (!$whiteList) {
-				if ($redirect->scheme && !in_array($redirect->scheme, ['http', 'https'], true)) {
+				$request = Route::request();
+
+				if ($redirect->getScheme() && !in_array($redirect->getScheme(), ['http', 'https'], true)) {
 					// 协议不是 http https
 					$error = true;
-				} elseif ($redirect->host && !preg_match('/(^|\.)('. implode('|', array_map(function($host){ return preg_quote($host, '/'); }, $this->hosts)) .')$/i', $redirect->host)) {
+				} elseif ($redirect->getHost() && !preg_match('/(^|\.)('. implode('|', array_map(function($host){ return preg_quote($host, '/'); }, $this->hosts)) .')$/i', $redirect->getHost())) {
 					// host 无效
 					$error = true;
-				} elseif ($redirect->user || $redirect->pass) {
+				} elseif ($redirect->getUserInfo()) {
 					// 带用户名和密码
 					$error = true;
-				} elseif (stripos($redirect->path, ':') !== false || stripos($redirect->path, ';') !== false) {
+				} elseif (stripos($redirect->getPath(), ':') !== false || stripos($redirect->getPath(), ';') !== false) {
 					$error = true;
 				}
 				if (isset($error)) {
-					$redirect = new URL('//' . $request->getHeader('Host'));
+					$redirect = new Uri('//'. $request->getUri()->getHost() . '/');
 				}
-				$redirect->query('_r', mt_rand());
-				$redirect->query('_message', $this->code . '.' . $this->type);
+				if ($redirect->getQuery()) {
+					parse_str($redirect->getQuery(), $queryParams);
+				} else {
+					$queryParams = [];
+				}
+				unset($queryParams['_r'], $queryParams['_message'], $queryParams['_message_code']);
+				$queryParams['_r'] = mt_rand();
+				$queryParams['_message'] = $this->getMessage();
+				$queryParams['_message_code'] = $this->getCode();
+				$queryParams = http_build_query($queryParams, null, '&');
+				$redirect = $redirect->withQuery($queryParams);
 			}
 		} else {
 			$redirect = false;
@@ -240,28 +220,15 @@ class Message extends Exception implements IteratorAggregate, JsonSerializable{
 	}
 
 	public function jsonSerialize() {
-		return ['message' => $this->getMessage(), 'code' => $this->getCode(), 'type' => $this->getType(), 'args' => $this->getArgs()];
+		return ['message' => $this->getMessage(), 'code' => $this->getCode(), 'args' => $this->getArgs()];
     }
 
     public function __toString() {
-    	switch ($this->type) {
-    		case self::ERROR:
-    			$type = 'error';
-    			break;
-			case self::WARNING:
-    			$type = 'warning';
-    			break;
-    		default:
-    			$type = 'notice';
-    	}
-		return '<p class="message message-type-'. $this->type .'message-'. $type .'">'. $this->getMessage() .'</p>';
+		$name = $this->getCode() >= 400 ? 'error' : 'notice';
+		return '<p class="message message-'. $name .'message-'. $this->getCode() .'">'. $this->getMessage() .'</p>';
     }
 
-
 	public static function translate($text, $original = true) {
-		if ($original === true && is_array($text) && is_int($code = reset($text)) && $code >= 1000000) {
-			$original = Language::translate([1000 + substr($code, -2, 2)] + $text, ['message'], $code);
-		}
-		return Language::translate($text, ['message'], $original);
+		return Language::translate($text, ['message', 'default'], $original);
 	}
 }

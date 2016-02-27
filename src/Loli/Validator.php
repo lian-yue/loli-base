@@ -11,7 +11,10 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-use Loli\HTTP\Files;
+use Psr\Http\Message\UploadedFileInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+
 class Validator {
 	// 模块验证表格
 	protected $rules = [
@@ -35,15 +38,14 @@ class Validator {
 			'disabled' => '',			// 禁用
 			'readonly' => '',			// 禁用
 			'errormessage' => '',		// 错误消息
-			'errorcode' => '',			// 错误消息代码
 		],*/
 	];
 
 	protected $attributes = [
 		'name',
 		'required',
-		'minLength',
-		'maxLength',
+		'minlength',
+		'maxlength',
 		'size',
 		'min',
 		'max',
@@ -102,9 +104,12 @@ class Validator {
 		return $this;
 	}
 
-	public function make(&$data, array $rules = [], $merge = false, $message = NULL) {
+	public function make($data, array $rules = [], $merge = false, $message = NULL) {
+		if ($data instanceof ServerRequestInterface) {
+			$data = array_merge($data->getQueryParams(), ($parsedbody = $data->getParsedBody()) ? to_array($parsedbody) : [], $data->getUploadedFiles());
+		}
 		if (is_scalar($data)) {
-			throw new Message(500, new Message([1, 'Verification data is scalar'], Message::ERROR));
+			throw new \InvalidArgumentException('Verification data is scalar');
 		}
 		$rules = $this->rules($rules, $merge);
 
@@ -144,48 +149,52 @@ class Validator {
 
 			$value = &$data[$input['name']];
 
-			 // 设置类型
+			// 设置类型
 			if (isset($input['value'])) {
-				settype($value, gettype($input['value']));
-			} elseif (isset($merge[$key]['value'])) {
-				settype($value, gettype($merge[$key]['value']));
-			}
+				if (is_array($input['value'])) {
+ 					$value = to_array($value);
+				} elseif (is_string($input['value'])) {
+ 					$value = to_string($value);
+				} else {
+ 					settype($value, gettype($input['value']));
+ 				}
+			 }
 
 			// 类型检查
-			$empty = $value === '' || $value === false || $value === [] || ($value instanceof Files && $value->count() === 0);
-
-			$method = studly($input['type']) . 'Type';
+			$empty = $value === '' || $value === false || $value === [] || ($value instanceof UploadedFileInterface && $value->getError() === UPLOAD_ERR_NO_FILE);
+			$method = lcfirst(studly($input['type'])) . 'Type';
 			if (!method_exists($this, $method)) {
-				throw new Exception('Validator form type does not exist');
+				throw new \BadFunctionCallException(static::class .'::' .$method . '() Validator form type does not exist');
 			}
-
-			if (is_int($errorcode = $this->$method($value, $empty, $input, $data, $message))) {
-				$message = new Message([$input['errorcode'] + $errorcode, $input['title'], $input['name'], $input['type']], Message::ERROR, $message);
+			$error = $this->$method($value, $empty, $input, $data, $message);
+			if ($error instanceof Message) {
+				$message = $error;
 				continue;
-			} elseif ($errorcode instanceof Message) {
-				$message = $errorcode;
+			} elseif ($error) {
+				$message = new Message(['message' => $error, 'title' => $input['title'], 'name' => $input['name'], 'rule' => $input['type']], 50, $message);
 				continue;
 			}
 
 
 
 			// 属性
-			$empty = $value === '' || $value === false || $value === [] || ($value instanceof Files && $value->count() === 0);
-			$continue = false;
+			$empty = $value === '' || $value === false || $value === [] || ($value instanceof UploadedFileInterface && $value->getError() === UPLOAD_ERR_NO_FILE);
 			foreach($this->attributes as $attribute) {
 				if (!isset($input[$attribute]) || $input[$attribute] === false) {
 					continue;
 				}
-				$method = studly($attribute) . 'Attribute';
+				$method = lcfirst(studly($attribute)) . 'Attribute';
 				if (!method_exists($this, $method)) {
-					throw new Exception('Validator form attribute does not exist');
+					throw new \BadFunctionCallException(static::class .'::' .$method . '() Validator form attribute does not exist');
 				}
 				$attributeValue = $input[$attribute];
-				if (is_int($errorcode = $this->$method($value, $attributeValue, $empty, $input, $data, $message))) {
-					$message = new Message([$input['errorcode'] + $errorcode, $input['title'], $input['name'], $attributeValue], Message::ERROR, $message);
+
+				$error = $this->$method($value, $attributeValue, $empty, $input, $data, $message);
+				if ($error instanceof Message) {
+					$message = $error;
 					break;
-				} elseif ($errorcode instanceof Message) {
-					$message = $errorcode;
+				} elseif ($error) {
+					$message = new Message(['message' => $error, 'title' => $input['title'], 'name' => $input['name'], 'rule' => $attributeValue], 50, $message);
 					break;
 				}
 			}
@@ -194,7 +203,7 @@ class Validator {
 		if ($message) {
 			throw $message;
 		}
-		return $this;
+		return $data;
 	}
 
 
@@ -232,7 +241,21 @@ class Validator {
 			return;
 		}
 		if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-			return 0;
+			return 'validator';
+		}
+	}
+
+	protected function urlType(&$value, $empty) {
+		if ($empty) {
+			$value = '';
+			return;
+		}
+		$value = to_string($value);
+		if ($error = $this->textType($value)) {
+			return $error;
+		}
+		if (!preg_match('/^[a-z]+[a-z0-9_-]*[a-z0-9]*\:\/\/\w+/i', $value)) {
+			return 'validator';
 		}
 	}
 
@@ -244,7 +267,7 @@ class Validator {
 		} elseif (is_object($value) && method_exists($value, '__toString')) {
 			$value = $value->__toString();
 		} else {
-			return 0;
+			return 'validator';
 		}
 	}
 
@@ -255,10 +278,10 @@ class Validator {
 		}
 		$value = preg_replace('/\-+/', '-', preg_replace('/\s+/', ' ', trim($value)));
 		if (!preg_match('/^(\+?\d+ ?)?(\(\d+\))?\d+([- ]?\d+){0,3}$/i', $value)) {
-			return 0;
+			return 'validator';
 		}
 		if (strlen($value) > 24) {
-			return 0;
+			return 'validator';
 		}
 	}
 
@@ -269,7 +292,7 @@ class Validator {
 		}
 		$value = strtolower(trim($value));
 		if (!preg_match('/^\#([0-9a-f]{3}|[0-9a-f]{6})$/i', $value)) {
-			return 0;
+			return 'validator';
 		}
 	}
 
@@ -279,7 +302,7 @@ class Validator {
 			return;
 		}
 		if (!preg_match('/^\d{4}$/', $value)) {
-			return 0;
+			return 'validator';
 		}
 	}
 
@@ -289,7 +312,7 @@ class Validator {
 			return;
 		}
 		if (!preg_match('/^\d{4}\-(?:0\d|1[0-2])$/', $value)) {
-			return 0;
+			return 'validator';
 		}
 	}
 
@@ -301,7 +324,7 @@ class Validator {
 
 		$value = strtoupper(trim($value));
 		if (!preg_match('/^\d{4}\-W(?:0\d|1[0-2])$/', $value)) {
-			return 0;
+			return 'validator';
 		}
 	}
 	protected function dateType(&$value, $empty) {
@@ -312,13 +335,13 @@ class Validator {
 
 		$value = trim($value);
 		if (!preg_match('/^\d{4}\-(\d{2})\-(\d{2})$/', $value)) {
-			return 0;
+			return 'validator';
 		}
 
 		try {
 			$datetime = new DateTime($date);
 		} catch (\Exception $e) {
-			return 0;
+			return 'validator';
 		}
 		$value = $datetime->format('Y-m-d');
 	}
@@ -333,7 +356,7 @@ class Validator {
 		try {
 			$datetime = new DateTime($date);
 		} catch (\Exception $e) {
-			return 0;
+			return 'validator';
 		}
 		$value = $datetime->format('Y-m-d h:i:s');
 	}
@@ -348,14 +371,14 @@ class Validator {
 		try {
 			$datetime = new DateTime($date);
 		} catch (\Exception $e) {
-			return 0;
+			return 'validator';
 		}
 		$value = $datetime->format('Y-m-d h:i:s');
 	}
 
 	protected function radioType(&$value) {
 		if (!is_scalar($value) || !isset($input['option'][$value])) {
-			return 0;
+			return 'validator';
 		}
 	}
 
@@ -388,7 +411,7 @@ class Validator {
 				$value = reset($value);
 			}
 			if (!is_scalar($value) || !isset($input['option'][$value])) {
-				return 0;
+				return 'validator';
 			}
 		}
 
@@ -401,21 +424,43 @@ class Validator {
 	}
 
 	protected function fileType(&$value, $empty, &$input, &$data, $message) {
-		if ($empty) {
-			if (!$value instanceof Files) {
-				$value = new Files();
+		if (!is_array($value)) {
+			$value = $empty ? [] : [$value];
+		}
+		foreach($value as $key => $uploadedFile) {
+			if (!$uploadedFile instanceof UploadedFileInterface) {
+				return 'validator';
+			}
+			if ($uploadedFile->getError() === 4) {
+				unset($value[$key]);
+			}
+		}
+
+
+		if (empty($input['multiple'])) {
+			if (!$value) {
+				$value = '';
+				return;
+			}
+			if (count($value) !== 1) {
+				return new Message(['message' => 'validator_max_count', 'title' => $input['title'], 'name' => $input['name'], 'rule' => 1], 50, $message);
+			}
+			$value = reset($value);
+			if ($value->getError() !== UPLOAD_ERR_OK) {
+				return new Message(['message' => 'validator_file_' . $value->getError(), 'title' => $input['title'], 'name' => $input['name'], 'rule' => $value->getError()], 50, $message);
 			}
 			return;
 		}
-		if (!$value instanceof Files) {
-			return 0;
+
+
+		if ($empty) {
+			$value = [];
+			return;
 		}
-		if (empty($input['multiple']) && $value->count() > 1) {
-			return new Message([$input['errorcode'] + 9, $input['title']. $input['name'], 1], Message::ERROR, $message);
-		}
-		foreach($value as $file) {
-			if ($file->error !== UPLOAD_ERR_OK) {
-				return new Message([$input['errorcode'] + 40 + $file->error, $input['title'], $input['name'], $file->error], Message::ERROR, $message);
+
+		foreach($value as $uploadedFile) {
+			if ($uploadedFile->getError() !== UPLOAD_ERR_OK) {
+				return new Message(['message' => 'validator_file_' . $uploadedFile->getError(), 'title' => $input['title'], 'name' => $input['name'], 'rule' => $uploadedFile->getError()], 50, $message);
 			}
 		}
 	}
@@ -429,7 +474,7 @@ class Validator {
 		// 重复字段错误
 		if (substr($attributeValue, -6) === '_again') {
 			if (isset($data[$again = substr($attributeValue, 0, -6)]) && $value != $data[$again]) {
-				return new Message([$input['errorcode'] + 20, empty($this->rules[$again]['title']) ? $input['title'] : $this->rules[$again]['title'], $input['name'], $attributeValue], Message::ERROR, $message);
+				return new Message(['message' => 'validator_again', 'title' => empty($this->rules[$again]['title']) ? $input['title'] : $this->rules[$again]['title'], 'name' => $input['name'], 'rule' => $attributeValue], 50, $message);
 			}
 			unset($data[$attributeValue]);
 		}
@@ -437,44 +482,62 @@ class Validator {
 
 	protected function requiredAttribute(&$value, $attributeValue, $empty) {
 		if ($empty) {
-			return 1;
+			return 'validator_required';
 		}
 	}
 
-	protected function minLengthAttribute(&$value, $attributeValue) {
+	protected function minLengthAttribute(&$value, $attributeValue, $empty) {
 		if ($empty) {
 			return;
 		}
 
-		if ($value instanceof Files) {
+		if ($value instanceof UploadedFileInterface) {
+			if ($value->getSize() < parse_size($attributeValue)) {
+				return 'validator_min_size';
+			}
+			return;
+		}
+
+		if (is_array($value) && reset($value) instanceof UploadedFileInterface) {
 			$size = parse_size($attributeValue);
-			foreach ($value as $file) {
-				if ($file->size < $size) {
-					return 10;
+			foreach ($value as $uploadedFile) {
+				if ($uploadedFile->getSize() < $size) {
+					return 'validator_min_size';
 				}
 			}
 			return;
 		}
+
+
 		if (is_scalar($value) && mb_strlen($value) < $attributeValue) {
-			return 7;
+			return 'validator_min_length';
 		}
 	}
 
-	protected function maxLengthAttribute(&$value, $attributeValue) {
+	protected function maxLengthAttribute(&$value, $attributeValue, $empty) {
 		if ($empty) {
 			return;
 		}
-		if ($value instanceof Files) {
+		if ($value instanceof UploadedFileInterface) {
+			if ($value->getSize() > parse_size($attributeValue)) {
+				return 'validator_max_size';
+			}
+			return;
+		}
+
+		if (is_array($value) && reset($value) instanceof UploadedFileInterface) {
 			$size = parse_size($attributeValue);
-			foreach ($value as $file) {
-				if ($file->size > $size) {
-					return 11;
+			foreach ($value as $uploadedFile) {
+				if ($uploadedFile->getSize() > $size) {
+					return 'validator_max_size';
 				}
 			}
 			return;
 		}
+
+
 		if (is_scalar($value) && mb_strlen($value) > $attributeValue) {
-			return 7;
+			return 'validator_max_length';
 		}
 	}
 
@@ -488,18 +551,25 @@ class Validator {
 			return;
 		}
 
-		if ($value instanceof Files) {
+		if ($value instanceof UploadedFileInterface) {
+			if ($value->getSize() > parse_size($attributeValue)) {
+				return 'validator_max_size';
+			}
+			return;
+		}
+
+		if (is_array($value) && reset($value) instanceof UploadedFileInterface) {
 			$size = parse_size($attributeValue);
-			foreach ($value as $file) {
-				if ($file->size > $size) {
-					return 11;
+			foreach ($value as $uploadedFile) {
+				if ($uploadedFile->getSize() > $size) {
+					return 'validator_max_size';
 				}
 			}
 			return;
 		}
 
 		if (is_scalar($value) && mb_strlen($value) > $attributeValue) {
-			return 7;
+			return 'validator_max_length';
 		}
 	}
 
@@ -507,17 +577,19 @@ class Validator {
 		if ($empty) {
 			return;
 		}
-		if ($value instanceof Files) {
-			if ($value->count() < $attributeValue) {
-				return 7;
+		if (is_array($value)) {
+			if (count($value) < $attributeValue) {
+				return reset($value) instanceof UploadedFileInterface ? 'validator_min_count' : 'validator_min_count';
 			}
 			return;
 		}
-		if ($value < $attributeValue) {
-			return 4;
+
+		if ($value instanceof UploadedFileInterface && $attribute > 1) {
+			return 'validator_min_count';
 		}
+
 		if ($value < $attributeValue) {
-			return 4;
+			return 'validator_min_numeric';
 		}
 	}
 
@@ -525,17 +597,20 @@ class Validator {
 		if ($empty) {
 			return;
 		}
-		if ($value instanceof Files) {
-			if ($value->count() > $attributeValue) {
-				return 8;
+
+		if (is_array($value)) {
+			if (count($value) > $attributeValue) {
+				return reset($value) instanceof UploadedFileInterface ? 'validator_max_count' : 'validator_max_count';
 			}
 			return;
 		}
-		if ($value > $attributeValue) {
-			return 5;
+
+		if ($value instanceof UploadedFileInterface && $attribute < 1) {
+			return 'validator_max_count';
 		}
+
 		if ($value > $attributeValue) {
-			return 5;
+			return 'validator_max_numeric';
 		}
 	}
 
@@ -543,25 +618,24 @@ class Validator {
 		if ($empty) {
 			return;
 		}
-		if ($value instanceof Files) {
-			if ($value->count() % $attributeValue) {
-				return 21;
+		if ($value instanceof UploadedFileInterface) {
+			$count = 1;
+			if ($count % $attributeValue) {
+				return 'validator_step_count';
 			}
 			return;
 		}
 
 		if (is_array($value)) {
 			if (count($value) % $attributeValue) {
-				return 21;
+				return reset($value) instanceof UploadedFileInterface ? 'validator_step_count' : 'validator_step_count';
 			}
 			return;
 		}
 
+
 		if ($value % $attributeValue) {
-			return 21;
-		}
-		if ($value % $attributeValue) {
-			return 21;
+			return 'validator_step_numeric';
 		}
 	}
 
@@ -570,6 +644,10 @@ class Validator {
 
 
 	protected function patternAttribute(&$value, $attributeValue, $empty) {
+		if ($empty) {
+			return;
+		}
+
 		if (is_scalar($value)) {
 			$subjects = [$value];
 		} else {
@@ -577,27 +655,42 @@ class Validator {
 		}
 		$pattern = '/'. str_replace('/', '\\/', $attributeValue) .'/';
 		foreach ($subjects as $subject) {
-			if (preg_match($pattern,  $subject)) {
-				return 0;
+			if (!preg_match($pattern,  $subject)) {
+				return 'validator';
 			}
 		}
 	}
 
 	protected function acceptAttribute(&$value, $attributeValue, $empty, &$input) {
-		if (!$value instanceof Files) {
-			return 0;
+		if ($empty) {
+			return;
 		}
+		if ($value instanceof UploadedFileInterface) {
+			$uploadedFiles  = [$value];
+		} else {
+			$uploadedFiles = $value;
+		}
+
+		if (!is_array($uploadedFiles)) {
+			return 'validator_accept';
+		}
+
 		$accept = array_map('trim', explode(',', strtolower($attributeValue)));
 
 		$image = in_array('image/*', $accept, true);
 		$audio = in_array('audio/*', $accept, true);
 		$video = in_array('video/*', $accept, true);
 
-		foreach($value as $file) {
-			if ($file->error !== UPLOAD_ERR_OK) {
-				return new Message([$input['errorcode'] + 40 + $file->error, $input['title'], $input['name'], $file->error], Message::ERROR, $message);
+		foreach($uploadedFiles as $uploadedFile) {
+			if (!$uploadedFile instanceof UploadedFileInterface) {
+				return 'validator_accept';
 			}
-			if (in_array($file->mime, $accept, true)) {
+
+			if ($uploadedFile->getError() !== UPLOAD_ERR_OK) {
+				return new Message(['message' => 'validator_file_' . $uploadedFile->getError(), 'title' => $input['title'], 'name' => $input['name'], 'rule' => $uploadedFile->getError()], 50, $message);
+			}
+
+			if (in_array($file->getClientMediaType(), $accept, true)) {
 
 			} elseif ($image && in_array($file->mime, ['image/png', 'image/jpeg', 'image/webp', 'image/bmp', 'image/gif', 'image/svg', 'image/svg+xml'], true)) {
 
@@ -608,16 +701,16 @@ class Validator {
 			} else {
 				if (count(array_filter([$image, $audio, $video])) === 1) {
 					if ($image) {
-						return 31;
+						return 'validator_accept_image';
 					}
 					if ($audio) {
-						return 32;
+						return 'validator_accept_audio';
 					}
 					if ($video) {
-						return 33;
+						return 'validator_accept_video';
 					}
 				}
-				return 30;
+				return 'validator_accept';
 			}
 		}
 		return;
@@ -627,13 +720,13 @@ class Validator {
 	protected function existsAttribute(&$value, $attributeValue, $empty, &$input) {
 		// 不存在
 		if (!$this->query($attributeValue, $input['name'], $value)) {
-			return 2;
+			return 'validator_exists';
 		}
 	}
 
 	protected function uniqueAttribute(&$value, $attributeValue, $empty, &$input) {
 		if ($this->query($attributeValue, $input['name'], $value)) {
-			return 3;
+			return 'validator_unique';
 		}
 	}
 
@@ -648,30 +741,19 @@ class Validator {
 			$input['name'] = $name;
 		}
 
-		if (isset($input['title']) || !isset($this->rules[$input['name']]['title'])) {
-			$input['title'] = Language::translate(empty($input['title']) ? trim(ucfirst(strtolower(str_replace(['-', '_'], ' ', $input['name'])))) : $input['title']);
-		}
+		$input['type'] = empty($input['type']) ? (empty($this->rules[$input['name']]['type']) ? 'text' : $this->rules[$input['name']]['type']) : $input['type'];
 
-		if (!isset($input['errorcode']) && !isset($this->rules[$input['name']]['errorcode'])) {
-			if (!empty($input['errormessage']) && is_int($input['errormessage'])) {
-				$input['errorcode'] = $input['errormessage'];
-			} else {
-				$input['errorcode'] = 1000;
-			}
+		if (isset($input['title']) || !isset($this->rules[$input['name']]['title'])) {
+			$input['title'] = Language::translate(empty($input['title']) ? trim(ucfirst(strtolower(str_replace(['-', '_'], ' ', $input['name'])))) : $input['title'], $this->group);
 		}
 
 		if (!empty($input['errormessage'])) {
-			if (is_int($input['errormessage'])) {
-				$input['errormessage'] = Message::translate([$input['errormessage'], $input['title'], $input['name']], $this->group);
-			} else {
-				$input['errormessage'] = Language::translate([$input['errormessage'], $input['title'], $input['name']], $this->group);
-			}
+			$input['errormessage'] = Message::translate(['message' => $input['errormessage'], 'title' => $input['title'], 'name' => $input['name'], 'rule' => $input['type']]);
 		}
 
 		if (!empty($input['placeholder'])) {
 			$input['placeholder'] = Language::translate($input['placeholder'], $this->group);
 		}
-		$input['type'] = empty($input['type']) ? (empty($this->rules[$input['name']]['type']) ? 'text' : $this->rules[$input['name']]['type']) : $input['type'];
 
 		if (in_array($input['type'], ['checkbox', 'radio', 'select'], true) && (isset($input['option']) || !isset($this->rules[$input['name']]['option']))) {
 			$input['option'] = empty($input['option']) ? [] : (array) $input['option'];
@@ -689,7 +771,7 @@ class Validator {
 		if (empty($rule[0]) || $rule[0] === 'self' || $rule[0] === 'this') {
 			$class = $this->model;
 			if (!$class) {
-				throw new Message(500, new Message([1, 'Validator unique value verification model class error'], Message::ERROR));
+				throw new \InvalidArgumentException('Validator unique value verification model class error');
 			}
 		} else {
 			$class = 'App\\' . strtr($rule[0], '/.@', '\\\\\\');

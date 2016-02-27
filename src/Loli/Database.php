@@ -11,72 +11,62 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-class Database{
+class Database extends Group{
+	protected static $name = 'database';
+
 	protected static $protocol = [
-		'mysql' => ['mysql', 'MySQLi'],
-		'maria' => ['mysql', 'MySQLi'],
-		'mariadb' => ['mysql', 'MySQLi'],
+		'mysql' => ['mysql', 'MySqlDatabase'],
+		'maria' => ['mysql', 'MySqlDatabase'],
+		'mariadb' => ['mysql', 'MySqlDatabase'],
 
-		'postgresql' => ['pgsql', 'PGSQL'],
-		'pgsql' => ['pgsql', 'PGSQL'],
-		'pg' => ['pgsql', 'PGSQL'],
+		'postgresql' => ['pgsql', 'PostgreSqlDatabase'],
+		'pgsql' => ['pgsql', 'PostgreSqlDatabase'],
+		'pg' => ['pgsql', 'PostgreSqlDatabase'],
 
-		'sqlserver' => ['mssql', 'MSSQL'],
-		'mssql' => ['mssql', 'MSSQL'],
+		'sqlserver' => ['mssql', 'MsSqlDatabase'],
+		'mssql' => ['mssql', 'MsSqlDatabase'],
 
-		'sqlite' => ['sqlite', 'SQLite'],
+		'sqlite' => ['sqlite', 'SQLiteDatabase'],
 
-		'mongo' => ['mongo', 'Mongo'],
-		'mongodb' => ['mongo', 'Mongo'],
+		'mongo' => ['mongo', 'MongoDatabase'],
+		'mongodb' => ['mongo', 'MongoDatabase'],
 
-		'oci' => ['oci', 'OCI'],
-		'oracle' => ['oci', 'OCI'],
-
-		'odbc' => ['odbc', 'ODBC'],
+		// 'oci' => ['oci', 'OCI'],
+		// 'oracle' => ['oci', 'OCI'],
+		//
+		// 'odbc' => ['odbc', 'ODBC'],
 	];
 
-	public static function __callStatic($method, $args) {
-		return self::group('default')->$method(...$args);
-	}
-
-	public static function group($group) {
-		static $links = [], $configs = [];
-		if (empty($configs)) {
-			foreach (empty($_SERVER['LOLI']['database']) ? [[]] : $_SERVER['LOLI']['database'] as $key => $value) {
-				$configs[is_int($key) ? 'default' : $key] = (array) $value;
-			}
+	protected static function link($group, array $config, $exists) {
+		if (!$exists && $group !== 'default') {
+			return static::group('default');
 		}
-		if (!$group) {
-			$group = 'default';
+		if (!$config) {
+			$config = [[]];
+		}
+		$server = reset($config);
+		if (empty($server['protocol'])) {
+			$server['protocol'] = 'mysql';
 		}
 
-		if (empty($links[$group])) {
-			$servers = isset($configs[$group]) ? $configs[$group] : reset($configs);
-			if (!is_int(key($servers))) {
-				$servers = [$servers];
-			}
 
-			$server = reset($servers);
-			if (empty($server['protocol'])) {
-				$server['protocol'] = 'mysql';
-			}
 
-			$class = __NAMESPACE__.'\\Database\\';
-			if (class_exists('PDO') && in_array($server['protocol'], \PDO::getAvailableDrivers())) {
-				$class .= 'PDO';
-			} elseif (isset(self::$protocol[$server['protocol']])) {
-				$protocol = self::$protocol[$server['protocol']][0];
-				$class .= self::$protocol[$server['protocol']][1];
-				foreach ($servers as $key => $value) {
-					if (!empty($value['protocol']) && $value['protocol'] === $server['protocol']) {
-						$servers[$key]['protocol'] = $protocol;
-					}
+		$class = __NAMESPACE__.'\\Database\\';
+		if (class_exists('PDO') && in_array($server['protocol'], \PDO::getAvailableDrivers(), true)) {
+			$class .= 'PDODatabase';
+		} elseif (isset(self::$protocol[$server['protocol']])) {
+			$protocol = self::$protocol[$server['protocol']][0];
+			$class .= self::$protocol[$server['protocol']][1];
+			foreach ($config as $key => $value) {
+				if (!empty($value['protocol']) && $value['protocol'] === $server['protocol']) {
+					$config[$key]['protocol'] = $protocol;
 				}
-			} else {
-				$class .= ucwords($server['protocol']);
 			}
-			$links[$group] = new $class($servers);
+		} else {
+			$class .= ucwords($server['protocol']) . 'Database';
 		}
-		return $links[$group];
+		$result = new $class($config);
+		$result->setLogger(Log::group(static::$name));
+		return $result;
 	}
 }

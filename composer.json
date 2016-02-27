@@ -1,5 +1,6 @@
 {
     "name": "loli/base",
+    "type": "library",
     "description": "The Loli Framework Base.",
     "keywords": ["framework", "loli"],
     "license": "Apache2",
@@ -13,8 +14,13 @@
     "require": {
         "php": ">=5.6.0",
         "ext-mcrypt": "*",
+        "ext-fileinfo": "*",
         "ext-openssl": "*",
-        "ext-mbstring": "*"
+        "ext-mbstring": "*",
+        "psr/log": "^1.0",
+        "psr/cache": "^1.0",
+        "psr/http-message": "^1.0",
+        "guzzlehttp/psr7": "^1.2"
     },
     "replace": {
         "Loli": "self.version"

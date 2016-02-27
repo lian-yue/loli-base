@@ -96,8 +96,6 @@ class Language{
 	}
 
 
-
-
 	protected static function load($file, $name,  $group) {
 		if (in_array($file = sprintf($file, $name, $group), self::$load, true)) {
 			return false;
@@ -112,7 +110,7 @@ class Language{
 		return true;
 	}
 
-	public static function init() {
+	public static function register() {
 		if (!empty($_SERVER['LOLI']['language'])) {
 			foreach ($_SERVER['LOLI']['language'] as $key => $value) {
 				if (in_array($key, ['name', 'all', 'replace', 'file'], true)) {
@@ -122,4 +120,4 @@ class Language{
 		}
 	}
 }
-Language::init();
+Language::register();

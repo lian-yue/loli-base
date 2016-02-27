@@ -11,10 +11,9 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-use finfo;
 
 class Storage{
-	private $_link = NULL;
+	private $link = NULL;
 
 	public function __call($method, $args) {
 		static $methods = ['dir_opendir', 'rename', 'stream_open', 'unlink', 'url_stat', 'mkdir', 'rmdir'];
@@ -27,16 +26,17 @@ class Storage{
 			}
 			$class = (empty($_SERVER['LOLI']['storage'][$key]['type']) ? 'File' : $_SERVER['LOLI']['storage'][$key]['type']);
 			if ($class[0] !== '\\') {
-				$class = __NAMESPACE__ . '\Storage\\' . $class;
+				$class = __NAMESPACE__ . '\Storage\\' . $class . 'Storage';
 			}
-			$this->_link = new $class(empty($_SERVER['LOLI']['storage'][$key]) ? [] : $_SERVER['LOLI']['storage'][$key]);
+			$this->link = new $class(empty($_SERVER['LOLI']['storage'][$key]) ? [] : $_SERVER['LOLI']['storage'][$key]);
+			$this->link->setLogger(Log::group('storage'));
 		}
-		return $this->_link->$method(...$args);
+		return $this->link->$method(...$args);
 	}
 
 
 	public static function mime($file) {
-		$info = new finfo();
+		$info = new \finfo();
 		return ['type' => $info->file($file, FILEINFO_MIME_TYPE), 'encoding' => $info->file($file, FILEINFO_MIME_ENCODING)];
 	}
 }

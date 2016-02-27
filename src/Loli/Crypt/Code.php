@@ -164,7 +164,7 @@ class Code{
 
 		switch ($type) {
 			case 0:
-				return NULL;
+				return null;
 				break;
 			case 1:
 				return (bool) $value;

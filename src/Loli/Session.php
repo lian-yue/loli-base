@@ -14,35 +14,19 @@ namespace Loli;
 class Session{
 	const GROUP = 'session';
 
-	private static function _token() {
-		return Route::request()->getToken();
+	private static function token() {
+		return Route::request()->token()->get();
 	}
 
-	public static function get($key) {
-		return Cache::group(self::GROUP)->get(self::_token() . $key);
+	public static function getItem($key) {
+		return Cache::group(self::GROUP)->getItem(self::token() . $key);
 	}
 
-	public static function add($value, $key, $ttl = 1800) {
-		return Cache::group(self::GROUP)->add($value, self::_token() . $key, $ttl);
+	public static function deleteItem($key) {
+		return Cache::group(self::GROUP)->deleteItem(self::token() . $key);
 	}
 
-	public static function set($value, $key, $ttl = 1800) {
-		return Cache::group(self::GROUP)->set($value, self::_token() . $key, $ttl);
-	}
-
-	public static function incr($n, $key) {
-		return Cache::group(self::GROUP)->incr($value, self::_token() . $key);
-	}
-
-	public static function decr($n, $key) {
-		return Cache::group(self::GROUP)->decr($value, self::_token() . $key);
-	}
-
-	public static function delete($key, $ttl = 0) {
-		return Cache::group(self::GROUP)->delete(self::_token() . $key, $ttl);
-	}
-
-	public static function ttl($key) {
-		return Cache::group(self::GROUP)->ttl(self::_token() . $key);
+	public static function save(...$args) {
+		return Cache::group(self::GROUP)->save(...$args);
 	}
 }

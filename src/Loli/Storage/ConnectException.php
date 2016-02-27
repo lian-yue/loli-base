@@ -23,8 +23,6 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
-use Loli\LogException;
+class ConnectException extends \RuntimeException{
 
-class ConnectException extends LogException{
-	protected $level = 4;
 }

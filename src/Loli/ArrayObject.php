@@ -22,7 +22,7 @@ use OutOfBoundsException;
 
 class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableIterator, Serializable{
 
-	private $_data = [];
+	private $data = [];
 
 	public function __construct() {
 		foreach (func_get_args() as $data) {
@@ -33,27 +33,27 @@ class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableI
 	}
 
 	public function __get($name) {
-		return isset($this->_data[$name]) ? $this->_data[$name] : NULL;
+		return isset($this->data[$name]) ? $this->data[$name] : NULL;
 	}
 
 	public function __set($key, $value) {
 		if ($key === NULL) {
-			return $this->_data[] = $value;
+			return $this->data[] = $value;
 		}
-		return $this->_data[$key] = $value;
+		return $this->data[$key] = $value;
 	}
 
 	public function __unset($key) {
-		unset($this->_data[$key]);
+		unset($this->data[$key]);
 		return true;
 	}
 
 	public function __isset($key) {
-		return isset($this->_data[$key]);
+		return isset($this->data[$key]);
 	}
 
 	public function __clone() {
-		foreach ($this->_data as $key => $value) {
+		foreach ($this->data as $key => $value) {
 			if (is_object($value)) {
 				$value = clone $value;
 			}
@@ -75,40 +75,40 @@ class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableI
 	}
 
 	public function keyExists($key) {
-		return array_key_exists($key, $this->_data);
+		return array_key_exists($key, $this->data);
 	}
 
 	public function current() {
-		return current($this->_data);
+		return current($this->data);
 	}
 	public function key() {
-		return key($this->_data);
+		return key($this->data);
 	}
 	public function next() {
-		return next($this->_data);
+		return next($this->data);
 	}
 
 	public function rewind() {
-		return reset($this->_data);
+		return reset($this->data);
 	}
 
 	public function valid() {
-		return key($this->_data) !== NULL;
+		return key($this->data) !== NULL;
 	}
 
 	public function seek($position) {
-		if (!isset($this->_data[$position])) {
+		if (!isset($this->data[$position])) {
 			throw new OutOfBoundsException('invalid seek position ('.$position.')');
 		}
 		return $this;
 	}
 
 	public function count() {
-		return count($this->_data);
+		return count($this->data);
 	}
 
-	public function data() {
-		return $this->_data;
+	public function toArray() {
+		return $this->data;
 	}
 
 	public function value($name, $value) {
@@ -131,56 +131,56 @@ class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableI
 	}
 
 	public function clear() {
-		$this->_data = [];
+		$this->data = [];
 		return $this;
 	}
 
 	public function jsonSerialize() {
-		return $this->_data;
+		return $this->data;
 	}
 
 
 	public function serialize() {
-		return serialize($this->_data);
+		return serialize($this->data);
 	}
 
 	public function unserialize($data) {
-		$this->_data = unserialize($data);
+		$this->data = unserialize($data);
 	}
 
 	public function asort() {
-		asort($this->_data);
+		asort($this->data);
 		return $this;
 	}
 
 
 	public function ksort() {
-		ksort($this->_data);
+		ksort($this->data);
 		return $this;
 	}
 
 	public function natsort() {
-		natsort($this->_data);
+		natsort($this->data);
 		return $this;
 	}
 	public function natcasesort() {
-		natcasesort($this->_data);
+		natcasesort($this->data);
 		return $this;
 	}
 
 
 	public function uasort(callable $callable) {
-		uasort($this->_data, $callable);
+		uasort($this->data, $callable);
 		return $this;
 	}
 
 	public function uksort(callable $callable) {
-		uksort($this->_data, $callable);
+		uksort($this->data, $callable);
 		return $this;
 	}
 
-	public function json($glue) {
-		return implode($glue, $this->_data);
+	public function join($glue) {
+		return implode($glue, $this->data);
 	}
 
 	public function __call($name, $args) {
@@ -208,9 +208,9 @@ class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableI
 		if (method_exists($this, '_call')) {
 			return $this->_call($name, $args);
 		}
-		throw new Exception(static::class .'::'. __FUNCTION__ .'('. $name .') Method or function does not exist');
+		throw new OutOfBoundsException(static::class .'::'. __FUNCTION__ .'('. $name .') Method or function does not exist');
 	}
 	public function __debugInfo() {
-		return $this->_data;
+		return $this->data;
 	}
 }

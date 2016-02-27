@@ -10,38 +10,13 @@
 /*	Created: UTC 2015-08-19 08:59:51
 /*
 /* ************************************************************************** */
-function parse_string($string) {
-	if (is_array($string) || is_object($string)) {
-		$results =[];
-		foreach ($string as $key => $value) {
-			if (is_array($value) || is_object($value)) {
-				$value = parse_string($value);
-			}
-			$results[$key]= $value;
-		}
-	} else {
-		parse_str($string, $results);
-	}
-	return $results;
-}
-
-
-function merge_string($array) {
-	if (!is_array($array) && !is_object($array)) {
-		return (string) $array;
-	}
-	return http_build_query(to_array($array), NULL, '&');
-}
-
-
-
 function to_string($string) {
 	if (is_string($string)) {
 
 	} elseif (is_array($string)) {
-		$string = $string ? '1' : '';
+		$string = $string ? 'Array' : '';
 	} elseif (is_object($string)) {
-		$string = method_exists($string, '__toString') ? $string->__toString() : 'object';
+		$string = method_exists($string, '__toString') ? $string->__toString() : 'Object';
 	} else {
 		$string = (string) $string;
 	}
@@ -92,6 +67,7 @@ function format_size($value, $precision = 2) {
 	}
 	return intval($size) . ' B';
 }
+
 
 function parse_size($value) {
 	$value = trim($value);

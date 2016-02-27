@@ -23,32 +23,16 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-class Cache{
-	public static function __callStatic($method, $args) {
-		return self::group('default')->$method(...$args);
-	}
+class Cache extends Group{
+	protected static $name = 'cache';
 
-	public static function group($group) {
-		static $links = [], $configs = [];
-		if (empty($configs)) {
-			foreach (empty($_SERVER['LOLI']['cache']) ? [[]] : $_SERVER['LOLI']['cache'] as $key => $value) {
-				$configs[is_int($key) ? 'default' : $key] = (array) $value;
-			}
+	protected static function link($group, array $config, $exists) {
+		$class = empty($config['type']) ? 'Memory' : $config['type'];
+		if ($class{0} !== '\\') {
+			$class = __NAMESPACE__ . '\Cache\\' . $class . 'CacheItemPool';
 		}
-
-
-		if (!$group) {
-			$group = 'default';
-		}
-
-		if (empty($links[$group])) {
-			$config = isset($configs[$group]) ? $configs[$group] : reset($configs);
-			$class = empty($config['type']) ? 'Memory' : $config['type'];
-			if ($class[0] !== '\\') {
-				$class = __NAMESPACE__ . '\Cache\\' . $class;
-			}
-			$links[$group] = new $class(empty($config['args']) ? [] : (array) $config['args'], $group . (empty($_SERVER['LOLI']['key']) ? '' : $_SERVER['LOLI']['key']));
-		}
-		return $links[$group];
+		$result = new $class($config + ['key' => $group . (empty($_SERVER['LOLI']['key']) ? '' : $_SERVER['LOLI']['key'])]);
+		$result->setLogger(Log::group(static::$name));
+		return $result;
 	}
 }

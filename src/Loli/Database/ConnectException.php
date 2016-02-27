@@ -23,8 +23,5 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Database;
-
-class ConnectException extends Exception{
-	protected $level = 4;
-	protected $state = 'HY000';
+class ConnectException extends \RuntimeException{
 }

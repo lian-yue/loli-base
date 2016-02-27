@@ -14,104 +14,122 @@ namespace Loli;
 use App\Auth;
 use App\User;
 
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
+
+
+use Loli\Http\Message\ServerRequest;
+use Loli\Http\Message\ServerRequestInput;
+use Loli\Http\Message\Header;
+
+
+use GuzzleHttp\Psr7\Stream;
+use GuzzleHttp\Psr7\Response;
+
+
 class Route extends ArrayObject{
 
+	const TOKEN_HEADER = 'X-Token';
+
+	const TOKEN_COOKIE = 'token';
+
+
+
+	const AJAX_HEADER = 'X-Ajax';
+
+	const AJAX_PARAM = 'ajax';
+
+
+	const PJAX_HEADER = 'X-Pjax';
+
+
+	const JSON_HEADER = 'X-Json';
+
+	const JSON_PARAM = 'json';
+
+	const JSONP_PARAM = 'callback';
+
 	protected static $callback = [
-		'request' => 'Loli\\Route::load',
-		'response' => 'Loli\\Route::load',
-		'csrf' => 'Loli\\Route::load',
-		'auth' => 'Loli\\Route::load',
-		'user' => 'Loli\\Route::load',
+		'request' => 'static::load',
+		'response' => 'static::load',
+		'extension' => 'static::load',
+		'ajax' => 'static::load',
+		'pjax' => 'static::load',
+		'json' => 'static::load',
+		'jsonp' => 'static::load',
+		'token' => 'static::load',
+		'csrf' => 'static::load',
+		'auth' => 'static::load',
+		'user' => 'static::load',
+		'ip' => 'static::load',
 	];
 
 	public static $rules = [];
 
 	protected static $self;
 
-	public function __construct(Request $request = NULL, Response $response = NULL, array $data = []) {
+	public function __construct(ServerRequestInterface $request = NULL, array $data = []) {
 		if ($request) {
 			$this->request = $request;
 		}
-
-		if ($response) {
-			$this->response = $response;
-		}
-
-		$data && $this->data($data);
-
+		$data && $this->merge($data);
 		self::$self = $this;
-
-		self::rules();
-	}
-
-
-	public function __isset($name) {
-		return parent::__isset($name) || !empty(self::$callback[$name]);
-	}
-
-	public function __get($name) {
-		$value = parent::__get($name);
-		if ($value === NULL) {
-			if (empty(self::$callback[$name])) {
-				throw new Exception('Unregistered route object', Message::ERROR);
-			}
-			$value = call_user_func(self::$callback[$name], $this, $name);
-			$this->__set($name, $value);
-		}
-		return $value;
 	}
 
 
 
-
-	public function __invoke() {
+	public function run() {
 		try {
-			$scheme = $this->request->getScheme();
+			self::rules();
+			$scheme = $this->request->getUri()->getScheme();
 			$method = $this->request->getMethod();
-			$host = $this->request->getHeader('Host');
-			$path = $this->request->getPath();
+			$host = $this->request->getUri()->getHost();
+			$path = $this->request->getUri()->getPath();
+			if (!$path || $path{0}!== '/') {
+				$path = '/' . $path;
+			}
 			$dirPath = $path;
 			if (substr($dirPath, -1, 1) !== '/') {
 				$dirPath .= '/';
 			}
-
-			foreach (self::$rules as $route) {
-
+			foreach (self::$rules as $rule) {
 				// 协议
-				if (!in_array($scheme, $route['scheme'], true)) {
+				if (!in_array($scheme, $rule['scheme'], true)) {
 					continue;
 				}
 
 				// 方法
-				if (!in_array($method, $route['method'], true)) {
+				if (!in_array($method, $rule['method'], true)) {
 					continue;
 				}
-
+				// path 路径
 				$replace = [];
-				foreach ($route['pathRule'][1] as $name => $pattern) {
-					if ($route['pathRule'][2][$name] !== '' || $route['pathRule'][3][$name] !== '') {
-						$replace['"'.$name.'"'] = '(?:'. preg_quote($route['pathRule'][2][$name], '/') . $pattern . preg_quote($route['pathRule'][3][$name], '/') .')' . $route['pathRule'][4][$name];
+				foreach ($rule['pathRule'][1] as $name => $pattern) {
+					if ($rule['pathRule'][2][$name] !== '' || $rule['pathRule'][3][$name] !== '') {
+						$replace['"'.$name.'"'] = '(?:'. preg_quote($rule['pathRule'][2][$name], '/') . $pattern . preg_quote($rule['pathRule'][3][$name], '/') .')' . $rule['pathRule'][4][$name];
 					} else {
 						$replace['"'.$name.'"'] = $pattern;
 					}
 				}
-				if (!preg_match('/^'. strtr(preg_quote($route['pathRule'][0], '/'), $replace) . ($route['isFile'] ? '' :  '\/?') . '$/u', $route['isFile'] ? $path : $dirPath, $pathMatches)) {
+				if (!preg_match('/^'. strtr(preg_quote($rule['pathRule'][0], '/'), $replace) . ($rule['isFile'] ? '' :  '\/?') . '$/u', $rule['isFile'] ? $path : $dirPath, $pathMatches)) {
 					continue;
 				}
 
+
 				// host 判断
-				if ($route['hostRule']) {
+				if ($rule['hostRule']) {
 					$continue = true;
-					foreach ($route['hostRule'] as $rule) {
+					foreach ($rule['hostRule'] as $hostRule) {
 						$replace = [];
-						foreach ($rule[1] as $name => $pattern) {
-							if ($rule[2][$name] !== '' || $rule[3][$name] !== '') {
-								$replace['"'.$name.'"'] = '(?:'. preg_quote($rule[2][$name], '/') . $pattern . preg_quote($rule[3][$name], '/') .')' . $rule[4][$name];
+						foreach ($hostRule[1] as $name => $pattern) {
+							if ($hostRule[2][$name] !== '' || $hostRule[3][$name] !== '') {
+								$replace['"'.$name.'"'] = '(?:'. preg_quote($hostRule[2][$name], '/') . $pattern . preg_quote($hostRule[3][$name], '/') .')' . $hostRule[4][$name];
 							} else {
 								$replace['"'.$name.'"'] = $pattern;
 							}
 						}
-						if (preg_match('/^' . strtr(preg_quote($rule[0], '/'), $replace). '$/', $host, $hostMatches)) {
+						if (preg_match('/^' . strtr(preg_quote($hostRule[0], '/'), $replace). '$/', $host, $hostMatches)) {
 							$continue = false;
 							break;
 						}
@@ -123,23 +141,25 @@ class Route extends ArrayObject{
 					$hostMatches = [];
 				}
 
+
+
 				// 是目录就跳到目录去
-				if (!$route['isFile'] && in_array($method, ['GET', 'HEAD']) && substr($route['path'], -1, 1) === '/' && substr($path, -1, 1) !== '/') {
-					throw new Message(301, Message::SUCCESS, ['redirect' => $scheme .'://' . $host . $path . '/' . (($queryString = merge_string($this->request->getQuerys())) ? '?' . $queryString: '')], '', 0);
+				if (!$rule['isFile'] && in_array($method, ['GET', 'HEAD']) && substr($rule['path'], -1, 1) === '/' && substr($path, -1, 1) !== '/') {
+					throw new Message('Redirect into the directory', 301, ['redirect' => $scheme .'://' . $host . $path . '/' . (($queryString = $this->request->getUri()->getQuery()) ? '?' . $queryString : '')], '', 0);
 				}
 
 				$params = $replace = [];
 				$matches = $hostMatches + $pathMatches;
-				foreach ($route['match'] as $key => $value) {
+				foreach ($rule['match'] as $key => $value) {
 					if (isset($matches['_' . $key])) {
 						$value = $matches['_' . $key];
 						if (!is_numeric($key)) {
 							$params[$key] = $matches['_' . $key];
 						}
-					} elseif (isset($route['default'][$key])) {
-						$value = (string) $route['default'][$key];
+					} elseif (isset($rule['params'][$key])) {
+						$value = (string) $rule['params'][$key];
 						if (!is_numeric($key)) {
-							$params[$key] = (string) $route['default'][$key];
+							$params[$key] = to_string($rule['params'][$key]);
 						}
 					} else {
 						$value = '';
@@ -149,7 +169,7 @@ class Route extends ArrayObject{
 
 
 				$controller = [];
-				foreach ($route['controllerRule'] as $controllerRule) {
+				foreach ($rule['controllerRule'] as $controllerRule) {
 					$controllerReplace = [];
 					foreach ($controllerRule[2] as $name => $value) {
 						$controllerReplace['"' .$name. '"'] = $replace[$name] === '' ? '' : $value . $replace[$name] . $controllerRule[3][$name];
@@ -163,32 +183,47 @@ class Route extends ArrayObject{
 				break;
 			}
 
-
 			if (empty($controller)) {
-				throw new Message(404, Message::ERROR);
+				throw new Message('Controller not exists', 404);
 			}
 
 			if (empty($controller[1]) || $controller[1]{0} === '_') {
-				throw new Message(404, Message::ERROR, new Message([1, 'Model not exists'], Message::ERROR));
+				throw new Message('Controller not exists', 404);
 			}
+
+			$controller[0] = trim(strtr($controller[0], '-.\\', '///'), '/');
+			$node = explode('/', implode('/', $controller));
+
+			if (!class_exists($class = 'App\Controllers\\' . strtr($controller[0], '/', '\\'))) {
+				throw new Message('Controller not exists', 404);
+			}
+
+			// 写入附加属性
+			$this->request = $this->request->withAttribute('params', $params);
+
 
 			$this->controller = $controller;
-			$this->controller = [strtr($this->controller[0], '\\', '/'), $this->controller[1]];
-			$this->node = explode('/', implode('/', $this->controller));
-
-
-
-			if (!class_exists($class = 'App\Controllers\\' . strtr($controller[0], '/.', '\\\\'))) {
-				throw new Message(404, Message::ERROR, new Message([1, 'Controller not exists'], Message::ERROR));
-			}
+			$this->node = $node;
 
 			// 控制器
-			$class = new $class;
+			$class = new $class;		// 中间键
+			$middleware = $this->middleware($class, $controller[1]);
 
-			// 中间键
-			$middleware = $this->middleware($class, $this->controller[1]);
+			// 读取附加属性
+			$params = $this->request->getAttribute('params', []);
+			if ($body = $this->request->getParsedBody()) {
+				if (is_object($body)) {
+					$bodyArray = [];
+					foreach ($body as $key => $value) {
+						$bodyArray[$key] = $value;
+					}
+					$params += $bodyArray;
+				} else {
+					$params += $body;
+				}
+			}
 
-			$params +=  $this->request->getParams();
+			$params += array_merge($this->request->getQueryParams(), ($parsedbody = $this->request->getParsedBody()) ? to_array($parsedbody) : [], $this->request->getUploadedFiles(), $params);
 
 			// 中间键 请求
 			foreach ($middleware as $value) {
@@ -199,48 +234,76 @@ class Route extends ArrayObject{
 
 			// 执行方法
 			$view = $class->$controller[1]($params);
-
-			// 数组
-			if (is_array($view)) {
-				$views = [];
-				foreach(explode('/', $this->controller[0] . '/' . $this->controller[1]) as $value) {
-					if ($value) {
-						$value{0} = strtolower($value{0});
-					}
-					$views[] = $value;
-				}
-				$view = new View($views, $view);
-			}
 		} catch (Message $view) {
 			// Message
-		} catch (HTTP\Exception $e) {
-			// HTTP
-			$view = new Message([2, $e->getMessage()], Message::ERROR);
-			$this->response->setStatus($e->getCode());
-		} catch (Cache\Exception $e) {
-			// Cache
-			$view = new Message([4, $e->getMessage()], Message::ERROR);
-			$this->response->setStatus(500);
-		} catch (Storage\ConnectException $e) {
-			// Storage
-			$view = new Message([5, $e->getMessage()], Message::ERROR);
-			$this->response->setStatus(500);
-		}  catch (Storage\Exception $e) {
-			// Storage
-			$view = new Message([5, $e->getMessage()], Message::ERROR);
-			$this->response->setStatus(500);
-		} catch (Database\ConnectException $e) {
-			// Database
-			$view = new Message([7, $e->getMessage()], Message::ERROR);
-			$this->response->setStatus(500);
-		} catch (Database\Exception $e) {
-			// Database
-			$view = new Message([7, $e->getMessage()], Message::ERROR);
-			$this->response->setStatus(500);
 		} catch (\Exception $e) {
-			// 其他
-			$view = new Message([1, $e->getMessage()], Message::ERROR);
-			$this->response->setStatus(500);
+			$view = new Message(['message' => 'exception', 'value' =>  $e->getMessage(), 'code' => $e->getCode()], 500);
+		}
+
+
+		// 数组
+		if ($view instanceof ResponseInterface) {
+			$this->response = $view;
+		} elseif ($view instanceof StreamInterface) {
+			$this->response = $this->response->withBody($view);
+		} elseif (is_resource($view)) {
+			$this->response = $this->response->withBody(new Stream($view));
+		} elseif ($view instanceof Message) {
+
+			$data = ['messages' => []];
+			$message = $view;
+			$headerMessage = [];
+
+			while ($message) {
+				$data += $message->getData();
+				$data['messages'][] = $message;
+				if (!isset($data['redirect'])) {
+					$data['redirect'] = $message->getRedirect();
+					$data['refresh'] = $message->getRefresh();
+				}
+				if (!isset($data['refresh'])) {
+					$data['refresh'] = $message->getRefresh();
+				}
+				$message = $message->getPrevious();
+			}
+			$data['messages'] = array_reverse($data['messages']);
+
+			$this->response = $this->response->withHeader('Cache-Control', Header::cacheControl(['no-cache' => true, 'max-age' => 0]));
+			if ($this->response->getStatusCode() === 200) {
+				if ($data['redirect'] && $data['refresh'] !== false && !$data['refresh']) {
+					$this->response = $this->response->withStatus(302)->withHeader('Location', $data['redirect']);
+				}
+			}
+
+			if ($errors = $view->getErrors()) {
+				if ($this->response->getStatusCode() === 200) {
+					foreach($errors as $status) {
+						if ($status >= 400 && $status < 600) {
+							$this->response = $this->response->withStatus($status);
+						}
+					}
+				}
+				$data['success'] = false;
+			} else {
+				$data['success'] = true;
+			}
+
+			$stream = new Stream(fopen('php://temp', 'r+b'));
+			$stream->write((string) new View(['messages/' . $this->response->getStatusCode(), 'messages'], $data));
+			$this->response = $this->response->withBody($stream);
+		} elseif (is_array($view)) {
+			$views = [];
+			foreach(explode('/', $this->controller[0] . '/' . $this->controller[1]) as $value) {
+				$value = lcfirst($value);
+				$views[] = $value;
+			}
+			$stream = new Stream(fopen('php://temp', 'r+b'));
+			$stream->write((string) new View($views, $view));
+			$this->response = $this->response->withBody($stream);
+		} else {
+			$stream = new Stream(fopen('php://temp', 'r+b'));
+			$stream->write((string) $view);
+			$this->response = $this->response->withBody($stream);
 		}
 
 		// 中间键 响应
@@ -252,65 +315,120 @@ class Route extends ArrayObject{
 			}
 		}
 
-
-		//  消息对象
-		if ($view instanceof Message) {
-			$data = ['messages' => []];
-			$message = $view;
-			$codes = [];
-			while ($message) {
-				$data += $message->getData();
-				$data['messages'][] = $message;
-				if (!isset($data['redirect'])) {
-					$data['redirect'] = $message->getRedirect();
-					$data['refresh'] = $message->getRefresh();
-				}
-				if (!isset($data['refresh'])) {
-					$data['refresh'] = $message->getRefresh();
-				}
-				$this->response->addHeader('X-Message', $message->getCode() . '.' . $message->getType());
-				$codes[] = $message->getCode();
+	}
 
 
-				$message = $message->getPrevious();
-			}
-			$data['messages'] = array_reverse($data['messages']);
 
-			$this->response->addCache('no-cache', 0);
-			if ($this->response->getStatus() === 200) {
-				if (!empty($data['redirect']) && $data['redirect'] !== true && $data['refresh'] !== false && !$data['refresh']) {
-					$this->response->setStatus(302);
-					$this->response->addHeader('Location', $data['redirect'], false);
-				} else {
-					// 是 200-599 的状态码 设置 http 状态码
-					$message = $view;
-					while ($message) {
-						if (is_int($code = $message->getCode()) && $code >= 200 && $code < 600) {
-							$this->response->setStatus($code);
-							break;
-						}
-						$message = $message->getPrevious();
+
+
+	protected static function load(Route  $route, $name) {
+		switch ($name) {
+			case 'request':
+				// 请求对象
+				return (new ServerRequestInput())->get();
+				break;
+			case 'response':
+				// 响应对象
+				return new Response();
+				break;
+			case 'extension':
+				// 后缀
+				return strtolower(pathinfo(self::request()->getUri()->getPath(), PATHINFO_EXTENSION));
+				break;
+			case 'ajax':
+				// 是否是ajax
+				return self::request()->getHeader(self::AJAX_HEADER) || strtolower($this->getHeaderLine('X-Requested-With')) === 'xmlhttprequest';
+				break;
+			case 'pjax':
+				// 是否是 pjax
+				return (bool) self::request()->getHeaderLine(self::PJAX_HEADER);
+				break;
+			case 'json':
+				// 是否是 json
+				$request = self::request();
+				return $request->getHeader(self::JSON_HEADER) || !empty($request->getQueryParams()[self::JSON_PARAM]) || (($parsedbody = $request->getParsedBody()) && !empty($parsedbody[self::JSON_PARAM])) || self::extension() === 'json';
+				break;
+			case 'jsonp':
+				if (self::json()) {
+					$request = self::request();
+					$parsedbody = $request->getParsedBody();
+					if (isset($parsedbody[self::JSONP_PARAM])) {
+						return $parsedbody[self::JSONP_PARAM];
+					}
+					$queryParams = $request->getQueryParams();
+					if (isset($queryParams[self::JSONP_PARAM])) {
+						return $queryParams[self::JSONP_PARAM];
 					}
 				}
-			}
+				return false;
+				break;
+			case 'token':
+				if ($token = self::request()->getHeaderLine(self::TOKEN_HEADER)) {
 
-			$views = [];
-			if (($code = min($codes)) < 100) {
-				$views[] = 'messages/' . $code;
-			}
-			if ($this->response->getStatus() >= 200 &&  $this->response->getStatus() < 600) {
-				$views[] = 'messages/' . $this->response->getStatus();
-			}
-			$views[] = 'messages';
-			$view = new View($views, $data);
+				} elseif (($cookieParams = self::request()->getCookieParams()) && !empty($cookieParams[self::TOKEN_COOKIE])) {
+					$token = $cookieParams[self::TOKEN_COOKIE];
+				}
+				return new Token($token);
+				break;
+			case 'csrf':
+				$token = self::token()->get();
+				$request = self::request();
+				if ($request->getHeaderLine('X-Csrf') === $token) {
+					return false;
+				}
+				$parsedbody = $request->getParsedBody();
+				if (isset($parsedbody['_csrf']) && $parsedbody['_csrf'] === $token) {
+					return false;
+				}
+				$queryParams = $request->getQueryParams();
+				if (isset($queryParams['_csrf']) && $queryParams['_csrf'] === $token) {
+					return false;
+				}
+				return true;
+				break;
+			case 'ip':
+				$serverParams = self::request()->getServerParams();
+				if (!empty($serverParams['REMOTE_ADDR'])) {
+					$ip = (string) $serverParams['REMOTE_ADDR'];
+				} else {
+					$ip = $serverParams['REMOTE_ADDR'];
+				}
+				return $ip;
+				break;
+			case 'auth':
+				// 验证信息
+				if (!$auth = Auth::selectRow(self::token()->get())) {
+					$request = self::request();
+					$auth = new Auth(['token' => self::token()->get(), 'ip' => $request->getClientAddr(), 'user_id' => 0, 'user_agent' => substr($request->getParam('user_agent', $request->getHeader('User-Agent')), 0, 255)]);
+					$auth->insert();
+				}
+				return $auth;
+				break;
+			case 'user':
+				// 用户信息
+				$auth = self::auth();
+				$user = new User(['id' => $auth->user_id]);
+				if ($user->id) {
+					$user->select();
+				} else {
+					foreach ($auth as $key => $value) {
+						if (in_array($key, ['timezone', 'language'], true)) {
+							$user->$key = $value;
+						}
+					}
+				}
+				return $user;
+				break;
+			default:
+				throw new \BadFunctionCallException( __METHOD__. '(Route, '.$name.') Unregistered route object');
 		}
-		$this->request->getToken();
-		if ($this->response->hasMessage()) {
-			$view = $this->response->getMessage();
-		}
-
-		$this->response->setContent($view);
 	}
+
+
+
+
+
+
 
 
 
@@ -335,8 +453,35 @@ class Route extends ArrayObject{
 
 
 
+
+
+
+	public function __get($name) {
+		$value = parent::__get($name);
+		if ($value === NULL) {
+			if (empty(self::$callback[$name])) {
+				throw new \BadFunctionCallException(__METHOD__ . '('. $name .') Unregistered route object');
+			}
+			$value = call_user_func(self::$callback[$name], $this, $name);
+			$this->__set($name, $value);
+		}
+		return $value;
+	}
+
+	public function __call($name, $args) {
+		if ($args) {
+			$this->__set($name, $args[0]);
+		}
+		return $this->$name;
+	}
+
+
+	public function __isset($name) {
+		return parent::__isset($name) || !empty(self::$callback[$name]);
+	}
+
 	public static function __callStatic($name, $args) {
-		return self::$self->$name;
+		return self::$self->__call($name, $args);
 	}
 
 	public static function get($name = NULL) {
@@ -348,52 +493,9 @@ class Route extends ArrayObject{
 		return true;
 	}
 
-	public static function URL(array $controller, array $query = [], $method = 'GET') {
-		return new URLRoute($controller, $query, $method);
-	}
-
-
-	private static function _parseRule($rule, &$route) {
-		$result = ['', [], [], []];
-		$offset = 0;
-		while (isset($rule[$offset]) && ($beginOffset = strpos($rule, '{', $offset)) !== false) {
-			$endOffset = $beginOffset + 1 + strcspn($rule, '{}', $beginOffset + 1);
-			if (!isset($rule[$endOffset])) {
-				return false;
-			}
-			if ($rule[$endOffset] === '{') {
-				$beginOffset2 = $endOffset;
-				if (($endOffset2 = strpos($rule, '}', $beginOffset2)) === false || ($endOffset = strpos($rule, '}', $endOffset2 + 1)) === false) {
-					return false;
-				}
-				$optional = $rule[$endOffset2-1] === '?';
-
-				$optional2 = $rule[$endOffset-1] === '?';
-
-				$name = substr($rule, $beginOffset2 + 1, $endOffset2 - $beginOffset2 - ($optional ? 2 : 1));
-				$result[2][$name] = substr($rule, $beginOffset + 1, $beginOffset2 - $beginOffset - 1);
-				$result[3][$name] = substr($rule, $endOffset2 + 1, $endOffset - $endOffset2 - ($optional2 ? 2 : 1));
-				$result[4][$name] = $optional2 ? '?' : '';
-			} else {
-				$optional = $rule[$endOffset-1] === '?';
-				$name = substr($rule, $beginOffset + 1, $endOffset - $beginOffset - ($optional ? 2 : 1));
-				$result[4][$name] = $result[2][$name] = $result[3][$name] = '';
-			}
-			if (empty($route['match'][$name])) {
-				$route['match'][$name] = '[0-9a-zA-Z_-]+';
-			}
-			$result[1][$name] = '(?<_' . $name . '>' . str_replace('/', '\\/', $route['match'][$name]) . ')' . ($optional ? '?' : '');
-			$result[0] .= substr($rule, $offset, $beginOffset - $offset). '"'. $name. '"';
-			$offset = $endOffset + 1;
-		}
-		$result[0] .= substr($rule, $offset);
-		return $result;
-	}
-
-
 	protected static function rules() {
 		self::$rules = [];
-		$defaultHost = empty($_SERVER['LOLI']['route']['hosts']) ? [self::request()->getHeader('Host')] : (array) $_SERVER['LOLI']['route']['hosts'];
+		$defaultHost = empty($_SERVER['LOLI']['route']['hosts']) ? [self::request()->getHeaderLine('Host')] : (array) $_SERVER['LOLI']['route']['hosts'];
 		foreach (empty($_SERVER['LOLI']['route']['rules']) ? [] : $_SERVER['LOLI']['route']['rules'] as $controller => $route) {
 			// 模块
 			if (empty($route['controller'])) {
@@ -457,7 +559,7 @@ class Route extends ArrayObject{
 			// host 规则重写
 			$route['hostRule'] = [];
 			foreach ($route['host'] as $key => $value) {
-				if (!$rule = self::_parseRule($value, $route)) {
+				if (!$rule = self::parsedRule($value, $route)) {
 					$continue = true;
 					break;
 				}
@@ -468,13 +570,13 @@ class Route extends ArrayObject{
 			}
 
 
-			if (!$route['pathRule'] = self::_parseRule($route['path'], $route)) {
+			if (!$route['pathRule'] = self::parsedRule($route['path'], $route)) {
 				continue;
 			}
 
 			$route['controllerRule'] = [];
 			foreach ($route['controller'] as $value) {
-				if (!$rule = self::_parseRule($value, $route)) {
+				if (!$rule = self::parsedRule($value, $route)) {
 					$continue = true;
 					break;
 				}
@@ -498,47 +600,40 @@ class Route extends ArrayObject{
 
 
 
+	private static function parsedRule($rule, &$route) {
+		$result = ['', [], [], []];
+		$offset = 0;
+		while (isset($rule[$offset]) && ($beginOffset = strpos($rule, '{', $offset)) !== false) {
+			$endOffset = $beginOffset + 1 + strcspn($rule, '{}', $beginOffset + 1);
+			if (!isset($rule[$endOffset])) {
+				return false;
+			}
+			if ($rule[$endOffset] === '{') {
+				$beginOffset2 = $endOffset;
+				if (($endOffset2 = strpos($rule, '}', $beginOffset2)) === false || ($endOffset = strpos($rule, '}', $endOffset2 + 1)) === false) {
+					return false;
+				}
+				$optional = $rule[$endOffset2-1] === '?';
 
-	protected static function load(Route $route, $name) {
-		switch ($name) {
-			case 'request':
-				// 请求对象
-				$result = new HTTP\Request;
-				break;
-			case 'response':
-				// 响应对象
-				$result = new HTTP\Response($route->request);
-				break;
-			case 'csrf':
-				// 请求对象
-				$result = self::request()->getParam('_csrf') !== self::request()->getToken();
-				break;
-			case 'auth':
-				// 验证信息
-				if (!$result = Auth::selectRow(self::request()->getToken())) {
-					$request = self::request();
-					$result = new Auth(['token' => $request->getToken(), 'ip' => $request->getClientAddr(), 'user_id' => 0, 'user_agent' => substr($request->getHeader('User-Agent'), 0, 255)]);
-					$result->insert();
-				}
-				break;
-			case 'user':
-				// 用户信息
-				$auth = self::auth();
-				$result = new User(['id' => $auth->user_id]);
-				if ($result->id) {
-					$result->select();
-				} else {
-					foreach ($auth as $key => $value) {
-						if (in_array($key, ['timezone', 'language'], true)) {
-							$result->$key = $value;
-						}
-					}
-				}
-				break;
-			default:
-				throw new Exception('Unregistered route object');
+				$optional2 = $rule[$endOffset-1] === '?';
+
+				$name = substr($rule, $beginOffset2 + 1, $endOffset2 - $beginOffset2 - ($optional ? 2 : 1));
+				$result[2][$name] = substr($rule, $beginOffset + 1, $beginOffset2 - $beginOffset - 1);
+				$result[3][$name] = substr($rule, $endOffset2 + 1, $endOffset - $endOffset2 - ($optional2 ? 2 : 1));
+				$result[4][$name] = $optional2 ? '?' : '';
+			} else {
+				$optional = $rule[$endOffset-1] === '?';
+				$name = substr($rule, $beginOffset + 1, $endOffset - $beginOffset - ($optional ? 2 : 1));
+				$result[4][$name] = $result[2][$name] = $result[3][$name] = '';
+			}
+			if (empty($route['match'][$name])) {
+				$route['match'][$name] = '[0-9a-zA-Z_-]+';
+			}
+			$result[1][$name] = '(?<_' . $name . '>' . str_replace('/', '\\/', $route['match'][$name]) . ')' . ($optional ? '?' : '');
+			$result[0] .= substr($rule, $offset, $beginOffset - $offset). '"'. $name. '"';
+			$offset = $endOffset + 1;
 		}
+		$result[0] .= substr($rule, $offset);
 		return $result;
 	}
-
 }

@@ -11,8 +11,8 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-class Controller{
+class Controller {
 	public function __call($name, $args) {
-		throw new Message(404, Message::ERROR, new Message([1, 'Controller does not exist'], Message::ERROR));
+		throw new Message('The controller method does not exist', 404);
 	}
 }

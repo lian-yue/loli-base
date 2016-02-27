@@ -29,12 +29,12 @@ class RSA{
 			$this->setPublicKey($config['publicKey']);
 		}
 		if (!empty($config['privateKey'])) {
-			$this->setPrivateKey($config['privateKey'], empty($config['passphrase']) ? NULL : $config['passphrase']);
+			$this->setPrivateKey($config['privateKey'], empty($config['passphrase']) ? null : $config['passphrase']);
 		}
 	}
 
 	public static function newKey($bits = 2048, $passphrase = false, $method = 'sha512') {
-		$passphrase = $passphrase ? $passphrase : NULL;
+		$passphrase = $passphrase ? $passphrase : null;
 
 		$config = [];
 		$res = openssl_pkey_new([
@@ -50,7 +50,7 @@ class RSA{
 	}
 
 	public static function passphraseVerify($privateKey, $passphrase) {
-		if (!openssl_pkey_get_private($privateKey, $passphrase ? $passphrase: NULL)) {
+		if (!openssl_pkey_get_private($privateKey, $passphrase ? $passphrase: null)) {
 			return false;
 		}
 		return true;
@@ -65,9 +65,9 @@ class RSA{
 		return true;
 	}
 
-	public function setPrivateKey($privateKey, $passphrase = NULL) {
+	public function setPrivateKey($privateKey, $passphrase = null) {
 		$this->privateKey = $privateKey;
-		$this->_privateKey = openssl_pkey_get_private($privateKey, $passphrase ? $passphrase : NULL);
+		$this->_privateKey = openssl_pkey_get_private($privateKey, $passphrase ? $passphrase : null);
 		if (!$this->_privateKey) {
 			throw new Exception('Private Key Error');
 		}

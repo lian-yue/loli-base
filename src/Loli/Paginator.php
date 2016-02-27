@@ -12,8 +12,13 @@
 /* ************************************************************************** */
 namespace Loli;
 use JsonSerializable;
+use Psr\Http\Message\UriInterface;
+
+
+use GuzzleHttp\Psr7\Uri;
+
 class Paginator implements JsonSerializable{
-	protected $url;
+	protected $uri;
 
 	protected $key = 'page';
 
@@ -29,8 +34,8 @@ class Paginator implements JsonSerializable{
 
 	protected $ellipsis = true;
 
-	public function __construct($url = null, $current = false, $limit = 20) {
-		$this->url = $url ? $url : Route::request()->getURL();
+	public function __construct($uri = null, $current = false, $limit = 20) {
+		$this->uri = $uri ? $uri : Route::request()->getUri();
 		$this->current = $current ? $current : Route::request()->getParam($this->key, 1);
 		$this->limit = $limit;
 	}
@@ -66,18 +71,18 @@ class Paginator implements JsonSerializable{
 
 				$items = [];
 
-				$items[] = ['type' => 'prev', 'value' => self::translate('&laquo; Previous'), 'url' => ($prev = $this->prev) ? $this->url($prev) : false];
+				$items[] = ['type' => 'prev', 'value' => self::translate('&laquo; Previous'), 'uri' => ($prev = $this->prev) ? $this->uri($prev) : false];
 
 				if ($this->ellipsis && $min > 1) {
 					$items[] = ['type' => 'ellipsis', 'value' => self::translate('...')];
 				}
 				for ($i = $min; $i < $max; $i++) {
-					$items[] = ['type' => $current === $i ? 'current' : 'url', 'value' => $i, 'url' => $this->url($i)];
+					$items[] = ['type' => $current === $i ? 'current' : 'uri', 'value' => $i, 'uri' => $this->uri($i)];
 				}
 				if ($this->ellipsis && $max < $current) {
 					$items[] = ['type' => 'ellipsis', 'value' => self::translate('...')];
 				}
-				$items[] = ['type' => 'next', 'value' => self::translate('Next &raquo;'), 'url' => ($next = $this->next) ? $this->url($next) : false];
+				$items[] = ['type' => 'next', 'value' => self::translate('Next &raquo;'), 'uri' => ($next = $this->next) ? $this->uri($next) : false];
 
 				return $items;
 				break;
@@ -92,11 +97,11 @@ class Paginator implements JsonSerializable{
 
 	public function __set($name, $value) {
 		switch ($name) {
-			case 'url':
-				if (!$value instanceof URL) {
-					$value = new URL($value);
+			case 'uri':
+				if (!$value instanceof UriInterface) {
+					$value = new Uri($value);
 				}
-				$this->url = $value;
+				$this->uri = $value;
 				break;
 			case 'key':
 				$this->key = to_string($value);
@@ -134,19 +139,23 @@ class Paginator implements JsonSerializable{
 	}
 
 
-	public function url($page) {
-		$url = clone $this->url;
-		$url->query($this->key, $page);
-		return $url;
+	public function uri($page) {
+		if ($query = $this->uri->getQuery()) {
+			parse_str($query, $queryParams);
+		} else {
+			$queryParams = [];
+		}
+		$queryParams[$this->key] = $page;
+		return $this->uri->withQuery(http_build_query($query, null, '&'));
 	}
 
 
 	public function jsonSerialize() {
 		$array = [];
-		foreach (['start', 'end', 'prev', 'next', 'url', 'key', 'current', 'limit','total', 'items'] as $name) {
+		foreach (['start', 'end', 'prev', 'next', 'uri', 'key', 'current', 'limit','total', 'items'] as $name) {
 			$array[$name] = $this->__get($name);
 		}
-		$array['url'] = $this->url('{page}');
+		$array['uri'] = $this->uri('{page}');
 		$array['items'] = $this->items;
 		return $array;
 	}
@@ -154,14 +163,14 @@ class Paginator implements JsonSerializable{
 	public function __toString() {
 		$results = '<ul class="pagination">';
 		foreach($this->items as $item) {
-			if (empty($item['url'])) {
+			if (empty($item['uri'])) {
 				$results .= '<li class="disabled '. $item['type'] .'"><span>'. $item['value'] .'</span></li>';
 			} else {
 				$class = $item['type'];
 				if ($item['type'] === 'current') {
 					$class .= ' active';
 				}
-				$results .= '<li class="'. $class .'"><a href="'. $item['url'] .'" ' . (in_array($item['type'], ['prev', 'next'], true) ? 'rel="'. $item['type'] .'"' : '') . '>'. $item['value'] .'</span></li>';
+				$results .= '<li class="'. $class .'"><a href="'. $item['uri'] .'" ' . (in_array($item['type'], ['prev', 'next'], true) ? 'rel="'. $item['type'] .'"' : '') . '>'. $item['value'] .'</span></li>';
 			}
 		}
 		$results .='</ul>';
@@ -193,6 +202,6 @@ class Paginator implements JsonSerializable{
 	}
 
 	public static function translate($text, $original = true) {
-		return Language::translate($text, ['Paginator'], $original);
+		return Language::translate($text, ['paginator', 'default'], $original);
 	}
 }
