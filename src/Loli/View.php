@@ -16,9 +16,13 @@ class View extends ArrayObject{
 	protected $dir;
 
 	public function __construct($views = [], array $data = []) {
-		$this->dir = empty($_SERVER['LOLI']['view']['dir']) ? './' : $_SERVER['LOLI']['view']['dir'];
 		$data && $this->merge($data);
 		$this->views = (array) $views;
+		$this->__wakeup();
+	}
+
+	public function __wakeup() {
+		$this->dir = empty($_SERVER['LOLI']['view']['dir']) ? './' : $_SERVER['LOLI']['view']['dir'];
 	}
 
 	protected function load($files) {
@@ -74,6 +78,7 @@ class View extends ArrayObject{
 		}
 		ob_start();
 		$this->load($this->views);
+		Route::response(Route::response()->withHeader('X-Processing', http_build_query($this->processing(), null, ' ')));
 		return ob_get_clean();
 	}
 }

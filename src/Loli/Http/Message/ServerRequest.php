@@ -16,7 +16,7 @@ class ServerRequest extends Request implements ServerRequestInterface {
 
 	private $uploadedFiles = [];
 
-	private $parsedBody = NULL;
+	private $parsedBody = null;
 
 	private $attributes = [];
 
@@ -112,7 +112,7 @@ class ServerRequest extends Request implements ServerRequestInterface {
 	}
 
 	public function withParsedBody($parsedBody) {
-		if ($parsedBody !== NULL && is_scalar($parsedBody)) {
+		if ($parsedBody !== null && is_scalar($parsedBody)) {
 			throw new \InvalidArgumentException(__METHOD__ . '('. gettype($parsedBody) .') Unsupported Data Types');
 		}
 		$request = clone $this;

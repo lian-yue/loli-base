@@ -41,7 +41,7 @@ abstract class AbstractBuilder{
 	public function __construct(Cursor $cursor) {
 		$this->cursor = $cursor;
 		if (!$this->database) {
-			throw new InvalidArgumentException(__METHOD__.'() Database connection can not be empty');
+			throw new \RuntimeException('Database connection can not be empty');
 		}
 	}
 
@@ -63,7 +63,7 @@ abstract class AbstractBuilder{
 	 * @return boolean
 	 */
 	protected function getReadonly() {
-		if ($this->readonly === NULL) {
+		if ($this->readonly === null) {
 			if (!empty(self::$logs[$this->database->database()]) && ($useTables = $this->getUseTables())) {
 				foreach (self::$logs[$this->database->database()] as $table => $time) {
 					if (in_array($table, $useTables, true) && $time > time()) {
@@ -90,7 +90,7 @@ abstract class AbstractBuilder{
 	/**
 	 * lastInsertId 最后的 id
 	 */
-	public function lastInsertId($insertId = NULL) {
+	public function lastInsertId($insertId = null) {
 		return $insertId ? $this->database->lastInsertId($insertId) : ($this->insertId ? $this->database->lastInsertId($insertId) : $this->database->lastInsertId());
 	}
 
@@ -103,7 +103,7 @@ abstract class AbstractBuilder{
 			}
 			return $this->commit();
 		} catch (\Exception $e) {
-			throw new $e;
+			throw $e;
 		}
 	}
 
@@ -183,18 +183,7 @@ abstract class AbstractBuilder{
 	 * @param  integer $refresh 延迟刷新时间
 	 * @return this
 	 */
-	abstract public function deleteCacheSelect($refresh = NULL);
-
-
-	abstract public function deleteCacheselectRow($refresh = NULL);
-
-
-	/**
-	 * deleteCacheCount 删除数量缓存
-	 * @param  integer $refresh 延迟刷新时间
-	 * @return this
-	 */
-	abstract public function deleteCacheCount($refresh = NULL);
+	abstract public function deleteCache();
 
 
 	abstract public function getUseTables();

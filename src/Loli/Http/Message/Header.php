@@ -41,7 +41,7 @@ class Header {
 			$array['Max-Age'] = $expires->getTimestamp() - time();
 		}
 		if ($path) {
-			$array['path'] = rawurlencode((string) $path);
+			$array['path'] = str_replace('%2F', '/', rawurlencode((string) $path));
 		}
 		if ($domain) {
 			$array['domain'] = rawurlencode((string) $domain);

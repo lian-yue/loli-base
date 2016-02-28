@@ -1,10 +1,13 @@
 <?php
 namespace Loli;
-class Log extends Group{
+class Log extends Service {
 
-	protected static $name = 'log';
+	protected static $configure = 'log';
 
-	protected static function link($group, array $config, $exists) {
+	protected static $group = true;
+
+	protected static function register(array $config, $group = null) {
+		$config  = isset($config[$group]) ? $config[$group] : reset($config);
 		$class = empty($config['type']) ? 'Memory' : $config['type'];
 		if ($class{0} !== '\\') {
 			$class = __NAMESPACE__ . '\Log\\' . $class . 'Logger';

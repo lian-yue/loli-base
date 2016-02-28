@@ -1,11 +1,10 @@
 <?php
 namespace Loli;
-use Serializable;
 
 use Psr\Http\Message\UriInterface;
 
 
-class Uri implements UriInterface, Serializable{
+class Uri implements UriInterface{
 
 	private static $schemes = [
 		80 => ['' => true, 'https' => true],
@@ -46,9 +45,9 @@ class Uri implements UriInterface, Serializable{
 		return ['scheme', 'userInfo', 'host', 'port', 'path', 'query', 'fragment', 'data', 'controller'];
 	}
 
-   public function __wakeup() {
-	   $this->getParsed();
-   }
+	public function __wakeup() {
+		$this->getParsed();
+	}
 
 	public function __clone() {
 		$this->data = [];
@@ -127,7 +126,6 @@ class Uri implements UriInterface, Serializable{
 			return $this->path;
 		}
 		if (!isset($this->data['path'])) {
-			$args = $this->getArgs();
 			$searchs = $replaces = [];
 			foreach ($this->rule['pathRule'][2] as $name => $value) {
 				$searchs[] = '"'.$name.'"';
@@ -141,7 +139,7 @@ class Uri implements UriInterface, Serializable{
 					$replaces[] = '';
 				}
 			}
-			$this->data['path'] = str_replace($searchs, $replace, $this->rule['pathRule'][0]);
+			$this->data['path'] = str_replace($searchs, $replaces, $this->rule['pathRule'][0]);
 			if (!$this->data['path'] || $this->data['path']{0} !== '/') {
 				$this->data['path'] = '/' . $this->data['path'];
 			}
@@ -151,7 +149,7 @@ class Uri implements UriInterface, Serializable{
 
     public function getQuery() {
 		if (!isset($this->data['query'])) {
-			$query = $query + $this->rule['defaults'];
+			$query = $this->query + $this->rule['defaults'];
 			if ($query) {
 				$query = array_diff_key($query, $this->rule['match']);
 			}
@@ -159,6 +157,37 @@ class Uri implements UriInterface, Serializable{
 		}
 
 		return $this->data['query'];
+	}
+
+	public function getQueryParams() {
+		return $this->query;
+	}
+
+	public function withQueryParams(array $query) {
+		if ($new->query === $query) {
+			return $this;
+		}
+		$new = clone $this;
+		$new->query = $query;
+		return $new;
+	}
+
+	public function withQueryParam($name, $value) {
+		if ($value === null) {
+			if (!isset($this->query[$name])) {
+				return $this;
+			}
+			$new = clone $this;
+			unset($new->query[$name]);
+			return $new;
+		}
+		$value = is_array($value) ? to_array($value) : to_string($value);
+		if (isset($new->query[$name]) && $new->query[$name] === $value) {
+			return $this;
+		}
+		$new = clone $this;
+		$new->query[$name] = $value;
+		return $new;
 	}
 
     public function getFragment() {

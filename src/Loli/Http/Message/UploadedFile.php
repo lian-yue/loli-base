@@ -26,9 +26,12 @@ class UploadedFile implements UploadedFileInterface {
 
 	public function getStream() {
 		if ($this->error !== UPLOAD_ERR_OK) {
-			throw new \InvalidArgumentException( __METHOD__ . '() File upload error');
+			throw new \RuntimeException( __METHOD__ . '() File upload error');
 		}
-		return new Stream($this->tmp_name);
+		if (!is_file($this->tmp_name)) {
+			throw new \RuntimeException( __METHOD__ . '() Upload file does not exist');
+		}
+		return new Stream(fopen($this->tmp_name, 'rb'));
 	}
 
 	public function moveTo($targetPath) {
@@ -36,7 +39,7 @@ class UploadedFile implements UploadedFileInterface {
 			throw new \InvalidArgumentException( __METHOD__ . '() File upload error');
 		}
 		if(!is_uploaded_file($this->tmp_name)) {
-			throw new \InvalidArgumentException(sprintf('Invalid temporary file "%s".', $this->tmp_name));
+			throw new \RuntimeException(sprintf('Invalid temporary file "%s".', $this->tmp_name));
 		}
 		return move_uploaded_file($this->tmp_name, $targetPath);
 	}
@@ -54,12 +57,9 @@ class UploadedFile implements UploadedFileInterface {
 	}
 
 	public function getClientMediaType() {
-		if ($this->error === UPLOAD_ERR_OK) {
-			$finfo = new \finfo(FILEINFO_MIME);
-			return $finfo->file($this->tmp_name);
-		}
 		return $this->type;
 	}
+
 	public function __toString(){
 		return $this->getClientFilename();
 	}

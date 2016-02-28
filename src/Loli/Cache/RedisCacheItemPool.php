@@ -61,7 +61,7 @@ class RedisCacheItemPool extends AbstractCacheItemPool{
 					++$count;
 				}
 			} catch (RedisException $e) {
-				$this->logger && $this->logger->critical($e->getMessage() .' ('. $e->getCode() .')');
+				$this->logger && $this->logger->critical($e->getMessage(), ['exception' => $e]);
 			}
 			unset($this->data[$key]);
 		}
@@ -86,7 +86,7 @@ class RedisCacheItemPool extends AbstractCacheItemPool{
 			try {
 				$this->link($key)->flushall();
 			} catch (RedisException $e) {
-				$this->logger && $this->logger->critical($e->getMessage() .' ('. $e->getCode() .')');
+				$this->logger && $this->logger->critical($e->getMessage(), ['exception' => $e]);
 			}
 		}
 		return true;
@@ -133,7 +133,7 @@ class RedisCacheItemPool extends AbstractCacheItemPool{
 				$item->setHit(true);
 				++$count;
 			} catch (RedisException $e) {
-				$this->logger && $this->logger->critical($e->getMessage() .' ('. $e->getCode() .')');
+				$this->logger && $this->logger->critical($e->getMessage(), ['exception' => $e]);
 			}
 		}
 		return $count;
@@ -153,7 +153,7 @@ class RedisCacheItemPool extends AbstractCacheItemPool{
 			$expires = $ttl == -1 ? null : $link->time()[0] + $ttl;
 			return [is_numeric($value) ? (int) $value : @unserialize($value), $expires];
 		} catch (RedisException $e) {
-			$this->logger && $this->logger->critical($e->getMessage() .' ('. $e->getCode() .')');
+			$this->logger && $this->logger->critical($e->getMessage(), ['exception' => $e]);
 		}
 		return false;
 	}
@@ -171,7 +171,7 @@ class RedisCacheItemPool extends AbstractCacheItemPool{
 					empty($server['auth']) || $this->links[$key]->auth($server['auth']);
 				}
 			} catch (RedisException $e) {
-				$this->logger && $this->logger->critical('Redis cache server is unavailable ('. $e->getMessage() .') . ('. $server['hostname'][0] .':' . $server['hostname'][1] . ')');
+				$this->logger && $this->logger->critical($e->getMessage() .'. ('. $server['hostname'][0] .':' . $server['hostname'][1] . ')', ['exception' => $e]);
 			}
 		}
 		return $this->links[$key];

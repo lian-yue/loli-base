@@ -25,7 +25,7 @@
 namespace Loli\Database;
 use Closure;
 use PDOException;
-
+use Psr\Log\LogLevel;
 class PDODatabase extends AbstractDatabase{
 
 	protected function connect(array $server) {
@@ -35,9 +35,7 @@ class PDODatabase extends AbstractDatabase{
 		shuffle($server['hostname']);
 		// 不支持的驱动器
 		if (!in_array($server['protocol'], \PDO::getAvailableDrivers())) {
-			$message = __METHOD__ . '().PDO() Does not support this protocol';
-			$this->logger && $this->logger->alert($message);
-			throw new ConnectException($message);
+			$this->throwLog(new ConnectException('Does not support this protocol'), LogLevel::ALERT);
 		}
 		$hostname = explode(':', reset($server['hostname']), 2);
 		try {
@@ -50,20 +48,16 @@ class PDODatabase extends AbstractDatabase{
 				case 'sqlite':
 					// sqlite 需要当前 文件目录的写入权限
 					if (!is_writable(dirname($server['database']))) {
-						$message = __METHOD__ . '().PDO() File directory is not writable';
-						$this->logger && $this->logger->alert($message);
-						throw new ConnectException($message);
+						$this->throwLog(new ConnectException('File directory is not writable'), LogLevel::ALERT);
 					}
 					$message = __METHOD__.'().PDO(sqlite:'.$this->database().')';
 					$link = new \PDO('sqlite:' . $server['database'] . ';charset=UTF8', $server['username'], $server['password'], [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
 					break;
 				default:
-					throw new ConnectException(__METHOD__.'().PDO() Unknown database protocol');
+					$this->throwLog(new ConnectException('Unknown database protocol'), LogLevel::ALERT);
 			}
 		} catch (PDOException $e) {
-			$message .= ' ' . $e->getMessage();
-			$this->logger && $this->logger->alert($message);
-			throw new ConnectException($message);
+			$this->throwLog(new ConnectException($message . ' ' . $e->getMessage()), LogLevel::ALERT);
 		}
 		return $link;
 	}
@@ -71,52 +65,47 @@ class PDODatabase extends AbstractDatabase{
 	protected function ping() {;
 		try {
 			if (!($status = $this->link()->getAttribute(\PDO::ATTR_CONNECTION_STATUS)) || stripos($status, 'has gone away')) {
-				$message = __METHOD__.'() ' . $status;
-				$this->logger && $this->logger->error($message);
-				throw new ConnectException($message);
+				$this->throwLog(new ConnectException($status), LogLevel::ALERT);
 			}
 		} catch (PDOException $e) {
-			$message = __METHOD__.'() ' . $e->getMessage();
-			$this->logger && $this->logger->error($message);
-			throw new ConnectException($message);
+			$this->throwLog(new ConnectException($e->getMessage()), LogLevel::ALERT);
 		}
 		$this->logger && $this->logger->debug(__METHOD__.'()');
 		return $this;
 	}
 
 
-	public function command($query, $readonly = NULL, $class = NULL, $type = NULL) {
+	public function command($query, $readonly = null, $class = null, $type = null) {
 		self::className($class);
 
 		// 查询不是字符串
 		if (!is_string($query)) {
-			$this->logger && $this->logger->error(__METHOD__ . '('. json_encode($query) .') Query is not a string');
-			throw new QueryException($query, 'Query is not a string');
+			$this->throwLog(new QueryException($query, 'Query is not a string'), LogLevel::ERROR, ['query' => $query]);
 		}
 
 		// 查询为空
 		if (!$query = trim($query)) {
-			$this->logger && $this->logger->error(__METHOD__.'() Query is empty');
-			throw new QueryException(__METHOD__.'()', 'Query is empty');
+			$this->throwLog(new QueryException($query, 'Query is empty'), LogLevel::ERROR, ['query' => $query]);
 		}
 		$query = trim($query, ';') . ';';
 		try {
-			if (preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query) && in_array($type, [NULL, 0])) {
+			if (preg_match('/^\s*(EXPLAIN|SELECT|SHOW)\s+/i', $query) && in_array($type, [null, 0])) {
+				if ($this->inTransaction) {
+					$readonly = false;
+				}
 				$results = new Results($this->link($readonly)->query($query)->fetchAll(\PDO::FETCH_CLASS, $class));
 				if ($this->explain && preg_match('/^\s*(SELECT)\s+/i', $query)) {
 					$this->command('EXPLAIN ' . $query, $readonly, $type);
 				}
-			} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE)\s+/i', $query) && in_array($type, [NULL, 1], true)) {
+			} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE)\s+/i', $query) && in_array($type, [null, 1], true)) {
 				$results = $this->link(false)->exec($query);
-			} elseif (in_array($type, [NULL, 2], true)) {
+			} elseif (in_array($type, [null, 2], true)) {
 				$results = $this->link(false)->exec($query);
 			} else {
 				$results = $this->link(false)->query($query);
 			}
 		} catch (PDOException $e) {
-			$this->logger && $this->logger->error(__METHOD__.'('.$query.')' . $e->getMessage());
-			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
-			throw new QueryException($query, $e->getMessage(), $info[0], $info[1]);
+			$this->throwLog(new QueryException($query, $e->getMessage(), $info[0], $info[1]), LogLevel::ERROR, ['query' => $query]);
 		}
 		$this->logger && $this->logger->debug(__METHOD__.'('.$query.') ' . (is_scalar($results) ? $results : json_encode($results)));
 		return $results;
@@ -125,16 +114,14 @@ class PDODatabase extends AbstractDatabase{
 
 	public function beginTransaction() {
 		if ($this->inTransaction) {
-			$this->logger && $this->logger->error(__METHOD__.'() There is already an active transaction');
-			throw new QueryException(__METHOD__.'()', 'There is already an active transaction');
+			$this->throwLog(new QueryException(__METHOD__.'()', 'There is already an active transaction'));
 		}
 		try {
 			$this->inTransaction = true;
 			$this->link(false)->beginTransaction();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
-			$this->logger && $this->logger->error(__METHOD__.'() ' . $e->getMessage());
-			throw new QueryException(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]);
+			$this->throwLog(new QueryException(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]));
 		}
 		$this->logger && $this->logger->debug(__METHOD__.'()');
 		return $this;
@@ -142,16 +129,14 @@ class PDODatabase extends AbstractDatabase{
 
 	public function commit() {
 		if (!$this->inTransaction) {
-			$this->logger && $this->logger->error(__METHOD__.'() There is no active transaction');
-			throw new QueryException(__METHOD__.'()', 'There is no active transaction');
+			$this->throwLog(new QueryException(__METHOD__.'()', 'There is no active transaction'));
 		}
 		try {
 			$this->inTransaction = false;
 			$this->link(false)->commit();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
-			$this->logger && $this->logger->error(__METHOD__.'() ' . $e->getMessage());
-			throw new QueryException(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]);
+			$this->throwLog(new QueryException(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]));
 		}
 		$this->logger && $this->logger->debug(__METHOD__.'()');
 		return $this;
@@ -159,16 +144,14 @@ class PDODatabase extends AbstractDatabase{
 
 	public function rollBack() {
 		if (!$this->inTransaction) {
-			$this->logger && $this->logger->error(__METHOD__.'() There is no active transaction');
-			throw new QueryException(__METHOD__.'()', 'There is no active transaction');
+			$this->throwLog(new QueryException(__METHOD__.'()', 'There is no active transaction'));
 		}
 		try {
 			$this->inTransaction = false;
 			$this->link(false)->rollBack();
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
-			$this->logger && $this->logger->error(__METHOD__.'() ' . $e->getMessage());
-			throw new QueryException(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]);
+			$this->throwLog(new QueryException(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]));
 		}
 		$this->logger && $this->logger->debug(__METHOD__.'()');
 		return $this;
@@ -181,8 +164,7 @@ class PDODatabase extends AbstractDatabase{
 			$result = $this->link(false)->lastInsertId(...$args);
 		} catch (PDOException $e) {
 			$info = $e->errorInfo ? $e->errorInfo : ['IM001', 0];
-			$this->logger && $this->logger->error(__METHOD__.'() ' . $e->getMessage());
-			throw new QueryException(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]);
+			$this->throwLog(new QueryException(__METHOD__.'()', $e->getMessage(), $info[0], $info[1]));
 		}
 		$this->logger && $this->logger->debug(__METHOD__.'() ' . $result);
 		return $result;
@@ -192,8 +174,7 @@ class PDODatabase extends AbstractDatabase{
 	public function key($key, $throw = false) {
 		if (!$key || !is_string($key) || !preg_match('/^(?:([0-9a-z_]+)\.)?([0-9a-z_]+|\*)$/i', $key, $matches) || ($matches[1] && is_numeric($matches[1])) || is_numeric($matches[2])) {
 			if ($throw) {
-				$this->logger && $this->logger->error(__METHOD__.'('.$key.') Key name is not formatted correctly');
-				throw new QueryException(__METHOD__.'('.$key.')', 'Key name is not formatted correctly');
+				$this->throwLog(new ConnectException(__METHOD__.'('.$key.')', 'Key name is not formatted correctly'), LogLevel::ERROR, ['key' => $key]);
 			}
 			return false;
 		}
@@ -218,7 +199,7 @@ class PDODatabase extends AbstractDatabase{
 				$value = json_encode($value);
 			}
 		}
-		if ($value === NULL) {
+		if ($value === null) {
 			return 'NULL';
 		} elseif ($value === false) {
 			$value = 0;

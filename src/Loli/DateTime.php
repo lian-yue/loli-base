@@ -97,7 +97,7 @@ class DateTime extends \DateTime implements JsonSerializable{
 		return $this->instanceTimeZone(parent::getTimeZone());
 	}
 
-	public static function createFromFormat($format, $time, $timezone = NULL) {
+	public static function createFromFormat($format, $time, $timezone = null) {
 		if ($timezone === null) {
 			$datetime = parent::createFromFormat($format, $time);
         } else {
@@ -136,4 +136,3 @@ class DateTime extends \DateTime implements JsonSerializable{
 		return new DateTimeZone((string) $timezone);
 	}
 }
-

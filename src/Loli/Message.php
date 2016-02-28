@@ -26,7 +26,6 @@ use GuzzleHttp\Psr7\Uri;
 
 
 50 = 验证器错误 {name} {title} {type}
-51 =
 
 200 － 399 执行成功 并且要设置http状态码的
 
@@ -44,7 +43,7 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 
 	protected $hosts = [];
 
-	public function __construct($message = [], $code = 200, $data = [], $redirect = true, $refresh = 3, Message $previous = NULL) {
+	public function __construct($message = [], $code = 200, $data = [], $redirect = true, $refresh = 3, Message $previous = null) {
 		$this->hosts = empty($_SERVER['LOLI']['message']['hosts']) ? [] : (array) $_SERVER['LOLI']['message']['hosts'];
 
 		// previous　变量自动缩进
@@ -54,7 +53,7 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 				$$key = $value;
 				break;
 			}
-			if ($$key === NULL) {
+			if ($$key === null) {
 				$$key = $value;
 			}
 		}
@@ -165,16 +164,14 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 
 	public function setRedirect($redirect, $whiteList = false) {
 		if ($redirect) {
-
 			try {
 				$redirect = $this->getParsedRedirect($redirect);
 			} catch (\Exception $e) {
-				$redirect = new Uri('//'. $request->getUri()->getHost() . '/');
+				$redirect = new Uri('//'. Route::request()->getUri()->getHost() . '/');
 			}
 
 
 			if (!$whiteList) {
-				$request = Route::request();
 
 				if ($redirect->getScheme() && !in_array($redirect->getScheme(), ['http', 'https'], true)) {
 					// 协议不是 http https
@@ -189,7 +186,7 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 					$error = true;
 				}
 				if (isset($error)) {
-					$redirect = new Uri('//'. $request->getUri()->getHost() . '/');
+					$redirect = new Uri('//'. Route::request()->getUri()->getHost() . '/');
 				}
 				if ($redirect->getQuery()) {
 					parse_str($redirect->getQuery(), $queryParams);
@@ -202,6 +199,9 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 				$queryParams['_message_code'] = $this->getCode();
 				$queryParams = http_build_query($queryParams, null, '&');
 				$redirect = $redirect->withQuery($queryParams);
+			}
+			if (!$redirect->getScheme()) {
+				$redirect = $redirect->withScheme(Route::request()->getUri()->getScheme());
 			}
 		} else {
 			$redirect = false;

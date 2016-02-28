@@ -11,7 +11,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
-
+use Psr\Log\LogLevel;
 class FtpStorage extends AbstractStorage{
 
 
@@ -38,9 +38,7 @@ class FtpStorage extends AbstractStorage{
 	private function error() {
 		$error = error_get_last();
 		if ($error && strpos($error['message'], 'failed to open stream: operation failed') !== false) {
-			$message = __METHOD__ .'() ' . $error['message'];
-			$this->logger && $this->logger->alert($message);
-			throw new ConnectException($message);
+			$this->throwLog(new ConnectException($error['message']), LogLevel::ALERT);
 		}
 	}
 

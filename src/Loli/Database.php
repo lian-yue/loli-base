@@ -11,8 +11,10 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-class Database extends Group{
-	protected static $name = 'database';
+class Database extends Service{
+	protected static $configure = 'database';
+
+	protected static $group = true;
 
 	protected static $protocol = [
 		'mysql' => ['mysql', 'MySqlDatabase'],
@@ -37,18 +39,17 @@ class Database extends Group{
 		// 'odbc' => ['odbc', 'ODBC'],
 	];
 
-	protected static function link($group, array $config, $exists) {
-		if (!$exists && $group !== 'default') {
-			return static::group('default');
+	protected static function register(array $config, $group = null) {
+		if (!isset($config[$group]) && $group !== 'default') {
+			return static::getService('default');
 		}
+
+		$config = isset($config[$group]) ? $config[$group] : reset($config);
 		if (!$config) {
 			$config = [[]];
 		}
-		$server = reset($config);
-		if (empty($server['protocol'])) {
-			$server['protocol'] = 'mysql';
-		}
 
+		$server = reset($config) + ['protocol' => 'mysql'];
 
 
 		$class = __NAMESPACE__.'\\Database\\';
@@ -66,7 +67,7 @@ class Database extends Group{
 			$class .= ucwords($server['protocol']) . 'Database';
 		}
 		$result = new $class($config);
-		$result->setLogger(Log::group(static::$name));
+		$result->setLogger(Log::database());
 		return $result;
 	}
 }

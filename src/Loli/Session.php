@@ -11,22 +11,17 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-class Session{
-	const GROUP = 'session';
+class Session extends Service {
+	protected static $configure = 'session';
 
-	private static function token() {
-		return Route::request()->token()->get();
-	}
+	protected static function register(array $config, $group = null) {
+		$class = empty($config['type']) ? 'Memory' : $config['type'];
 
-	public static function getItem($key) {
-		return Cache::group(self::GROUP)->getItem(self::token() . $key);
-	}
-
-	public static function deleteItem($key) {
-		return Cache::group(self::GROUP)->deleteItem(self::token() . $key);
-	}
-
-	public static function save(...$args) {
-		return Cache::group(self::GROUP)->save(...$args);
+		if ($class{0} !== '\\') {
+			$class = __NAMESPACE__ . '\Cache\\' . $class . 'CacheItemPool';
+		}
+		$result = new $class($config + ['key' => Route::token()->get() . $group . (empty($_SERVER['LOLI']['key']) ? '' : $_SERVER['LOLI']['key'])]);
+		$result->setLogger(Log::session());
+		return $result;
 	}
 }

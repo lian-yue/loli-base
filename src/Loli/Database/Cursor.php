@@ -102,14 +102,14 @@ class Cursor implements IteratorAggregate{
 		return $this->$name;
 	}
 
-	public function database(Base $database) {
+	public function database(AbstractDatabase $database) {
 		$this->builder = false;
 		$this->database = $database;
 		return $this;
 	}
 
 	public function className($name) {
-		Base::className($name);
+		AbstractDatabase::className($name);
 		$this->class = $name;
 		return $this;
 	}
@@ -200,12 +200,12 @@ class Cursor implements IteratorAggregate{
 	 * @param  array               $data 附加参数
 	 * @return this
 	 */
-	public function table($table, $alias = NULL, $join = NULL, $on = NULL, array $data = []) {
+	public function table($table, $alias = null, $join = null, $on = null, array $data = []) {
 		++$this->increment;
 		if ($table instanceof Param) {
-			$alias === NULL || $table->__set('alias', $alias);
-			$join === NULL || $table->__set('join', $join);
-			$on === NULL || $table->__set('on', $on);
+			$alias === null || $table->__set('alias', $alias);
+			$join === null || $table->__set('join', $join);
+			$on === null || $table->__set('on', $on);
 			$table->merge($data);
 			$this->tables[] = $table;
 		} else {
@@ -234,11 +234,11 @@ class Cursor implements IteratorAggregate{
 	 * @param  array              $data 附加参数
 	 * @return this
 	 */
-	public function column($name, $type = NULL, $length = NULL, array $data = []) {
+	public function column($name, $type = null, $length = null, array $data = []) {
 		++$this->increment;
 		if ($name instanceof Param) {
-			$type === NULL || $name->__set('type', $type);
-			$length === NULL || $name->__set('length', $length);
+			$type === null || $name->__set('type', $type);
+			$length === null || $name->__set('length', $length);
 			$name->merge($data);
 			$this->columns[] = $name;
 		} else {
@@ -266,11 +266,11 @@ class Cursor implements IteratorAggregate{
 	 * @param  array       $data   附加参数
 	 * @return this
 	 */
-	public function field($field, $alias = NULL, $function = NULL, array $data = []) {
+	public function field($field, $alias = null, $function = null, array $data = []) {
 		++$this->increment;
 		if ($field instanceof Param) {
-			$alias === NULL || $field->__set('alias', $alias);
-			$function === NULL || $field->__set('function', $function);
+			$alias === null || $field->__set('alias', $alias);
+			$function === null || $field->__set('function', $function);
 			$field->merge($data);
 			$this->fields[] = $field;
 		} else {
@@ -299,12 +299,12 @@ class Cursor implements IteratorAggregate{
 	 * @param  array       $data  附加变量
 	 * @return this
 	 */
-	public function query($column, $value = NULL, $compare = NULL, $function = NULL, array $data = []) {
+	public function query($column, $value = null, $compare = null, $function = null, array $data = []) {
 		++$this->increment;
 		if ($column instanceof Param) {
-			$value === NULL || $column->__set('value', $value);
-			$compare === NULL || $column->__set('compare', $compare);
-			$function === NULL || $column->__set('function', $function);
+			$value === null || $column->__set('value', $value);
+			$compare === null || $column->__set('compare', $compare);
+			$function === null || $column->__set('function', $function);
 			$column->merge($data);
 			$this->querys[] = $column;
 		} else {
@@ -322,7 +322,7 @@ class Cursor implements IteratorAggregate{
 	 */
 	public function values($values) {
 		if ($values instanceof Param) {
-			throw new InvalidArgumentException(__METHOD__.'() Class name can not be (Param)');
+			throw new InvalidArgumentException('Class name can not be (Param)');
 		}
 		if (!$this->documents) {
 			$this->documents[] = new $this->class;
@@ -373,7 +373,7 @@ class Cursor implements IteratorAggregate{
 	 */
 	public function document($document) {
 		if ($document instanceof Param) {
-			throw new InvalidArgumentException(__METHOD__.'() Class name can not be (Param)');
+			throw new InvalidArgumentException('Class name can not be (Param)');
 		}
 		++$this->increment;
 		$this->documents[] = $document instanceof $this->class ? $document : new $this->class($document);
@@ -399,10 +399,10 @@ class Cursor implements IteratorAggregate{
 	 * @param  array  $data  附加变量
 	 * @return this
 	 */
-	public function option($name, $value = NULL, array $data = []) {
+	public function option($name, $value = null, array $data = []) {
 		++$this->increment;
 		if ($name instanceof Param) {
-			$value === NULL || $name->__set('value', $value);
+			$value === null || $name->__set('value', $value);
 			$name->merge($data);
 			$this->options[] = $name;
 		} else {
@@ -418,7 +418,7 @@ class Cursor implements IteratorAggregate{
 	 * @param  array|string $columns  字段
 	 * @return this
 	 */
-	public function group($columns, $function = NULL) {
+	public function group($columns, $function = null) {
 		++$this->increment;
 		if ($columns instanceof Param) {
 			$columns = [$columns];
@@ -428,7 +428,7 @@ class Cursor implements IteratorAggregate{
 		foreach ($columns as $value) {
 			if ($value instanceof Param) {
 				$value->__set('name', 'group');
-				$function === NULL || $value->__set('function', $function);
+				$function === null || $value->__set('function', $function);
 				$this->options[] = $value;
 			} else {
 				$this->options[] = new Param(['name'=> 'group', 'value'=> $value, 'function' => $function]);
@@ -444,11 +444,11 @@ class Cursor implements IteratorAggregate{
 	 * @param  integer|null $order
 	 * @return this
 	 */
-	public function order($columns, $order = NULL, $function = NULL) {
+	public function order($columns, $order = null, $function = null) {
 		++$this->increment;
 		if ($columns instanceof Param) {
 			$columns = [$columns];
-		} elseif ($order !== NULL) {
+		} elseif ($order !== null) {
 			$tmp = [];
 			foreach ((array)$columns as $column) {
 				$tmp[$column] = $order;
@@ -460,8 +460,8 @@ class Cursor implements IteratorAggregate{
 		foreach ($columns as $column => $value) {
 			if ($value instanceof Param) {
 				$value->__set('name', 'order');
-				$order === NULL || $value->__set('order', $order);
-				$function === NULL || $value->__set('function', $function);
+				$order === null || $value->__set('order', $order);
+				$function === null || $value->__set('function', $function);
 				$this->options[] = $value;
 			} else {
 				$this->options[] = new Param(['name'=> 'order', 'value'=> $value, 'column' => $column, 'function' => $function]);
@@ -552,7 +552,7 @@ class Cursor implements IteratorAggregate{
 
 		// 无数据库信息
 		if (!$this->database) {
-			throw new InvalidArgumentException(__METHOD__.'() No database objects');
+			throw new InvalidArgumentException('No database objects');
 		}
 
 		// 构造器
@@ -578,10 +578,7 @@ class Cursor implements IteratorAggregate{
 		$lowerName = strtolower($name);
 		if ($args && in_array($lowerName, ['update', 'delete', 'select', 'selectrow', 'count', 'insert'], true)) {
 			if (count($args) !== count($this->primary)) {
-				if ($logger = $this->database->getLogger()) {
-					$logger->error(__METHOD__.'('.$name.') The primary key is not the same number of parameters');
-				}
-				throw new QueryException(__METHOD__.'('.$name.')', 'The primary key is not the same number of parameters');
+				$this->database->throwLog(new QueryException(__METHOD__.'('.$name.')', 'The primary key is not the same number of parameters'));
 			}
 			$i = 0;
 			foreach($this->primary as $primary) {

@@ -60,22 +60,19 @@ class Shh2Storage extends AbstractStorage{
 			print_r($this);
 			$hostname = explode(':', $this->hostname, 2) + [1 => 22];
 			if (!$this->link = @ssh2_connect($hostname[0], $hostname[1], $this->publicKey || $this->privateKey ? $this->methods + ['hostkey' => 'ssh-rsa'] : $this->methods, ['disconnect' => [$this, 'disconnect']])) {
-				$this->logger && $this->logger->alert(__METHOD__ . '() Unable to connect to server');
-				throw new ConnectException(__METHOD__ . '() Unable to connect to server');
-				return false;
+				$this->link = false;
+				$this->throwLog(new ConnectException('Unable to connect to server'), LogLevel::ALERT);
 			}
 
 			if ($this->publicKey || $this->privateKey) {
 				if (!@ssh2_auth_pubkey_file($this->link, $this->username, $this->publicKey, $this->privateKey, $this->password)) {
-					$this->logger && $this->logger->alert(__METHOD__ . '() Unable to connect to server');
-					throw new ConnectException(__METHOD__ .'() Unable to login to the server');
 					$this->link = false;
+					$this->throwLog(new ConnectException('Unable to connect to server'), LogLevel::ALERT);
 				}
 			} else {
 				if (!@ssh2_auth_password($this->link, $this->username, $this->password)) {
-					$this->logger && $this->logger->alert(__METHOD__ . '() Unable to connect to server');
-					throw new ConnectException(__METHOD__ .'() Unable to login to the server');
 					$this->link = false;
+					$this->throwLog(new ConnectException('Unable to connect to server'), LogLevel::ALERT);
 				}
 			}
 		}
@@ -86,7 +83,7 @@ class Shh2Storage extends AbstractStorage{
 
 		if ($this->sftpLink === null) {
 			if (!$this->sftpLink = @ssh2_sftp($this->link)) {
-				throw new ConnectException(__METHOD__ . '() ssh2_sftp');
+				$this->throwLog(new ConnectException('ssh2_sftp'), LogLevel::ALERT);
 			}
 		}
 

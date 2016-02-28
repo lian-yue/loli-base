@@ -681,6 +681,7 @@ class Validator {
 		$audio = in_array('audio/*', $accept, true);
 		$video = in_array('video/*', $accept, true);
 
+		$finfo = new \finfo(FILEINFO_MIME_TYPE);
 		foreach($uploadedFiles as $uploadedFile) {
 			if (!$uploadedFile instanceof UploadedFileInterface) {
 				return 'validator_accept';
@@ -690,13 +691,17 @@ class Validator {
 				return new Message(['message' => 'validator_file_' . $uploadedFile->getError(), 'title' => $input['title'], 'name' => $input['name'], 'rule' => $uploadedFile->getError()], 50, $message);
 			}
 
-			if (in_array($file->getClientMediaType(), $accept, true)) {
+			$stream = $this->getStream();
+			$mimeType = $finfo->buffer($stream->read(1024 * 16));
+			$stream->rewind();
 
-			} elseif ($image && in_array($file->mime, ['image/png', 'image/jpeg', 'image/webp', 'image/bmp', 'image/gif', 'image/svg', 'image/svg+xml'], true)) {
+			if (in_array($mimeType, $accept, true)) {
 
-			} elseif ($audio && explode('/', $file->mime)[0] === 'audio') {
+			} elseif ($image && in_array($mimeType, ['image/png', 'image/jpeg', 'image/webp', 'image/bmp', 'image/gif', 'image/svg', 'image/svg+xml'], true)) {
 
-			} elseif ($video && explode('/', $file->mime)[0] === 'video') {
+			} elseif ($audio && explode('/', $mimeType)[0] === 'audio') {
+
+			} elseif ($video && explode('/', $mimeType)[0] === 'video') {
 
 			} else {
 				if (count(array_filter([$image, $audio, $video])) === 1) {
@@ -744,7 +749,7 @@ class Validator {
 		$input['type'] = empty($input['type']) ? (empty($this->rules[$input['name']]['type']) ? 'text' : $this->rules[$input['name']]['type']) : $input['type'];
 
 		if (isset($input['title']) || !isset($this->rules[$input['name']]['title'])) {
-			$input['title'] = Language::translate(empty($input['title']) ? trim(ucfirst(strtolower(str_replace(['-', '_'], ' ', $input['name'])))) : $input['title'], $this->group);
+			$input['title'] = Language::translate(empty($input['title']) ? trim(ucfirst(strtolower(str_replace(['-', '_'], ' ', trim($input['name'], '-_'))))) : $input['title'], $this->group);
 		}
 
 		if (!empty($input['errormessage'])) {

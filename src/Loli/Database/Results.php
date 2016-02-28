@@ -30,40 +30,40 @@ class Results extends ArrayObject{
 		if ($args) {
 			if ($args instanceof Results || (is_array($args) && (is_int(key($args)) || reset($args) instanceof Document))) {
 				foreach ($args as $value) {
-					$this->__set(NULL, $value);
+					$this->__set(null, $value);
 				}
 			} elseif (!is_scalar($args)) {
-				$this->__set(NULL, $args);
+				$this->__set(null, $args);
 			}
 		}
 	}
 
 	public function __set($name, $value) {
-		if ($name === NULL || is_int($name)) {
+		if ($name === null || is_int($name)) {
 			return parent::__set($name, $value instanceof Document ? $value : (new Document($value)));
 		}
 
-		if (($key = $this->key()) !== NULL) {
+		if (($key = $this->key()) !== null) {
 			return parent::__get($key)->__set($name, $value);
 		}
-		return parent::__set(NULL, new Document([$name => $value]));
+		return parent::__set(null, new Document([$name => $value]));
 	}
 
 	public function __get($name) {
 		if (is_int($name)) {
 			return parent::__get($name);
 		}
-		if (($key = $this->key()) !== NULL) {
+		if (($key = $this->key()) !== null) {
 			return parent::__get($key)->__get($name);
 		}
-		return NULL;
+		return null;
 	}
 
 	public function __call($name, $args) {
-		if (($key = $this->key()) !== NULL) {
+		if (($key = $this->key()) !== null) {
 			return parent::__get($key)->__call($name, $args);
 		}
-		throw new InvalidArgumentException(__METHOD__.'('.$name.') The results is empty');
+		throw new \BadMethodCallException(__METHOD__.'('.$name.') The results is empty');
 	}
 
 	public function query($column, $value, $compare = '=') {
@@ -128,8 +128,8 @@ class Results extends ArrayObject{
 		return $this->clear()->write($array);
 	}
 
-	public function order($column, $order = NULL) {
-		if ($order === NULL && !is_scalar($column)) {
+	public function order($column, $order = null) {
+		if ($order === null && !is_scalar($column)) {
 			foreach ($column as $key => $value) {
 				$this->order($key, $value);
 			}

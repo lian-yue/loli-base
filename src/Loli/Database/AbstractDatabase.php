@@ -12,12 +12,14 @@
 /* ************************************************************************** */
 namespace Loli\Database;
 
-use Psr\Log\LoggerAwareTrait;
-use Psr\Log\LoggerAwareInterface;
 
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LogLevel;
+
+use Loli\Traits\LoggerAwareExceptionTrait;
 
 abstract class AbstractDatabase implements LoggerAwareInterface{
-	use LoggerAwareTrait;
+	use LoggerAwareExceptionTrait;
 
 	// 主连接
 	private $writeLink;
@@ -79,10 +81,10 @@ abstract class AbstractDatabase implements LoggerAwareInterface{
 
 		$this->default = reset($servers) + ['protocol' => '', 'hostname' => ['localhost'], 'username' => 'root', 'password' => '', 'readonly' => false];
 		if (!$this->default['protocol'] && !$this->protocol) {
-			throw new ConnectException(__METHOD__.'() Link protocol is empty');
+			$this->throwLog(new ConnectException('Link protocol is empty'), LogLevel::ALERT);
 		}
 		if (!$this->default['database']) {
-			throw new ConnectException(__METHOD__.'() Database is not selected');
+			$this->throwLog(new ConnectException('Database is not selected'), LogLevel::ALERT);
 		}
 		if (!$this->protocol) {
 			$this->protocol = $this->default['protocol'];
@@ -101,6 +103,8 @@ abstract class AbstractDatabase implements LoggerAwareInterface{
 	public function __get($name) {
 		return $this->table($name);
 	}
+
+
 	public function getLogger() {
 		return $this->logger;
 	}
@@ -138,7 +142,7 @@ abstract class AbstractDatabase implements LoggerAwareInterface{
 						break;
 					} catch (\Exception $e) {
 						if ($this->explain) {
-							throw $e;
+							$this->throwLog($e, LogLevel::ALERT);
 						}
 						$this->readLink = false;
 					}
@@ -180,7 +184,7 @@ abstract class AbstractDatabase implements LoggerAwareInterface{
 					break;
 				} catch (\Exception $e) {
 					if ($this->explain) {
-						throw $e;
+						$this->throwLog($e, LogLevel::ALERT);
 					}
 					$this->writeLink = false;
 				}
@@ -189,7 +193,7 @@ abstract class AbstractDatabase implements LoggerAwareInterface{
 		}
 
 		if (!$this->writeLink) {
-			throw new ConnectException(__METHOD__.'()', 'Database link is unavailable');
+			$this->throwLog(new ConnectException('Database link is unavailable'), LogLevel::ALERT);
 		}
 
 		// 自动 ping

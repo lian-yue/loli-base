@@ -158,8 +158,8 @@ class MemcacheCacheItemPool extends AbstractCacheItemPool{
 					if (($value = $this->link->increment($keyHash, $item->getNewValue())) === false) {
 						continue 2;
 					}
-					if ($this->memached) {
-						if ($expires !== $this->link->set(self::EXPIRES. $keyHash)) {
+					if ($this->memcached) {
+						if ($expires !== $this->link->get(self::EXPIRES. $keyHash)) {
 							$this->touch($keyHash, (int) $expires);
 							$this->link->set(self::EXPIRES. $keyHash, $expires, $expires ? : 0);
 						}
@@ -169,8 +169,8 @@ class MemcacheCacheItemPool extends AbstractCacheItemPool{
 					if (($value = $this->link->decrement($keyHash, $item->getNewValue())) === false) {
 						continue 2;
 					}
-					if ($this->memached) {
-						if ($expires !== $this->link->set(self::EXPIRES. $keyHash)) {
+					if ($this->memcached) {
+						if ($expires !== $this->link->get(self::EXPIRES. $keyHash)) {
 							$this->touch($keyHash, (int) $expires);
 							$this->link->set(self::EXPIRES. $keyHash, $expires, $expires ? : 0);
 						}

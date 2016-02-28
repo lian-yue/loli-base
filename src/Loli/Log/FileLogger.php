@@ -21,18 +21,12 @@ class FileLogger extends AbstractLogger {
 		$datetime = explode(' ', gmdate('Y-m-d H-i'));
 
 		// 路径
-		$path = strtr($this->path, ['{date}' => $datetime[0], '{time}' => $datetime[1], '{level}' => $level, '{group}' => $group]);
+		$path = strtr($this->path, ['{date}' => $datetime[0], '{time}' => $datetime[1], '{level}' => $level, '{group}' => $this->group]);
 
 		// 自动创建目录
 		is_dir($dir = dirname($path)) || mkdir($dir, 0755, true);
 
-		if ($context) {
-			$json = "\n" . json_encode($context);
-		} else {
-			$json = '';
-		}
-
 		// 写入日志
-		error_log('[' . gmdate('c') . '] ' . $this->interpolate($message, $context) . $json . "\n", 3, $path);
+		error_log('[' . gmdate('c') . '] ' . $this->interpolate($message, $context), 3, $path);
 	}
 }

@@ -23,16 +23,20 @@
 /*
 /* ************************************************************************** */
 namespace Loli;
-class Cache extends Group{
-	protected static $name = 'cache';
+class Cache extends Service{
+	protected static $configure = 'cache';
 
-	protected static function link($group, array $config, $exists) {
+	protected static $group = true;
+
+	protected static function register(array $config, $group = null) {
+		$config  = isset($config[$group]) ? $config[$group] : reset($config);
 		$class = empty($config['type']) ? 'Memory' : $config['type'];
+
 		if ($class{0} !== '\\') {
 			$class = __NAMESPACE__ . '\Cache\\' . $class . 'CacheItemPool';
 		}
 		$result = new $class($config + ['key' => $group . (empty($_SERVER['LOLI']['key']) ? '' : $_SERVER['LOLI']['key'])]);
-		$result->setLogger(Log::group(static::$name));
+		$result->setLogger(Log::cache());
 		return $result;
 	}
 }

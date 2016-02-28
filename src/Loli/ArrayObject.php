@@ -17,7 +17,7 @@ use ArrayAccess;
 use Serializable;
 use JsonSerializable;
 use SeekableIterator;
-use OutOfBoundsException;
+
 
 
 class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableIterator, Serializable{
@@ -33,11 +33,11 @@ class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableI
 	}
 
 	public function __get($name) {
-		return isset($this->data[$name]) ? $this->data[$name] : NULL;
+		return isset($this->data[$name]) ? $this->data[$name] : null;
 	}
 
 	public function __set($key, $value) {
-		if ($key === NULL) {
+		if ($key === null) {
 			return $this->data[] = $value;
 		}
 		return $this->data[$key] = $value;
@@ -93,12 +93,12 @@ class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableI
 	}
 
 	public function valid() {
-		return key($this->data) !== NULL;
+		return key($this->data) !== null;
 	}
 
 	public function seek($position) {
 		if (!isset($this->data[$position])) {
-			throw new OutOfBoundsException('invalid seek position ('.$position.')');
+			throw new \OutOfBoundsException('invalid seek position ('.$position.')');
 		}
 		return $this;
 	}
@@ -118,7 +118,7 @@ class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableI
 
 	public function merge($array) {
 		foreach ($array as $key => $value) {
-			$this->__set(is_int($key) ? NULL : $key, $value);
+			$this->__set(is_int($key) ? null : $key, $value);
 		}
 		return $this;
 	}
@@ -192,12 +192,12 @@ class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableI
 				break;
 			case 'add':
 				if (!$this->__isset($name = snake(substr($name, 3)))) {
-					$this->__set($name, $args ? $args[0] : NULL);
+					$this->__set($name, $args ? $args[0] : null);
 				}
 				return $this;
 				break;
 			case 'set':
-				$this->__set(snake(substr($name, 3)), $args ? $args[0] : NULL);
+				$this->__set(snake(substr($name, 3)), $args ? $args[0] : null);
 				return $this;
 				break;
 			default:
@@ -208,7 +208,7 @@ class ArrayObject implements JsonSerializable, ArrayAccess, Countable, SeekableI
 		if (method_exists($this, '_call')) {
 			return $this->_call($name, $args);
 		}
-		throw new OutOfBoundsException(static::class .'::'. __FUNCTION__ .'('. $name .') Method or function does not exist');
+		throw new \BadMethodCallException(static::class .'::'. __FUNCTION__ .'('. $name .') Method or function does not exist');
 	}
 	public function __debugInfo() {
 		return $this->data;

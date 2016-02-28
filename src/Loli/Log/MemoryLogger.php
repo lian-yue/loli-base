@@ -2,8 +2,7 @@
 namespace Loli\Log;
 use Psr\Log\LogLevel;
 use Psr\Log\InvalidArgumentException;
-class MemoryLogger extends AbstractLogger {
-	protected $path = './$date/$level-$time.log';
+class MemoryLogger extends AbstractLogger{
 
 	private $logs = [];
 
@@ -24,13 +23,6 @@ class MemoryLogger extends AbstractLogger {
 		if ($this->filters && in_array($level, $this->filters, true)) {
 			return;
 		}
-
-		if ($context) {
-			$json = "\n" . json_encode($context);
-		} else {
-			$json = '';
-		}
-
-		$this->logs[] = '[' . gmdate('c') . '] ' . $this->interpolate($message, $context) . $json;
+		$this->logs[] = [gmdate('c'), $message, $context];
 	}
 }

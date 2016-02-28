@@ -36,7 +36,19 @@ class Paginator implements JsonSerializable{
 
 	public function __construct($uri = null, $current = false, $limit = 20) {
 		$this->uri = $uri ? $uri : Route::request()->getUri();
-		$this->current = $current ? $current : Route::request()->getParam($this->key, 1);
+		if ($current === false) {
+			if (($params = Route::request()->getAttribute('params')) && isset($params[$this->key])) {
+				$this->current = $params[$this->key];
+			} elseif (($parsedBody = Route::request()->getParsedBody()) && is_array($parsedBody) && isset($parsedBody[$this->key])) {
+				$this->current = $parsedBody[$this->key];
+			} elseif (($queryParams = Route::request()->getQueryParams()) && is_array($queryParams) && isset($queryParams[$this->key])) {
+				$this->current = $queryParams[$this->key];
+			} else {
+				$this->current = 1;
+			}
+		} else {
+			$this->current = $current;
+		}
 		$this->limit = $limit;
 	}
 
@@ -91,7 +103,7 @@ class Paginator implements JsonSerializable{
 					return $this->$name;
 				}
 		}
-		return NULL;
+		return null;
 	}
 
 
@@ -140,6 +152,9 @@ class Paginator implements JsonSerializable{
 
 
 	public function uri($page) {
+		if ($this->uri instanceof Uri) {
+			return $this->uri->withQueryParam($this->key, $page);
+		}
 		if ($query = $this->uri->getQuery()) {
 			parse_str($query, $queryParams);
 		} else {
@@ -185,12 +200,12 @@ class Paginator implements JsonSerializable{
 				break;
 			case 'add':
 				if (!$this->__isset($name = snake(substr($name, 3)))) {
-					$this->__set($name, $args ? $args[0] : NULL);
+					$this->__set($name, $args ? $args[0] : null);
 				}
 				return $this;
 				break;
 			case 'set':
-				$this->__set(snake(substr($name, 3)), $args ? $args[0] : NULL);
+				$this->__set(snake(substr($name, 3)), $args ? $args[0] : null);
 				return $this;
 				break;
 			default:

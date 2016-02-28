@@ -38,7 +38,7 @@ class Model extends Document{
 	protected static $primaryCache = 0;
 
 	// 模块组
-	protected static $group = 'default';
+	protected static $group = 'model';
 
 	// 模块验证表格
 	protected static $rules = [];
@@ -48,12 +48,12 @@ class Model extends Document{
 	}
 
 	public static function database() {
-		return Database::group(static::$group)->tables(static::$tables ? static::$tables : (array)static::$table)->className(static::class)->indexs(static::$indexs)->columns(static::$columns)->insertId(static::$insertId)->primary(static::$primary, static::$primaryCache);
+		return Database::__callStatic(static::$group, [])->tables(static::$tables ? static::$tables : (array)static::$table)->className(static::class)->indexs(static::$indexs)->columns(static::$columns)->insertId(static::$insertId)->primary(static::$primary, static::$primaryCache);
 	}
 
 
 
-	public static function validator($data = [], array $rules = [], $merge = false, $message = NULL) {
+	public static function validator($data = [], array $rules = [], $merge = false, $message = null) {
 		static $static = [];
 		if (!isset($static[static::class])) {
 			$static[static::class] = (new Validator(static::$rules, static::$group === 'default' ? static::$group : [static::$group, 'default']))->model(static::class);
@@ -95,7 +95,7 @@ class Model extends Document{
 		$args = [];
 		foreach (static::$primary as $primary) {
 			$value = $this[$primary];
-			if ($value === NULL) {
+			if ($value === null) {
 				throw new QueryException('Model.primary()', $this);
 			}
 			$args[] = $value;
@@ -104,10 +104,10 @@ class Model extends Document{
 	}
 
 	public function __set($name, $value) {
-		if ($name === NULL) {
-			throw new QueryException('Model.__set(NULL)', 'The column name cannot be null');
+		if ($name === null) {
+			throw new QueryException('Model.__set(null)', 'The column name cannot be null');
 		}
-		if ($value !== NULL && !$value instanceof Param && static::columnInfo($name)->process) {
+		if ($value !== null && !$value instanceof Param && static::columnInfo($name)->process) {
 			switch (static::columnInfo($name)->type) {
 				case 'timestamp':
 				case 'datetime':
@@ -198,7 +198,7 @@ class Model extends Document{
 
 	public function throwCan(...$args) {
 		if (!$this->cant(...$args)) {
-			throw new Message(['message' => 'permission_denied', 'name' => 'Permission'], 403);
+			throw new Message(['message' => 'permission_denied', 'code' => 'Permission'], 403);
 		}
 	}
 

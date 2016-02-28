@@ -29,7 +29,7 @@ class Storage{
 				$class = __NAMESPACE__ . '\Storage\\' . $class . 'Storage';
 			}
 			$this->link = new $class(empty($_SERVER['LOLI']['storage'][$key]) ? [] : $_SERVER['LOLI']['storage'][$key]);
-			$this->link->setLogger(Log::group('storage'));
+			$this->link->setLogger(Log::storage());
 		}
 		return $this->link->$method(...$args);
 	}

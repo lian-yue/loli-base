@@ -69,7 +69,7 @@ class Route extends ArrayObject{
 
 	protected static $self;
 
-	public function __construct(ServerRequestInterface $request = NULL, array $data = []) {
+	public function __construct(ServerRequestInterface $request = null, array $data = []) {
 		if ($request) {
 			$this->request = $request;
 		}
@@ -314,7 +314,9 @@ class Route extends ArrayObject{
 				}
 			}
 		}
-
+			if ($this->token->isNew()) {
+				$this->response = $this->response->withHeader(self::TOKEN_HEADER, $this->token->get(true))->withAddedHeader('Set-Cookie', Header::setCookie(self::TOKEN_COOKIE, $this->token->get(true), 94608000, '/'));
+			}
 	}
 
 
@@ -399,7 +401,7 @@ class Route extends ArrayObject{
 				// 验证信息
 				if (!$auth = Auth::selectRow(self::token()->get())) {
 					$request = self::request();
-					$auth = new Auth(['token' => self::token()->get(), 'ip' => $request->getClientAddr(), 'user_id' => 0, 'user_agent' => substr($request->getParam('user_agent', $request->getHeader('User-Agent')), 0, 255)]);
+					$auth = new Auth(['token' => self::token()->get(), 'ip' => self::ip(), 'user_id' => 0, 'user_agent' => substr($request->getHeaderLine('User-Agent'), 0, 255)]);
 					$auth->insert();
 				}
 				return $auth;
@@ -458,7 +460,7 @@ class Route extends ArrayObject{
 
 	public function __get($name) {
 		$value = parent::__get($name);
-		if ($value === NULL) {
+		if ($value === null) {
 			if (empty(self::$callback[$name])) {
 				throw new \BadFunctionCallException(__METHOD__ . '('. $name .') Unregistered route object');
 			}
@@ -484,8 +486,8 @@ class Route extends ArrayObject{
 		return self::$self->__call($name, $args);
 	}
 
-	public static function get($name = NULL) {
-		return $name === NULL ? self::$self : self::$self->$name;
+	public static function get($name = null) {
+		return $name === null ? self::$self : self::$self->$name;
 	}
 
 	public static function callback($controller, $callback) {

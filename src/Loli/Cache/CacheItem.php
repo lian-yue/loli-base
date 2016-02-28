@@ -48,7 +48,7 @@ class CacheItem implements CacheItemInterface{
 		} elseif ($expires instanceof \DateTimeInterface) {
 			$this->expires = $expires->getTimestamp();
 		} else {
-			throw new InvalidArgumentException( __METHOD__ . '() Argument is not DateTimeInterface');
+			throw new InvalidArgumentException('Argument is not DateTimeInterface');
 		}
 		return $this;
 	}
@@ -67,7 +67,7 @@ class CacheItem implements CacheItemInterface{
 			$datetime->add($time);
 			$this->expires = $datetime->getTimestamp();
 		} else {
-			throw new InvalidArgumentException( __METHOD__ . '() Argument is not DateInterval');
+			throw new InvalidArgumentException( 'Argument is not DateInterval');
 		}
 		return $this;
 	}
@@ -87,10 +87,10 @@ class CacheItem implements CacheItemInterface{
 	public function incr($value) {
 		if ($this->isHit() ) {
 			if (!is_int($this->value)) {
-				throw new InvalidArgumentException( __METHOD__ . '() The value cannot be increased');
+				throw new InvalidArgumentException('The value cannot be increased');
 			}
 			if (!is_int($value)) {
-				throw new InvalidArgumentException( __METHOD__ . '() Argument is not intger');
+				throw new InvalidArgumentException('Argument is not intger');
 			}
 			$this->method = __FUNCTION__;
 			$this->value += $value;
@@ -102,10 +102,10 @@ class CacheItem implements CacheItemInterface{
 	public function decr($value) {
 		if ($this->isHit()) {
 			if (!is_int($this->value)) {
-				throw new InvalidArgumentException( __METHOD__ . '() The value cannot be decreased');
+				throw new InvalidArgumentException('The value cannot be decreased');
 			}
 			if (!is_int($value)) {
-				throw new InvalidArgumentException( __METHOD__ . '() Argument is not intger');
+				throw new InvalidArgumentException('Argument is not intger');
 			}
 			$this->method = __FUNCTION__;
 			$this->value -= $value;

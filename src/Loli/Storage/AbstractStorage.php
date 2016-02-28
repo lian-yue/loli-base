@@ -25,14 +25,15 @@
 namespace Loli\Storage;
 use streamWrapper;
 
-use Psr\Log\LoggerAwareTrait;
+use Psr\Log\LogLevel;
 use Psr\Log\LoggerAwareInterface;
 
 use Loli\Traits\ConstructConfigTrait;
+use Loli\Traits\LoggerAwareExceptionTrait;
 
 
 abstract class AbstractStorage implements streamWrapper, LoggerAwareInterface{
-	use ConstructConfigTrait, LoggerAwareTrait;
+	use ConstructConfigTrait, LoggerAwareExceptionTrait;
 
 	public function path($path, &$protocol = null) {
 		$parse = parse_url($path);
@@ -61,9 +62,7 @@ abstract class AbstractStorage implements streamWrapper, LoggerAwareInterface{
 				continue;
 			}
 			if (trim($name, " \t\n\r\0\x0B.") !== $name || preg_match('/[\\\"\<\>\|\?\*\:\/	]/', $name)) {
-				$message = static::class .'::'. __FUNCTION__. '(' . $path . ') Path is not allowed';
-				$this->logger && $this->logger->error($message);
-				throw new InvalidArgumentException($message);
+				$this->throwLog(new \InvalidArgumentException('Path is not allowed'), LogLevel::ERROR, ['path' => $path]);
 			}
 			$array[] = $name;
 		}

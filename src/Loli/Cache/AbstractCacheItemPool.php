@@ -1,16 +1,16 @@
 <?php
 namespace Loli\Cache;
 
-use Psr\Log\LoggerAwareTrait;
 use Psr\Log\LoggerAwareInterface;
 
 use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
 
 use Loli\Traits\ConstructConfigTrait;
+use Loli\Traits\LoggerAwareExceptionTrait;
 
 abstract class AbstractCacheItemPool implements CacheItemPoolInterface, LoggerAwareInterface{
-	use LoggerAwareTrait, ConstructConfigTrait;
+	use LoggerAwareExceptionTrait, ConstructConfigTrait;
 
 	protected $key;
 

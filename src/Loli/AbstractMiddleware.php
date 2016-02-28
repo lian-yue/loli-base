@@ -15,7 +15,7 @@ abstract class AbstractMiddleware{
 
 	public function __construct(array $config) {
 		foreach ($config as $key => $value) {
-			if ($value !== NULL && property_exists($this, $key)) {
+			if ($value !== null && property_exists($this, $key)) {
 				$this->{$key} = $value;
 			}
 		}

@@ -169,11 +169,11 @@ class SqlBuilder extends AbstractBuilder{
 
 		// date 默认值
 		'date' => [
-			'datetime' => ['value' => NULL],
+			'datetime' => ['value' => null],
 			'year' => ['value' => '0000'],
 			'date' => ['value' => '0000-00-00'],
 			'time' => ['value' => '00:00:00'],
-			'timestamp' => ['value' => NULL],
+			'timestamp' => ['value' => null],
 		],
 
 		// 索引, 二进制数据, 默认, 最大, 最小
@@ -291,7 +291,7 @@ class SqlBuilder extends AbstractBuilder{
 		if (!isset($this->data['table'])) {
 			// 没有表
 			if (!$tables = $this->tables) {
-				throw new Exception('', 'Unselected table');
+				throw new QueryException('', 'Unselected table');
 			}
 
 			// 只能处理单个表
@@ -299,7 +299,7 @@ class SqlBuilder extends AbstractBuilder{
 			if ($table instanceof Param) {
 				$table = $table->value;
 			} elseif (is_array($table)) {
-				$table = empty($table['value']) ? NULL : $table['value'];
+				$table = empty($table['value']) ? null : $table['value'];
 			}
 			$this->database->key($table, true);
 			$this->data['table'] = $table;
@@ -318,7 +318,7 @@ class SqlBuilder extends AbstractBuilder{
 		if (!isset($this->data['from'])) {
 			// 没有表
 			if (!$this->tables) {
-				throw new Exception('', 'Unselected table');
+				throw new QueryException('', 'Unselected table');
 			}
 			$tables = $using = $useTables = $columnUse = $aliasUse = [];
 
@@ -339,14 +339,14 @@ class SqlBuilder extends AbstractBuilder{
 			foreach ($this->tables as $alias => &$table) {
 				if ($table instanceof Param) {
 				} elseif (is_array($table)) {
-					$table = new Param(['value' => empty($table['value']) ? NULL : $table['value'], 'alias' => isset($table['alias']) ? $table['alias'] : ($alias && !is_numeric($alias) ? $alias : NULL), 'join' => empty($table['join']) ? NULL : $table['join'], 'on' => empty($table['on']) ? NULL : $table['on']]);
+					$table = new Param(['value' => empty($table['value']) ? null : $table['value'], 'alias' => isset($table['alias']) ? $table['alias'] : ($alias && !is_numeric($alias) ? $alias : null), 'join' => empty($table['join']) ? null : $table['join'], 'on' => empty($table['on']) ? null : $table['on']]);
 				} else {
 					$table = new Param(['value' => $table]);
 				}
 
 				// 没有 value 的
 				if (!$table->value) {
-					throw new Exception('', 'Table name is empty');
+					throw new QueryException('', 'Table name is empty');
 				}
 
 				// 不需要该表的
@@ -422,7 +422,7 @@ class SqlBuilder extends AbstractBuilder{
 				$command = ':using FROM :from';
 				break;
 			default:
-				throw new Exception($type, 'Unknown table structure type');
+				throw new QueryException($type, 'Unknown table structure type');
 		}
 
 		return strtr($command, [':using' => $this->data['fromUsing'], ':from' => $this->data['from']]);
@@ -551,7 +551,7 @@ class SqlBuilder extends AbstractBuilder{
 						$lock = 'LOCK IN SHARE MODE';
 						break;
 					default:
-						throw new Exception($lock, 'Unknown type of lock');
+						throw new QueryException($lock, 'Unknown type of lock');
 				}
 			}
 			$this->data['lock'] = $lock;
@@ -634,7 +634,7 @@ class SqlBuilder extends AbstractBuilder{
 				unset($value);
 			}
 			foreach ($order as $column => &$value) {
-				if ($value === false || $value === NULL) {
+				if ($value === false || $value === null) {
 					unset($order[$column]);
 					continue;
 				}
@@ -730,13 +730,13 @@ class SqlBuilder extends AbstractBuilder{
 	 * @param  string       $logical 链接运算符
 	 * @return array
 	 */
-	private function getQuery(array $querys, $having = NULL, array &$useTables, array &$useColumns, $logical = '') {
+	private function getQuery(array $querys, $having = null, array &$useTables, array &$useColumns, $logical = '') {
 
 		// 逻辑 运算符
 		if (!$logical) {
 			$logical = ($option = $this->getOptions('logical')) ? strtoupper(end($option)->value) : 'AND';
 			if (empty(self::$logicals[$logical])) {
-				throw new Exception($logical, 'Unknown logical');
+				throw new QueryException($logical, 'Unknown logical');
 			}
 			$logical = self::$logicals[$logical];
 		}
@@ -762,8 +762,8 @@ class SqlBuilder extends AbstractBuilder{
 			}
 			$query->_index = true;
 
-			// 跳过 NULL 和空数组
-			if (is_array($query->value) && !($query->value = array_filter($query->value, function($value) { return $value === NULL; }))) {
+			// 跳过 null 和空数组
+			if (is_array($query->value) && !($query->value = array_filter($query->value, function($value) { return $value === null; }))) {
 				continue;
 			}
 
@@ -808,12 +808,12 @@ class SqlBuilder extends AbstractBuilder{
 
 
 			// value 是 null
-			if ($query->value === NULL) {
+			if ($query->value === null) {
 				if ($binary || ($compare !== '=' && $compare !== '!=')) {
 					continue;
 				}
 				$query->value = $compare === '=';
-				$compare = 'NULL';
+				$compare = 'null';
 			}
 
 
@@ -828,7 +828,7 @@ class SqlBuilder extends AbstractBuilder{
 				} elseif ($query->expression) {
 					$value = $query->value;
 				} else {
-					$value = $this->getQuery((array)$query->value, NULL, $useTables, $useColumns, $query->logical ? $query->logical : ($logical === 'OR' ? 'AND' : 'OR'));
+					$value = $this->getQuery((array)$query->value, null, $useTables, $useColumns, $query->logical ? $query->logical : ($logical === 'OR' ? 'AND' : 'OR'));
 				}
 				$commands[] = $not . ' ('. $value .')';
 				continue;
@@ -882,9 +882,9 @@ class SqlBuilder extends AbstractBuilder{
 						$arrays[] = ['compare' => 'IN', 'value' => $value];
 					}
 					break;
-				case 'NULL':
-					// NULL 查询
-					$arrays[] = ['compare' => 'IS', 'value' => ($not ? !$query->value : $query->value) ? 'NULL' : 'NOT NULL', 'not' => ''];
+				case 'null':
+					// null 查询
+					$arrays[] = ['compare' => 'IS', 'value' => ($not ? !$query->value : $query->value) ? 'null' : 'NOT null', 'not' => ''];
 					break;
 				case 'BETWEEN':
 					// BETWEEN
@@ -936,7 +936,7 @@ class SqlBuilder extends AbstractBuilder{
 					break;
 				default:
 					if (empty(self::$compares[$compare])) {
-						throw new Exception($compare, 'Unknown compare');
+						throw new QueryException($compare, 'Unknown compare');
 					}
 					$arrays[] = ['compare' => $compare, 'value' => $this->database->value(!$function && isset($columnsType[$query->column]) ? call_user_func(self::$typeFunctions[$columnsType[$query->column]], $query->value) : $query->value)];
 			}
@@ -997,7 +997,7 @@ class SqlBuilder extends AbstractBuilder{
 					$unions[] = 'UNION ' .($all ? '' : 'ALL ') . trim($value, " \t\n\r\0\x0B;");
 					continue;
 				}
-				throw new Exception($union, 'Does not support this type of union');
+				throw new QueryException($union, 'Does not support this type of union');
 			}
 			$this->data['union'] = implode(' ', $unions);
 			$this->data['unionsUseTables'] = $useTables;
@@ -1024,7 +1024,7 @@ class SqlBuilder extends AbstractBuilder{
 				$command = 'SELECT * FROM sqlite_master WHERE type=\'table\' AND name=:table;';
 				break;
 			default:
-				throw new Exception(__METHOD__.'()', 'Does not support this protocol');
+				throw new QueryException(__METHOD__.'()', 'Does not support this protocol');
 		}
 
 		$command = strtr($command, [':table' => $table]);
@@ -1091,7 +1091,7 @@ class SqlBuilder extends AbstractBuilder{
 						'type' => '%s',
 						'length' => '(%s)',
 						'unsigned' => 'unsigned',
-						'null' => 'NOT NULL',
+						'null' => 'NOT null',
 						'value' => 'DEFAULT %s',
 						'increment' => 'AUTO_INCREMENT',
 						'charset' => 'CHARACTER SET %s',
@@ -1099,7 +1099,7 @@ class SqlBuilder extends AbstractBuilder{
 					];
 					break;
 				default:
-					throw new Exception(__METHOD__.'()', 'Does not support this protocol');
+					throw new QueryException(__METHOD__.'()', 'Does not support this protocol');
 			}
 
 			foreach ($this->getColumns() as $column) {
@@ -1149,9 +1149,9 @@ class SqlBuilder extends AbstractBuilder{
 					case 'date':
 						if ($column->value) {
 							$value['value'] = $this->database->value($column->value);
-						} elseif ($column->value !== NULL) {
+						} elseif ($column->value !== null) {
 
-						} elseif ($types[$value['type']]['value'] !== NULL) {
+						} elseif ($types[$value['type']]['value'] !== null) {
 							$value['value'] = $this->database->value($types[$value['type']]['value']);
 						}
 						break;
@@ -1163,7 +1163,7 @@ class SqlBuilder extends AbstractBuilder{
 							}
 						} else {
 							$length = $column->length ? (int) $column->length : 255;
-							$value['type'] = NULL;
+							$value['type'] = null;
 							foreach ($types as $type => $args) {
 								if (isset($args['binary']) && ((bool) $args['binary']) !== ((bool) $column->binary)) {
 									continue;
@@ -1188,7 +1188,7 @@ class SqlBuilder extends AbstractBuilder{
 								break;
 							}
 							if (empty($value['type'])) {
-								throw new Exception(__METHOD__.'() :' . $value['type'], 'Unknown data type');
+								throw new QueryException(__METHOD__.'() :' . $value['type'], 'Unknown data type');
 							}
 						}
 						if (empty($commandValues['unique'])) {
@@ -1251,7 +1251,7 @@ class SqlBuilder extends AbstractBuilder{
 				$value['null'] = $column->null;
 
 				// 注释
-				$value['comment'] = $column->comment ? $this->database->value((string)$column->comment) : NULL;
+				$value['comment'] = $column->comment ? $this->database->value((string)$column->comment) : null;
 
 				// 插入
 				$values[$name] = $value;
@@ -1395,8 +1395,8 @@ class SqlBuilder extends AbstractBuilder{
 			foreach ($this->documents as $document) {
 				$insert = [];
 				foreach ($document as $name => $value) {
-					if ($value === NULL) {
-						$insert[$name] = $this->database->value(NULL);
+					if ($value === null) {
+						$insert[$name] = $this->database->value(null);
 						continue;
 					}
 					if (!$value instanceof Param) {
@@ -1405,7 +1405,7 @@ class SqlBuilder extends AbstractBuilder{
 					}
 
 					if ($value->value instanceof Param) {
-						throw new Exception($this->documents, 'Value can not be Param');
+						throw new QueryException($this->documents, 'Value can not be Param');
 					}
 					if ($value->value instanceof Cursor) {
 						$execute = $value->value->execute;
@@ -1413,8 +1413,8 @@ class SqlBuilder extends AbstractBuilder{
 						$value->value->execute($execute);
 					} elseif ($value->expression) {
 						$insert[$name] = $value->value;
-					} elseif ($value->value === NULL) {
-						$insert[$name] = $this->database->value(NULL);
+					} elseif ($value->value === null) {
+						$insert[$name] = $this->database->value(null);
 					} else {
 						$insert[$name] = $this->database->value(isset($columnsType[$name]) ? call_user_func(self::$typeFunctions[$columnsType[$name]], $value->value) : $value->value);
 					}
@@ -1424,20 +1424,20 @@ class SqlBuilder extends AbstractBuilder{
 					}
 				}
 				if (!$insert) {
-					throw new Exception($this->documents, 'Inserted rows can not be empty');
+					throw new QueryException($this->documents, 'Inserted rows can not be empty');
 				}
 				$default += $insert;
 				$inserts[] = $insert;
 			}
 			if (!$inserts) {
-				throw new Exception($this->documents, 'Inserted rows can not be empty');
+				throw new QueryException($this->documents, 'Inserted rows can not be empty');
 			}
 
 
 			ksort($default);
 			$column = [];
 			foreach ($default as $key => &$value) {
-				$value = $this->database->value(NULL);
+				$value = $this->database->value(null);
 				$column[] = $this->database->key($key, true);
 			}
 			$column = implode(',', $column);
@@ -1475,17 +1475,17 @@ class SqlBuilder extends AbstractBuilder{
 	public function update() {
 		if (empty($this->data['update'])) {
 			if (!$this->documents) {
-				throw new Exception($this->documents, 'Update can not be empty');
+				throw new QueryException($this->documents, 'Update can not be empty');
 			}
 			if (count($this->documents) > 1) {
-				throw new Exception($this->documents, 'Can not update multiple');
+				throw new QueryException($this->documents, 'Can not update multiple');
 			}
 			$columnsType = $this->getColumnsType();
 			$document = [];
 			foreach($this->documents[0] as $name => $value) {
 				$name = $this->database->key($name, true);
-				if ($value === NULL) {
-					$document[$name] = $this->database->value(NULL);
+				if ($value === null) {
+					$document[$name] = $this->database->value(null);
 					continue;
 				}
 
@@ -1503,8 +1503,8 @@ class SqlBuilder extends AbstractBuilder{
 					$value->value->execute($execute);
 				} elseif ($value->expression) {
 					$data = '('. $value->value .')';
-				} elseif ($value->value === NULL) {
-					$data = $this->database->value(NULL);
+				} elseif ($value->value === null) {
+					$data = $this->database->value(null);
 				} else {
 					$data = $this->database->value(in_array($assignment, ['', '='], true) && isset($columnsType[$value->name]) ? call_user_func(self::$typeFunctions[$columnsType[$value->name]], $value->value) : $value->value);
 				}
@@ -1524,13 +1524,13 @@ class SqlBuilder extends AbstractBuilder{
 				}
 
 				if (!in_array($assignment, ['', '='], true)) {
-					throw new Exception($assignment, 'Unknown assignment');
+					throw new QueryException($assignment, 'Unknown assignment');
 				}
 				$document[$name] = $data;
 			}
 
 			if (!$document) {
-				throw new Exception($this->documents, 'Update can not be empty');
+				throw new QueryException($this->documents, 'Update can not be empty');
 			}
 
 			unset($value);
@@ -1575,26 +1575,39 @@ class SqlBuilder extends AbstractBuilder{
 			return $this->data['selectCommand'];
 		}
 
-		if ($this->cache[0] && $this->isCache && !$this->getLock() && (($this->data['select'] = Cache::group('database.' . $this->database->database())->get($cacheKey = json_encode(['cache' => $this->cache, 'class' => $this->class] + $this->data['selectReplaces']))) !== false && ($this->cache[1] < 1 || $this->cache[0] === -1 || (Cache::group('database.' . $this->database->database())->ttl($cacheKey) > $this->cache[1] || !Cache::group('database.' . $this->database->database())->add(true, 'TTL' . $cacheKey, $this->cache[1] + 1))))) {
 
-			// 用缓存的
-		} else {
+		// 读取缓存
+		if ($this->isCache && $this->cache[0]) {
+			$cachePool = Cache::database();
+			$cacheKey = md5(json_encode(['cache' => $this->cache, 'class' => $this->class] + $this->data['selectReplaces']));
+			$item = $cachePool->getItem($cacheKey);
+			if (($results = $item->get()) instanceof Results) {
+				if (!$this->cache[1] || !method_exists($item, 'getExpiresAfter') || ($expiresAfter = $item->getExpiresAfter()) === null || $expiresAfter > $this->cache[1] || $cachePool->getItem('expires'. $cacheKey)->isHit()) {
+					$this->data['select'] = $results;
+				} else {
+					$cachePool->save($cachePool->getItem('expires'. $cacheKey)->set(true)->expiresAfter(2));
+				}
+			}
+		}
 
-			// 不用缓存
+
+		if (!isset($this->data['select']) || (!$this->cache[2] && !$this->data['select']->count())) {
 
 			// 读取数据
 			$this->data['select'] = $this->database->command($this->data['selectCommand'], $this->getReadonly(), $this->class);
 
-			// 写入缓存
-			$this->cache[0] && (count($this->data['select']) || $this->cache[2]) && !$this->getLock() && Cache::group('database.' . $this->database->database())->set($this->data['select'], json_encode(['cache' => $this->cache, 'class' => $this->class] + $this->data['selectReplaces']), $this->cache[0]);
-
+			if (isset($item) && ($this->cache[2] || $this->data['select']->count())) {
+				$cachePool->save($item->set($this->data['select'])->expiresAfter($this->cache[0]));
+			}
 			// 需要去全部行数的
 			if ($this->isCache && $this->getRows()) {
 				$this->isCache = false;
 				$this->count();
 				$this->isCache = true;
 			}
+
 		}
+
 		return $this->data['select'];
 	}
 
@@ -1645,7 +1658,7 @@ class SqlBuilder extends AbstractBuilder{
 
 		// 读取缓存
 		if ($this->isCache && $this->cache[0]) {
-			$cachePool = Cache::group('database.' . $this->database->database());
+			$cachePool = Cache::database();
 			$cacheKey = md5(json_encode(['cache' => $this->cache, 'class' => $this->class] + $this->data['countReplaces']));
 			$item = $cachePool->getItem($cacheKey);
 			if (is_int($count = $item->get())) {
@@ -1681,7 +1694,7 @@ class SqlBuilder extends AbstractBuilder{
 					}
 				}
 			}
-			if (isset($item) && ($this->data['count'] || $this->cache[2])) {
+			if (isset($item) && ($this->cache[2] || $this->data['count'])) {
 				$cachePool->save($item->set($this->data['count'])->expiresAfter($this->cache[0]));
 			}
 		}
@@ -1698,7 +1711,7 @@ class SqlBuilder extends AbstractBuilder{
 
 
 
-	public function deleteCache($refresh = NULL) {
+	public function deleteCache($refresh = null) {
 		if (!$this->cache[0]) {
 			return $this->cursor;
 		}
@@ -1734,7 +1747,7 @@ class SqlBuilder extends AbstractBuilder{
 		]));
 
 
-		$cachePool = Cache::group('database.' . $this->database->database())->deleteItems($keys);
+		$cachePool = Cache::database()->deleteItems($keys);
 
 
 		unset($this->data['count']);

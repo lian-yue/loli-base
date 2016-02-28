@@ -24,6 +24,7 @@
 /* ************************************************************************** */
 namespace Loli\Database;
 use Closure;
+use Psr\Log\LogLevel;
 class MySqlDatabase extends AbstractDatabase{
 
 	protected $protocol = 'mysql';
@@ -35,9 +36,7 @@ class MySqlDatabase extends AbstractDatabase{
 		shuffle($server['hostname']);
 
 		if (!empty($server['protocol']) && !in_array($server['protocol'], ['mysql', 'mysqli', 'mariadb'], true)) {
-			$message =__METHOD__.'() Does not support this protocol';
-			$this->logger && $this->logger->alert($message);
-			throw new ConnectException($message);
+			$this->throwLog(new ConnectException('Does not support this protocol'), LogLevel::ALERT);
 		}
 
 		$hostname = explode(':', reset($server['hostname']), 2) + [1 => 3306];
@@ -48,16 +47,12 @@ class MySqlDatabase extends AbstractDatabase{
 
 		// 链接出错
 		if ($link->connect_errno) {
-			$message =__METHOD__.'().MySQLi() ' .  $link->connect_error;
-			$this->logger && $this->logger->alert($message);
-			throw new ConnectException($message);
+			$this->throwLog(new ConnectException($link->connect_error), LogLevel::ALERT);
 		}
 
 		// 选择数据库出错
 		if ($link->error) {
-			$message =__METHOD__.'().MySQLi().select_db() ' . $link->error;
-			$this->logger && $this->logger->alert($message);
-			throw new ConnectException($message);
+			$this->throwLog(new ConnectException($link->error), LogLevel::ALERT);
 		}
 
 		$link->set_charset('utf8');
@@ -69,19 +64,17 @@ class MySqlDatabase extends AbstractDatabase{
 
 
 
-	public function command($query, $readonly = NULL, $class = NULL) {
+	public function command($query, $readonly = null, $class = null) {
 		self::className($class);
 
 		// 查询不是字符串
 		if (!is_string($query)) {
-			$this->logger && $this->logger->error(__METHOD__ . '('. json_encode($query) .') Query is not a string');
-			throw new QueryException($query, 'Query is not a string');
+			$this->throwLog(new QueryException($query, 'Query is not a string'), LogLevel::ERROR, ['query' => $query]);
 		}
 
 		// 查询为空
 		if (!$query = trim($query)) {
-			$this->logger && $this->logger->error(__METHOD__.'() Query is empty');
-			throw new QueryException(__METHOD__.'()', 'Query is empty');
+			$this->throwLog(new QueryException($query, 'Query is empty'), LogLevel::ERROR, ['query' => $query]);
 		}
 		$query = trim($query, ';') . ';';
 
@@ -96,8 +89,7 @@ class MySqlDatabase extends AbstractDatabase{
 		$result = $link->query($query);
 		if ($result === false) {
 			if ($link->errno) {
-				$this->logger && $this->logger->error(__METHOD__.'('. $query .') ' . $link->error);
-				throw new QueryException($result, $link->error, '', $link->errno);
+				$this->throwLog(new QueryException($query, $link->error, '', $link->errno), LogLevel::ERROR, ['query' => $query]);
 			}
 			$results = $result;
 		} elseif (preg_match('/^\s*(INSERT|DELETE|UPDATE|REPLACE)\s+/i', $query)) {
@@ -122,14 +114,12 @@ class MySqlDatabase extends AbstractDatabase{
 
 	public function beginTransaction() {
 		if ($this->inTransaction) {
-			$this->logger && $this->logger->error(__METHOD__.'() There is already an active transaction');
-			throw new QueryException(__METHOD__.'()', 'There is already an active transaction');
+			$this->throwLog(new QueryException(__METHOD__.'()', 'There is already an active transaction'));
 		}
 		$this->inTransaction = true;
 		$link = $this->link(false);
 		if (!$link->autoCommit(false) && $link->errno) {
-			$this->logger && $this->logger->error(__METHOD__.'() ' . $link->error);
-			throw new QueryException(__METHOD__.'()', $link->error, '', $link->errno);
+			$this->throwLog(new QueryException(__METHOD__.'()', $link->error, '', $link->errno));
 		}
 		$this->logger && $this->logger->debug(__METHOD__.'()');
 		return $this;
@@ -137,14 +127,12 @@ class MySqlDatabase extends AbstractDatabase{
 
 	public function commit() {
 		if (!$this->inTransaction) {
-			$this->logger && $this->logger->error(__METHOD__.'() There is no active transaction');
-			throw new QueryException(__METHOD__.'()', 'There is no active transaction');
+			$this->throwLog(new QueryException(__METHOD__.'()', 'There is no active transaction'));
 		}
 		$this->inTransaction = false;
 		$link = $this->link(false);
 		if (!$link->commit() && $link->errno) {
-			$this->logger && $this->logger->error(__METHOD__.'() ' . $link->error);
-			throw new QueryException(__METHOD__.'()', $link->error, '', $link->errno);
+			$this->throwLog(new QueryException(__METHOD__.'()', $link->error, '', $link->errno));
 		}
 		$this->logger && $this->logger->debug(__METHOD__.'()');
 		return $this;
@@ -152,14 +140,12 @@ class MySqlDatabase extends AbstractDatabase{
 
 	public function rollBack() {
 		if (!$this->inTransaction) {
-			$this->logger && $this->logger->error(__METHOD__.'() There is no active transaction');
-			throw new QueryException(__METHOD__.'()', 'There is no active transaction');
+			$this->throwLog(new QueryException(__METHOD__.'()', 'There is no active transaction'));
 		}
 		$this->inTransaction = false;
 		$link = $this->link(false);
 		if (!$link->rollBack() && $link->errno) {
-			$this->logger && $this->logger->error(__METHOD__.'() ' . $link->error);
-			throw new QueryException(__METHOD__.'()', $link->error, '', $link->errno);
+			$this->throwLog(new QueryException(__METHOD__.'()', $link->error, '', $link->errno));
 		}
 		$this->logger && $this->logger->debug(__METHOD__.'()');
 		return $this;
@@ -175,9 +161,7 @@ class MySqlDatabase extends AbstractDatabase{
 	public function ping() {
 		$link = $this->link();
 		if (!$link->ping()) {
-			 $message = __METHOD__.'()' . $link->error;
-			$this->logger && $this->logger->error($message);
-			throw new ConnectException($message);
+			$this->throwLog(new ConnectException($link->error));
 		}
 		$this->logger && $this->logger->debug(__METHOD__.'()');
 		return $this;
@@ -187,8 +171,7 @@ class MySqlDatabase extends AbstractDatabase{
 	public function key($key, $throw = false) {
 		if (!$key || !is_string($key) || !preg_match('/^(?:([0-9a-z_]+)\.)?([0-9a-z_]+|\*)$/i', $key, $matches) || ($matches[1] && is_numeric($matches[1])) || is_numeric($matches[2])) {
 			if ($throw) {
-				$this->logger && $this->logger->error(__METHOD__.'('.$key.') Key name is not formatted correctly');
-				throw new QueryException(__METHOD__.'('.$key.')', 'Key name is not formatted correctly');
+				$this->throwLog(new ConnectException(__METHOD__.'('.$key.')', 'Key name is not formatted correctly'), LogLevel::ERROR, ['key' => $key]);
 			}
 			return false;
 		}
@@ -209,7 +192,7 @@ class MySqlDatabase extends AbstractDatabase{
 				$value = json_encode($value);
 			}
 		}
-		if ($value === NULL) {
+		if ($value === null) {
 			return 'NULL';
 		} elseif ($value === false) {
 			$value = 0;
