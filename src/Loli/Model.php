@@ -28,12 +28,6 @@ class Model extends Document{
 
 	protected static $table;
 
-	// 自动递增id
-	protected static $insertId;
-
-	// 主键
-	protected static $primary = [];
-
 	// 主键缓存有效期
 	protected static $primaryCache = 0;
 
@@ -48,7 +42,7 @@ class Model extends Document{
 	}
 
 	public static function database() {
-		return Database::__callStatic(static::$group, [])->tables(static::$tables ? static::$tables : (array)static::$table)->className(static::class)->indexs(static::$indexs)->columns(static::$columns)->insertId(static::$insertId)->primary(static::$primary, static::$primaryCache);
+		return Database::__callStatic(static::$group, [])->tables(static::$tables ? static::$tables : (array)static::$table)->className(static::class)->indexs(static::$indexs)->columns(static::$columns)->insertId(static::columnInsertId())->primary(static::columnPrimary(), static::$primaryCache);
 	}
 
 
@@ -65,8 +59,43 @@ class Model extends Document{
 	}
 
 
+	public static function columnInsertId() {
+		static $static = [];
+		if (!isset($static[static::class])) {
+			$insertId = false;
+			foreach (static::$columns as $key => $value) {
+				if (!empty($value['increment'])) {
+					$insertId = empty($value['name']) ? $key : $value['name'];
+					break;
+				}
+			}
+			$static[static::class] = $insertId;
+		}
+		return $static[static::class];
+	}
 
 
+	public static function columnPrimary() {
+		static $static = [];
+		if (!isset($static[static::class])) {
+			$columns = [];
+			foreach (static::$columns as $key => $value) {
+				if (!isset($value['primary'])) {
+					continue;
+				}
+				if (!empty($value['name'])) {
+					$key = $value['name'];
+				}
+				$columns[$key] = $value['primary'];
+			}
+			if ($columns) {
+				asort($columns, SORT_NUMERIC);
+				$columns = array_keys($columns);
+			}
+			$static[static::class] = $columns;
+		}
+		return $static[static::class];
+	}
 
 	protected static function columnInfo($name) {
 		static $static = [];
@@ -87,48 +116,98 @@ class Model extends Document{
 	}
 
 
+	protected static function parsedType($name, $value) {
+		switch (static::columnInfo($name)->type) {
+			case 'timestamp':
+			case 'datetime':
+				if (!$value instanceof DateTime) {
+					$value = new DateTime($value);
+				}
+				break;
+			case 'json':
+			case 'array':
+				if (is_array($value)) {
 
-	protected function primary() {
-		if (!static::$primary) {
-			throw new QueryException('Model.primary()', 'Primary key cannot be empty');
+				} elseif (is_object($value)) {
+					$value = to_array($value);
+				} elseif ($value) {
+					$value = json_decode($value, true);
+				} else {
+					$value = [];
+				}
+				break;
+			case 'object':
+				if (is_object($value)) {
+
+				} elseif (is_array($value)) {
+					$value = (object) $value;
+				} elseif ($value) {
+					if ($value = @unserialize($value)) {
+						$value = (object) $value;
+					} else {
+						$value = new \stdClass;
+					}
+				} else {
+					$value = new \stdClass;
+				}
+				break;
+			case 'boolean':
+				$value = (boolean) $value;
+				break;
+			case 'tinyint':
+			case 'smallint':
+			case 'mediumint':
+			case 'int':
+			case 'integer':
+			case 'bigint':
+				$value = (int) $value;
+				break;
+			case 'float':
+			case 'real':
+			case 'double':
+			case 'decimal':
+				$value = (float) $value;
 		}
-		$args = [];
-		foreach (static::$primary as $primary) {
-			$value = $this[$primary];
-			if ($value === null) {
-				throw new QueryException('Model.primary()', $this);
-			}
-			$args[] = $value;
-		}
-		return $args;
+		return $value;
 	}
 
-	public function __set($name, $value) {
-		if ($name === null) {
-			throw new QueryException('Model.__set(null)', 'The column name cannot be null');
-		}
-		if ($value !== null && !$value instanceof Param && static::columnInfo($name)->process) {
-			switch (static::columnInfo($name)->type) {
+
+
+
+
+
+
+
+	protected  function defaultValues() {
+		$values = [];
+		foreach (static::$columns as $key => $value) {
+			if (!empty($value['null'])) {
+				continue;
+			}
+			if (!empty($value['name'])) {
+				$key = $value['name'];
+			}
+			if (isset($value['value'])) {
+				$values[$key] = $value['value'];
+				continue;
+			}
+			switch ($value['type']) {
 				case 'timestamp':
 				case 'datetime':
-					if (!$value instanceof DateTime) {
-						$value = new DateTime($value);
-					}
+					$value = new DateTime('now');
 					break;
 				case 'json':
 				case 'array':
-					if (is_array($value)) {
-
-					} elseif (is_object($value)) {
-						$value = to_array($value);
-					} elseif ($value) {
-						$value = json_decode($value, true);
-					} else {
-						$value = [];
-					}
+					$value = [];
+					break;
+				case 'object':
+					$value = new \stdClass;
 					break;
 				case 'boolean':
-					$value = (boolean) $value;
+					$value = false;
+					break;
+				case 'boolean':
+					$value = false;
 					break;
 				case 'tinyint':
 				case 'smallint':
@@ -136,20 +215,58 @@ class Model extends Document{
 				case 'int':
 				case 'integer':
 				case 'bigint':
-					$value = (int) $value;
+					$value = 0;
 					break;
 				case 'float':
 				case 'real':
 				case 'double':
 				case 'decimal':
-					$value = (float) $value;
+					$value = 0.00;
+					break;
+				default:
+					$value = '';
 			}
+			$values[$key] = $value;
 		}
-		return parent::__set($name, $value);
+		return $values;
+	}
+
+
+
+	protected function primaryParams() {
+		$params = [];
+		foreach (static::columnPrimary() as $primary) {
+			$value = $this[$primary];
+			if ($value === null) {
+				throw new QueryException(static::class .'::primaryParams()', $this);
+			}
+			$params[] = $value;
+		}
+		if (!$params) {
+			throw new QueryException(static::class . '::primaryParams()', 'Primary key cannot be empty');
+		}
+
+		return $params;
+	}
+
+	public function __set($name, $value) {
+		if ($name === null || !$name) {
+			throw new QueryException('Model.__set(null)', 'The column name cannot be null');
+		}
+
+		if ($name{0} === '_') {
+			return;
+		}
+
+		if ($value !== null && !$value instanceof Param && static::columnInfo($name)->process) {
+			$value = static::parsedType($name, $value);
+		}
+
+		return parent::__set($name, static::parsedType($name, $value));
 	}
 
 	public function select() {
-		if (!$select = static::database()->selectRow(...$this->primary())) {
+		if (!$select = static::database()->selectRow(...$this->primaryParams())) {
 			throw new QueryException('Model.select()', $this);
 		}
 		$this->clear()->merge($select);
@@ -158,12 +275,12 @@ class Model extends Document{
 
 	public function insert() {
 		$cursor = static::database();
-		if (!$cursor->values($this->toArray())->insert()) {
+		if (!$cursor->values($this->toArray() + $this->defaultValues())->insert()) {
 			throw new QueryException('Model.insert()', $this);
 		}
 
-		if (static::$insertId) {
-			$this[static::$insertId] = $cursor->lastInsertId();
+		if ($insertId = static::columnInsertId()) {
+			$this[$insertId] = $cursor->lastInsertId();
 		}
 		$this->select();
 		return $this;
@@ -172,17 +289,17 @@ class Model extends Document{
 	public function update() {
 		$update = [];
 		foreach ($this as $key => $value) {
-			if (!static::columnInfo($key)->readonly && !in_array($key, static::$primary, true)) {
+			if (!static::columnInfo($key)->readonly && !in_array($key, $this->primaryParams(), true)) {
 				$update[$key] = $value;
 			}
 		}
-		static::database()->values($update)->update(...$this->primary());
+		static::database()->values($update)->update(...$this->primaryParams());
 		$this->select();
 		return $this;
 	}
 
 	public function delete() {
-		static::database()->delete(...$this->primary());
+		static::database()->delete(...$this->primaryParams());
 		$this->clear();
 		return $this;
 	}

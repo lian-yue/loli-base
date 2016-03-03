@@ -23,7 +23,6 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Database;
-use Closure;
 use PDOException;
 use Psr\Log\LogLevel;
 class PDODatabase extends AbstractDatabase{
@@ -105,6 +104,7 @@ class PDODatabase extends AbstractDatabase{
 				$results = $this->link(false)->query($query);
 			}
 		} catch (PDOException $e) {
+			$info = $e->errorInfo ? $e->errorInfo : ['', 0];
 			$this->throwLog(new QueryException($query, $e->getMessage(), $info[0], $info[1]), LogLevel::ERROR, ['query' => $query]);
 		}
 		$this->logger && $this->logger->debug(__METHOD__.'('.$query.') ' . (is_scalar($results) ? $results : json_encode($results)));
@@ -187,8 +187,15 @@ class PDODatabase extends AbstractDatabase{
 
 
 	public function value($value) {
-		if ($value instanceof Closure) {
+		if ($value instanceof \Closure) {
 			$value = $value();
+		} elseif ($value instanceof \Datetime) {
+			static $timezone;
+			if (empty($timezone)) {
+				$timezone = new \DateTimeZone('GMT');
+			}
+			$value = clone $value;
+			$value = $value->setTimezone($timezone)->format('Y-m-d H:i:s');
 		}
 		if (is_array($value)) {
 			$value = json_encode($value);

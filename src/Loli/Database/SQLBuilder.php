@@ -813,7 +813,7 @@ class SqlBuilder extends AbstractBuilder{
 					continue;
 				}
 				$query->value = $compare === '=';
-				$compare = 'null';
+				$compare = 'NULL';
 			}
 
 
@@ -882,9 +882,9 @@ class SqlBuilder extends AbstractBuilder{
 						$arrays[] = ['compare' => 'IN', 'value' => $value];
 					}
 					break;
-				case 'null':
+				case 'NULL':
 					// null 查询
-					$arrays[] = ['compare' => 'IS', 'value' => ($not ? !$query->value : $query->value) ? 'null' : 'NOT null', 'not' => ''];
+					$arrays[] = ['compare' => 'IS', 'value' => ($not ? !$query->value : $query->value) ? 'NULL' : 'NOT NULL', 'not' => ''];
 					break;
 				case 'BETWEEN':
 					// BETWEEN
@@ -1091,7 +1091,7 @@ class SqlBuilder extends AbstractBuilder{
 						'type' => '%s',
 						'length' => '(%s)',
 						'unsigned' => 'unsigned',
-						'null' => 'NOT null',
+						'null' => 'NOT NULL',
 						'value' => 'DEFAULT %s',
 						'increment' => 'AUTO_INCREMENT',
 						'charset' => 'CHARACTER SET %s',
@@ -1248,7 +1248,7 @@ class SqlBuilder extends AbstractBuilder{
 				}
 
 				// 是否允许空
-				$value['null'] = $column->null;
+				$value['null'] = (bool) $column->null;
 
 				// 注释
 				$value['comment'] = $column->comment ? $this->database->value((string)$column->comment) : null;

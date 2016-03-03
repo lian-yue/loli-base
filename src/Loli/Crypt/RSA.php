@@ -14,7 +14,7 @@ namespace Loli\Crypt;
 if (!extension_loaded('openssl')) {
 	throw new Exception('openssl extension is not loaded');
 }
-class RSA{
+class Rsa{
 
 	private $_publicKey = '';
 

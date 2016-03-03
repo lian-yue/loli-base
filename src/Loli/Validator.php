@@ -104,7 +104,7 @@ class Validator {
 		return $this;
 	}
 
-	public function make($data, array $rules = [], $merge = false, $message = NULL) {
+	public function make($data, array $rules = [], $merge = false, $message = null) {
 		if ($data instanceof ServerRequestInterface) {
 			$data = array_merge($data->getQueryParams(), ($parsedbody = $data->getParsedBody()) ? to_array($parsedbody) : [], $data->getUploadedFiles());
 		}
@@ -142,12 +142,22 @@ class Validator {
 		unset($value);
 
 		foreach ($rules as $input) {
-			if (!isset($data[$input['name']]) || !empty($input['readonly']) || !empty($input['disabled'])) {
+			if (!isset($data[$input['name']]) || !empty($input['disabled'])) {
 				unset($data[$input['name']]);
 				continue;
 			}
 
 			$value = &$data[$input['name']];
+
+			// 只读的直接换成原来的值
+			if (!empty($input['readonly'])) {
+				if (isset($input['value'])) {
+					$value = $input['value'];
+				} else {
+					unset($data[$input['name']]);
+				}
+				continue;
+			}
 
 			// 设置类型
 			if (isset($input['value'])) {
@@ -185,7 +195,7 @@ class Validator {
 				}
 				$method = lcfirst(studly($attribute)) . 'Attribute';
 				if (!method_exists($this, $method)) {
-					throw new \BadFunctionCallException(static::class .'::' .$method . '() Validator form attribute does not exist');
+					continue;
 				}
 				$attributeValue = $input[$attribute];
 
@@ -254,7 +264,7 @@ class Validator {
 		if ($error = $this->textType($value)) {
 			return $error;
 		}
-		if (!preg_match('/^[a-z]+[a-z0-9_-]*[a-z0-9]*\:\/\/\w+/i', $value)) {
+		if (!filter_var($value, FILTER_VALIDATE_URL)) {
 			return 'validator';
 		}
 	}
@@ -276,11 +286,22 @@ class Validator {
 			$value = '';
 			return;
 		}
-		$value = preg_replace('/\-+/', '-', preg_replace('/\s+/', ' ', trim($value)));
-		if (!preg_match('/^(\+?\d+ ?)?(\(\d+\))?\d+([- ]?\d+){0,3}$/i', $value)) {
+
+		if (!$value = preg_replace('/(\s|_|-)+/', '', trim($value))) {
 			return 'validator';
 		}
-		if (strlen($value) > 24) {
+
+		if (substr($value, 0, 2) === '00') {
+			$value = '+' . $value;
+		}
+
+		if ($value{0} !== '+' && strlen($value) > 11) {
+			$value = '+' . $value;
+		}
+
+		$value = preg_replace('/+(0+)/', '+', $value);
+
+		if (!preg_match('/(\+?|0*)([1-9]\d{5,13})/', $value)) {
 			return 'validator';
 		}
 	}
@@ -770,6 +791,7 @@ class Validator {
 			}
 		}
 	}
+
 
 	protected function query($rule, $column, $value) {
 		$rule = explode('|', $rule, 3);

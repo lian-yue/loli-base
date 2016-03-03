@@ -37,7 +37,7 @@ class View extends ArrayObject{
 
 		$_data = [];
 		foreach ($this as $key => $value) {
-			if (!$key || $value === NULL || !is_string($key) || $key{0} === '_' || $key === 'this' || $key === 'GLOBALS') {
+			if (!$key || $value === null || !is_string($key) || $key{0} === '_' || $key === 'this' || $key === 'GLOBALS') {
 				continue;
 			}
 			$_data[$key] = $value;

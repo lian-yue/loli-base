@@ -183,6 +183,13 @@ class Route extends ArrayObject{
 				break;
 			}
 
+			$profiles = Route::user()->profiles;
+
+			if (!empty($profiles['language'])) {
+				language::set($profiles['language']);
+			}
+
+
 			if (empty($controller)) {
 				throw new Message('Controller not exists', 404);
 			}
@@ -401,7 +408,7 @@ class Route extends ArrayObject{
 				// 验证信息
 				if (!$auth = Auth::selectRow(self::token()->get())) {
 					$request = self::request();
-					$auth = new Auth(['token' => self::token()->get(), 'ip' => self::ip(), 'user_id' => 0, 'user_agent' => substr($request->getHeaderLine('User-Agent'), 0, 255)]);
+					$auth = new Auth(['token' => self::token()->get(), 'ip' => self::ip(), 'user_id' => 0, 'user_agent' => substr($request->getHeaderLine('User-Agent'), 0, 255), 'profiles' => [], 'created' => new DateTime('now')]);
 					$auth->insert();
 				}
 				return $auth;
@@ -413,11 +420,7 @@ class Route extends ArrayObject{
 				if ($user->id) {
 					$user->select();
 				} else {
-					foreach ($auth as $key => $value) {
-						if (in_array($key, ['timezone', 'language'], true)) {
-							$user->$key = $value;
-						}
-					}
+					$user->profiles = $auth->profiles;
 				}
 				return $user;
 				break;

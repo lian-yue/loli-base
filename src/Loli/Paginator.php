@@ -161,7 +161,7 @@ class Paginator implements JsonSerializable{
 			$queryParams = [];
 		}
 		$queryParams[$this->key] = $page;
-		return $this->uri->withQuery(http_build_query($query, null, '&'));
+		return $this->uri->withQuery(http_build_query($queryParams, null, '&'));
 	}
 
 

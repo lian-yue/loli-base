@@ -594,9 +594,7 @@ class Cursor implements IteratorAggregate{
 
 
 		if (in_array($lowerName, ['update', 'delete'])) {
-			$this->builder->deleteCacheSelectRow();
-			$this->builder->deleteCacheSelect();
-			$this->builder->deleteCacheCount();
+			$this->builder->deleteCache();
 		}
 		if (!empty($cache)) {
 			$this->cache = $cache;

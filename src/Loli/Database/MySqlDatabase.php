@@ -23,7 +23,6 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Database;
-use Closure;
 use Psr\Log\LogLevel;
 class MySqlDatabase extends AbstractDatabase{
 
@@ -180,8 +179,15 @@ class MySqlDatabase extends AbstractDatabase{
 
 
 	public function value($value) {
-		if ($value instanceof Closure) {
+		if ($value instanceof \Closure) {
 			$value = $value();
+		} elseif ($value instanceof \Datetime) {
+			static $timezone;
+			if (empty($timezone)) {
+				$timezone = new \DateTimeZone('GMT');
+			}
+			$value = clone $value;
+			$value = $value->setTimezone($timezone)->format('Y-m-d H:i:s');
 		}
 		if (is_array($value)) {
 			$value = json_encode($value);

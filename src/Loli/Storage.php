@@ -13,7 +13,7 @@
 namespace Loli;
 
 class Storage{
-	private $link = NULL;
+	private $link = null;
 
 	public function __call($method, $args) {
 		static $methods = ['dir_opendir', 'rename', 'stream_open', 'unlink', 'url_stat', 'mkdir', 'rmdir'];
@@ -32,11 +32,5 @@ class Storage{
 			$this->link->setLogger(Log::storage());
 		}
 		return $this->link->$method(...$args);
-	}
-
-
-	public static function mime($file) {
-		$info = new \finfo();
-		return ['type' => $info->file($file, FILEINFO_MIME_TYPE), 'encoding' => $info->file($file, FILEINFO_MIME_ENCODING)];
 	}
 }
