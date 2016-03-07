@@ -39,7 +39,7 @@ class ServerRequestInput{
 			$trustedProxy = true;
 		} elseif (in_array($this->server['REMOTE_ADDR'], ['127.0.0.1', 'localhost'], true)) {
 			$trustedProxy = true;
-		} elseif (!empty($this->server['LOLI']['trustedProxy']) && filter_var($this->server['REMOTE_ADDR'], FILTER_VALIDATE_IP) && IP::match($_SERVER['LOLI']['trustedProxy'], $this->server['REMOTE_ADDR'])) {
+		} elseif (($trustedProxy = $configure('trustedProxy', [])) && filter_var($this->server['REMOTE_ADDR'], FILTER_VALIDATE_IP) && IP::match($trustedProxy, $this->server['REMOTE_ADDR'])) {
 			$trustedProxy = true;
 		} else {
 			$trustedProxy = false;

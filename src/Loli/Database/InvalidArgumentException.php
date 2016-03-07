@@ -1,6 +1,6 @@
 <?php
 namespace Loli\Database;
 
-class InvalidArgumentException extends \InvalidArgumentException {
+class InvalidArgumentException extends \InvalidArgumentException implements DatabaseException{
 
 }

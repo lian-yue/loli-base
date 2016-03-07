@@ -23,5 +23,5 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Database;
-class ConnectException extends \RuntimeException{
+class ConnectException extends \RuntimeException implements DatabaseException{
 }

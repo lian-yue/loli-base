@@ -258,11 +258,10 @@ class Model extends Document{
 			return;
 		}
 
-		if ($value !== null && !$value instanceof Param && static::columnInfo($name)->process) {
+		if ($value !== null && !$value instanceof Param && static::columnInfo($name)->process) {;
 			$value = static::parsedType($name, $value);
 		}
-
-		return parent::__set($name, static::parsedType($name, $value));
+		return parent::__set($name, $value);
 	}
 
 	public function select() {

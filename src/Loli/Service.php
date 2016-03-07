@@ -16,8 +16,8 @@ class Service{
 			$group = strtolower($group);
 			if (!isset($services[static::class][$group])) {
 				if (!isset($configs[static::class])) {
-					if (static::$configure && !empty($_SERVER['LOLI'][static::$configure])) {
-						foreach ($_SERVER['LOLI'][static::$configure] as $key => $value) {
+					if (static::$configure && ($configure = configure(static::$configure, []))) {
+						foreach ($configure as $key => $value) {
 							$config[is_int($key) ? 'default' : $key] = (array) $value;
 						}
 					}
@@ -36,7 +36,7 @@ class Service{
 		} else {
 			if (!isset($services[static::class])) {
 				if (!isset($configs[static::class])) {
-					$configs[static::class] = !static::$configure || empty($_SERVER['LOLI'][static::$configure]) ? [] : $_SERVER['LOLI'][static::$configure];
+					$configs[static::class] = static::$configure ? configure(static::$configure, []) : [];
 				}
 				$class = static::register($configs[static::class]);
 				if (static::$reuse) {

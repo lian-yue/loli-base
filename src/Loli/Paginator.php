@@ -217,6 +217,6 @@ class Paginator implements JsonSerializable{
 	}
 
 	public static function translate($text, $original = true) {
-		return Language::translate($text, ['paginator', 'default'], $original);
+		return Locale::translate($text, ['paginator', 'default'], $original);
 	}
 }

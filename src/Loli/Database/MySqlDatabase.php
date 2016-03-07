@@ -179,16 +179,20 @@ class MySqlDatabase extends AbstractDatabase{
 
 
 	public function value($value) {
+		static $timezone;
 		if ($value instanceof \Closure) {
 			$value = $value();
 		} elseif ($value instanceof \Datetime) {
-			static $timezone;
-			if (empty($timezone)) {
-				$timezone = new \DateTimeZone('GMT');
+			if ($timezone->getOffset() != 0) {
+				if (empty($timezone)) {
+					$timezone = new \DateTimeZone('UTC');
+				}
+				$value = clone $value;
+				$value->setTimezone($timezone);
 			}
-			$value = clone $value;
-			$value = $value->setTimezone($timezone)->format('Y-m-d H:i:s');
+			$value = $value->format('Y-m-d H:i:s');
 		}
+
 		if (is_array($value)) {
 			$value = json_encode($value);
 		} elseif (is_object($value)) {
@@ -198,6 +202,7 @@ class MySqlDatabase extends AbstractDatabase{
 				$value = json_encode($value);
 			}
 		}
+
 		if ($value === null) {
 			return 'NULL';
 		} elseif ($value === false) {

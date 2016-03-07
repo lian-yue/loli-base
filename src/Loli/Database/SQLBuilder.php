@@ -143,6 +143,7 @@ class SqlBuilder extends AbstractBuilder{
 		'date' => 'to_string',
 		'string' => 'to_string',
 		'json' => 'to_array',
+		'object' => 'to_object',
 	];
 
 	// 全部函数
@@ -762,11 +763,6 @@ class SqlBuilder extends AbstractBuilder{
 			}
 			$query->_index = true;
 
-			// 跳过 null 和空数组
-			if (is_array($query->value) && !($query->value = array_filter($query->value, function($value) { return $value === null; }))) {
-				continue;
-			}
-
 			// 函数
 			$function = $query->function ? (empty(self::$functions[$function = strtoupper($query->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : '';
 
@@ -805,7 +801,6 @@ class SqlBuilder extends AbstractBuilder{
 				$compare = '!=';
 				$binary = 'BINARY';
 			}
-
 
 			// value 是 null
 			if ($query->value === null) {
@@ -869,7 +864,12 @@ class SqlBuilder extends AbstractBuilder{
 			switch ($compare) {
 				case 'IN':
 					// IN 运算符
-					$value = array_map([$this->database, 'value'], !$function && isset($columnsType[$value->column]) ? array_map(self::$typeFunctions[$columnsType[$value->column]], (array) $query->value) : (array) $query->value);
+					$value = array_filter((array) $query->value, function($value) { return $value !== null;});
+					if (!$function && isset($columnsType[$query->column])) {
+						$value = array_map(self::$typeFunctions[$columnsType[$query->column]], $value);
+					}
+					$value = array_map([$this->database, 'value'], $value);
+
 					// 空 的返回 1 = 2
 					if (!$value) {
 						$commands = ['1 = 2'];

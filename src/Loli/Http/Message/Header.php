@@ -98,7 +98,7 @@ class Header {
 
 
 	public static function register() {
-		self::$cookie = empty($_SERVER['LOLI']['cookie']) ? [] : $_SERVER['LOLI']['cookie'];
+		self::$cookie = configure('cookie', []);
 	}
 }
 Header::register();

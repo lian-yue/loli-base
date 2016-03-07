@@ -18,16 +18,11 @@ class View extends ArrayObject{
 	public function __construct($views = [], array $data = []) {
 		$data && $this->merge($data);
 		$this->views = (array) $views;
-		$this->__wakeup();
-	}
-
-	public function __wakeup() {
-		$this->dir = empty($_SERVER['LOLI']['view']['dir']) ? './' : $_SERVER['LOLI']['view']['dir'];
 	}
 
 	protected function load($files) {
 		foreach ($files as $_file) {
-			if ($is = is_file($_file = $this->dir .'/' . strtolower(strtr($_file, '\\.', '//')) . '.php')) {
+			if ($is = is_file($_file = configure(['view', 'dir'], './') .'/' . strtolower(strtr($_file, '\\.', '//')) . '.php')) {
 				break;
 			}
 		}
@@ -42,7 +37,6 @@ class View extends ArrayObject{
 			}
 			$_data[$key] = $value;
 		}
-
 		unset($is, $files, $key, $value);
 		extract($_data);
 		require $_file;

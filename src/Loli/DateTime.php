@@ -12,11 +12,10 @@
 /* ************************************************************************** */
 namespace Loli;
 use JsonSerializable;
-
+use DateTimeZone;
 class DateTime extends \DateTime implements JsonSerializable{
 	const TO_STRING = 'Y-m-d H:i:s';
 
-	const SQL = 'Y-m-d H:i:s';
 
 	public function format($format, $translate = false) {
 		if (!$translate || in_array(trim($format), ['U', 'Z', 'c', 'r'], true)) {
@@ -40,12 +39,6 @@ class DateTime extends \DateTime implements JsonSerializable{
 	}
 
 
-	/**
-	 * timeDiff 返回2个时间的相差
-	 * @param  integer         $from 时间
-	 * @param  boolean|integer $to   当前时间
-	 * @return string
-	 */
 	public function formatDiff($datetime2 = false, $absolut = false) {
 		if ($datetime2 instanceof \DateTimeInterface) {
 
@@ -90,11 +83,7 @@ class DateTime extends \DateTime implements JsonSerializable{
 
 
 	public function jsonSerialize() {
-		return ['date' => $this->__toString(), 'diff' => $this->formatDiff(), 'timezone' => $this->timezone, 'timezone_type' => $this->timezone_type];
-	}
-
-	public function getTimeZone() {
-		return $this->instanceTimeZone(parent::getTimeZone());
+		return ['date' => $this->__toString(), 'diff' => $this->formatDiff()];
 	}
 
 	public static function createFromFormat($format, $time, $timezone = null) {
@@ -111,28 +100,11 @@ class DateTime extends \DateTime implements JsonSerializable{
         throw new Exception(implode(PHP_EOL, $errors['errors']));
 	}
 
-
 	public static function translate($text, $original = true) {
-		return Language::translate($text, ['datetime'], $original);
+		return Locale::translate($text, ['datetime'], $original);
 	}
 
 	public static function instance(\DateTime $datetime) {
 		return new static($datetime->format('Y-m-d H:i:s.u'), $datetime->getTimeZone());
-    }
-
-	public static function instanceTimeZone($timezone) {
-		if (!$timezone) {
-			$timezone = new DateTimeZone(date_default_timezone_get());
-		}
-
-		if ($timezone instanceof DateTimeZone) {
-			return $timezone;
-		}
-
-		if ($timezone instanceof \DateTimeZone) {
-			$timezone = $timezone->getName();
-		}
-
-		return new DateTimeZone((string) $timezone);
 	}
 }

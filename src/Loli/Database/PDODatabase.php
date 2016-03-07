@@ -192,7 +192,7 @@ class PDODatabase extends AbstractDatabase{
 		} elseif ($value instanceof \Datetime) {
 			static $timezone;
 			if (empty($timezone)) {
-				$timezone = new \DateTimeZone('GMT');
+				$timezone = new \DateTimeZone('UTC');
 			}
 			$value = clone $value;
 			$value = $value->setTimezone($timezone)->format('Y-m-d H:i:s');

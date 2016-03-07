@@ -149,3 +149,49 @@ function snake($value, $delimiter = '_') {
 function htmlencode($string) {
 	return str_replace(['"', '\'', '<', '>'], ['&quot;', '&#039;', '&lt;', '&gt;'], $string);
 }
+
+
+function configure($names, $default = null) {
+	static $configures  = [];
+	static $loaded = [];
+	static $base;
+	if (!$base) {
+		$base = dirname(dirname(dirname(dirname(__DIR__)))) . '/config/';
+	}
+	if (!is_array($names)) {
+		$names = [$names];
+	}
+	if (!$loaded) {
+		$loaded['default'] = true;
+		if (is_file($file = $base . 'default.php')) {
+			$configures = require $file;
+		}
+	}
+
+	$result = &$configures;
+	foreach ($names as $name) {
+		if (isset($result[$name])) {
+			$result = &$result[$name];
+		} elseif ($result === $configures && !isset($loaded[$name])) {
+			$loaded[$name] = true;
+			$file = $base . $name . '.php';
+			if (is_file($file)) {
+				$result[$name] = require $file;
+			} else {
+				return $default;
+			}
+			$result = &$result[$name];
+		} else {
+			return $default;
+		}
+		if ($result instanceof \Closure) {
+			$result = $result();
+		}
+	}
+	if ($default !== null) {
+		$result2 = $result;
+		settype($result2, gettype($default));
+		return $result2;
+	}
+	return $result;
+}

@@ -184,4 +184,4 @@ class Code{
 	}
 }
 
-Code::$key = isset($_SERVER['LOLI']['key']) ? $_SERVER['LOLI']['key'] : '';
+Code::$key = configure('key');

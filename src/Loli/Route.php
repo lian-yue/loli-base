@@ -19,10 +19,13 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 
 
+
 use Loli\Http\Message\ServerRequest;
 use Loli\Http\Message\ServerRequestInput;
 use Loli\Http\Message\Header;
 
+
+use Loli\Database\DatabaseExceptiont;
 
 use GuzzleHttp\Psr7\Stream;
 use GuzzleHttp\Psr7\Response;
@@ -86,6 +89,15 @@ class Route extends ArrayObject{
 			$method = $this->request->getMethod();
 			$host = $this->request->getUri()->getHost();
 			$path = $this->request->getUri()->getPath();
+			$params = [];
+			$queryParams = $this->request->getQueryParams();
+			if ($bodyParams = $this->request->getParsedBody())  {
+				$bodyParams = to_array($bodyParams);
+			} else {
+				$bodyParams = [];
+			}
+			$uploadedFiles = $this->request->getUploadedFiles();
+
 			if (!$path || $path{0}!== '/') {
 				$path = '/' . $path;
 			}
@@ -185,24 +197,28 @@ class Route extends ArrayObject{
 
 			$profiles = Route::user()->profiles;
 
-			if (!empty($profiles['language'])) {
-				language::set($profiles['language']);
+			foreach (['profiles', 'queryParams', 'bodyParams', 'params'] as $key) {
+				$value = $$key;
+				if (!empty($value['language'])) {
+					Locale::setLanguage($value['language']);
+				}
 			}
+			unset($value);
 
 
 			if (empty($controller)) {
-				throw new Message('Controller not exists', 404);
+				throw new Message('controller_exists', 404);
 			}
 
 			if (empty($controller[1]) || $controller[1]{0} === '_') {
-				throw new Message('Controller not exists', 404);
+				throw new Message('controller_exists', 404);
 			}
 
 			$controller[0] = trim(strtr($controller[0], '-.\\', '///'), '/');
 			$node = explode('/', implode('/', $controller));
 
-			if (!class_exists($class = 'App\Controllers\\' . strtr($controller[0], '/', '\\'))) {
-				throw new Message('Controller not exists', 404);
+			if (!class_exists($class = 'App\Controllers\\' . strtr($controller[0], '/', '\\')) || !is_subclass_of($class, __NAMESPACE__ . '\\Controller')) {
+				throw new Message('controller_exists', 404);
 			}
 
 			// 写入附加属性
@@ -218,19 +234,11 @@ class Route extends ArrayObject{
 
 			// 读取附加属性
 			$params = $this->request->getAttribute('params', []);
-			if ($body = $this->request->getParsedBody()) {
-				if (is_object($body)) {
-					$bodyArray = [];
-					foreach ($body as $key => $value) {
-						$bodyArray[$key] = $value;
-					}
-					$params += $bodyArray;
-				} else {
-					$params += $body;
-				}
-			}
 
-			$params += array_merge($this->request->getQueryParams(), ($parsedbody = $this->request->getParsedBody()) ? to_array($parsedbody) : [], $this->request->getUploadedFiles(), $params);
+			$params += $uploadedFiles + $bodyParams + $queryParams;
+			unset($uploadedFiles, $bodyParams, $queryParams);
+
+
 
 			// 中间键 请求
 			foreach ($middleware as $value) {
@@ -245,6 +253,9 @@ class Route extends ArrayObject{
 			// Message
 		} catch (\Exception $e) {
 			$view = new Message(['message' => 'exception', 'value' =>  $e->getMessage(), 'code' => $e->getCode()], 500);
+			if (!$e instanceof DatabaseException) {
+				Log::route()->error($e->getMessage(), ['exception' => $e]);
+			}
 		}
 
 
@@ -500,8 +511,8 @@ class Route extends ArrayObject{
 
 	protected static function rules() {
 		self::$rules = [];
-		$defaultHost = empty($_SERVER['LOLI']['route']['hosts']) ? [self::request()->getHeaderLine('Host')] : (array) $_SERVER['LOLI']['route']['hosts'];
-		foreach (empty($_SERVER['LOLI']['route']['rules']) ? [] : $_SERVER['LOLI']['route']['rules'] as $controller => $route) {
+		$defaultHost = [configure('host', self::request()->getHeaderLine('Host'))];
+		foreach (configure('route', []) as $controller => $route) {
 			// 模块
 			if (empty($route['controller'])) {
 				$route['controller'] = $controller;

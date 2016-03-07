@@ -153,11 +153,16 @@ class Uri implements UriInterface{
 			if ($query) {
 				$query = array_diff_key($query, $this->rule['match']);
 			}
+			if ($query) {
+				$query = $this->getQueryArray($query);
+			}
 			$this->data['query'] = $query ? http_build_query($query, null, '&') : '';
 		}
 
 		return $this->data['query'];
 	}
+
+
 
 	public function getQueryParams() {
 		return $this->query;
@@ -325,6 +330,17 @@ class Uri implements UriInterface{
 		return $this->__toString();
 	}
 
+
+	protected function getQueryArray(array $query) {
+		foreach($query as &$value) {
+			if (is_array($value)) {
+				$value = $this->getQueryArray($value);
+			} elseif (is_object($value)) {
+				$value = method_exists($value, '__toString') ? $value->__toString() : 'Object';
+			}
+		}
+		return $query;
+	}
 
 	private function getParsed() {
 		static $static = [];

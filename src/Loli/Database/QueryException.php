@@ -1,7 +1,7 @@
 <?php
 namespace Loli\Database;
 
-class QueryException extends \RuntimeException {
+class QueryException extends \RuntimeException implements DatabaseException{
 	protected $state = '42000';
 	protected $message;
 	protected $query;

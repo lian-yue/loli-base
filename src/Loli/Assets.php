@@ -16,11 +16,11 @@ class Assets extends URL{
 		parent::__construct($url);
 		$this->__set('version', $version ? $version : '1.0.0');
 		if (!$this->host) {
-			if (!empty($_SERVER['LOLI']['assets']['host'])) {
-				$this->host = $_SERVER['LOLI']['assets']['host'];
+			if ($host = configure(['assets', 'host'])) {
+				$this->host = $host;
 			}
-			if (!empty($_SERVER['LOLI']['assets']['base'])) {
-				$this->path = trim($_SERVER['LOLI']['assets']['base'], '/') . '/';
+			if ($base = configure(['assets', 'base'])) {
+				$this->base = $base;
 			}
 		}
 
@@ -33,6 +33,6 @@ class Assets extends URL{
 	}
 
 	public function __toString() {
-		return strtr(parent::__toString(), ['{version}' => $this->version, '%7Bversion%7D' => $this->version, '{language}' => Language::name(), '%7Blanguage%7D' => Language::name()]);
+		return strtr(parent::__toString(), ['{version}' => $this->version, '%7Bversion%7D' => $this->version, '{language}' => Locale::getLanguage(), '%7Blanguage%7D' => Locale::getLanguage()]);
 	}
 }

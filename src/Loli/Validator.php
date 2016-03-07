@@ -64,7 +64,7 @@ class Validator {
 
 	protected $group;
 
-	public function __construct(array $rules, $group = ['default']) {
+	public function __construct(array $rules = [], $group = ['default']) {
 		$this->group = (array) $group;
 
 		foreach ($rules as $name => $input) {
@@ -113,17 +113,17 @@ class Validator {
 		}
 		$rules = $this->rules($rules, $merge);
 
-		if ($merge) {
-			foreach ($rules as $input) {
-				if (!isset($data[$input['name']])) {
-					if (isset($rules[$input['name']]['value'])) {
-						$data[$input['name']] = $rules[$input['name']]['value'];
-					} else {
-						unset($data[$input['name']]);
-					}
-				}
+		//  设置默认值
+		foreach ($rules as $input) {
+			if (isset($data[$input['name']])) {
+
+			} elseif (isset($rules[$input['name']]['value'])) {
+				$data[$input['name']] = $rules[$input['name']]['value'];
+			} elseif ($merge || !isset($data[$input['name']])) {
+				unset($data[$input['name']]);
 			}
 		}
+
 
 		foreach ($data as $key => $value) {
 			if ($merge && !isset($rules[$key])) {
@@ -138,8 +138,6 @@ class Validator {
 				}
 			}
 		}
-
-		unset($value);
 
 		foreach ($rules as $input) {
 			if (!isset($data[$input['name']]) || !empty($input['disabled'])) {
@@ -209,6 +207,7 @@ class Validator {
 				}
 			}
 		}
+
 
 		if ($message) {
 			throw $message;
@@ -354,13 +353,12 @@ class Validator {
 			return;
 		}
 
-		$value = trim($value);
-		if (!preg_match('/^\d{4}\-(\d{2})\-(\d{2})$/', $value)) {
+		if (!$value = trim($value)) {
 			return 'validator';
 		}
 
 		try {
-			$datetime = new DateTime($date);
+			$datetime = new \DateTime($value);
 		} catch (\Exception $e) {
 			return 'validator';
 		}
@@ -375,7 +373,7 @@ class Validator {
 		$value = trim($value);
 
 		try {
-			$datetime = new DateTime($date);
+			$datetime = new \DateTime($value);
 		} catch (\Exception $e) {
 			return 'validator';
 		}
@@ -390,7 +388,7 @@ class Validator {
 		$value = trim($value);
 
 		try {
-			$datetime = new DateTime($date);
+			$datetime = new \DateTime($value);
 		} catch (\Exception $e) {
 			return 'validator';
 		}
@@ -434,6 +432,7 @@ class Validator {
 			if (!is_scalar($value) || !isset($input['option'][$value])) {
 				return 'validator';
 			}
+			return;
 		}
 
 		if ($empty) {
@@ -770,7 +769,7 @@ class Validator {
 		$input['type'] = empty($input['type']) ? (empty($this->rules[$input['name']]['type']) ? 'text' : $this->rules[$input['name']]['type']) : $input['type'];
 
 		if (isset($input['title']) || !isset($this->rules[$input['name']]['title'])) {
-			$input['title'] = Language::translate(empty($input['title']) ? trim(ucfirst(strtolower(str_replace(['-', '_'], ' ', trim($input['name'], '-_'))))) : $input['title'], $this->group);
+			$input['title'] = Locale::translate(empty($input['title']) ? trim(ucfirst(strtolower(str_replace(['-', '_'], ' ', trim($input['name'], '-_'))))) : $input['title'], $this->group);
 		}
 
 		if (!empty($input['errormessage'])) {
@@ -778,7 +777,7 @@ class Validator {
 		}
 
 		if (!empty($input['placeholder'])) {
-			$input['placeholder'] = Language::translate($input['placeholder'], $this->group);
+			$input['placeholder'] = Locale::translate($input['placeholder'], $this->group);
 		}
 
 		if (in_array($input['type'], ['checkbox', 'radio', 'select'], true) && (isset($input['option']) || !isset($this->rules[$input['name']]['option']))) {
@@ -787,7 +786,7 @@ class Validator {
 
 		if (!empty($input['option'])) {
 			foreach($input['option'] as &$value) {
-				$value = Language::translate($value, $this->group);
+				$value = Locale::translate($value, $this->group);
 			}
 		}
 	}

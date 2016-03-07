@@ -20,7 +20,7 @@ class Session extends Service {
 		if ($class{0} !== '\\') {
 			$class = __NAMESPACE__ . '\Cache\\' . $class . 'CacheItemPool';
 		}
-		$result = new $class($config + ['key' => Route::token()->get() . $group . (empty($_SERVER['LOLI']['key']) ? '' : $_SERVER['LOLI']['key'])]);
+		$result = new $class($config + ['key' => Route::token()->get() . $group . configure('key')]);
 		$result->setLogger(Log::session());
 		return $result;
 	}

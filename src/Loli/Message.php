@@ -14,15 +14,13 @@ namespace Loli;
 use IteratorAggregate;
 use JsonSerializable;
 
+
+
 use Psr\Http\Message\UriInterface;
 
-
-use GuzzleHttp\Psr7\Uri;
-
+use GuzzleHttp\Psr7\Uri as PsrUri;
 
 /*
-
-1 = 系统错误 {value} ({code})
 
 
 50 = 验证器错误 {name} {title} {type}
@@ -41,10 +39,7 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 
 	protected $refresh = 3;
 
-	protected $hosts = [];
-
 	public function __construct($message = [], $code = 200, $data = [], $redirect = true, $refresh = 3, Message $previous = null) {
-		$this->hosts = empty($_SERVER['LOLI']['message']['hosts']) ? [] : (array) $_SERVER['LOLI']['message']['hosts'];
 
 		// previous　变量自动缩进
 		foreach(['code' => 200, 'data' => [], 'redirect' => false, 'refresh' => 3] as $key => $value) {
@@ -134,32 +129,32 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 		}
 
 		if (is_object($redirect)) {
-			return new Uri((string) $redirect);
+			return new PsrUri((string) $redirect);
 		}
 
 		$request = Route::request();
 		if ($parsedbody = $request->getParsedBody()) {
 			if (is_array($parsedbody) && !empty($parsedbody['redirect'])) {
-				return new Uri($parsedbody['redirect']);
+				return new PsrUri($parsedbody['redirect']);
 			}
 			if (is_object($parsedbody) && !empty($parsedbody->redirect)) {
-				return new Uri($parsedbody->redirect);
+				return new PsrUri($parsedbody->redirect);
 			}
 		}
 
 		if (($params = $request->getQueryParams()) && !empty($params['redirect'])) {
-			return new Uri($params['redirect']);
+			return new PsrUri($params['redirect']);
 		}
 
 		if (($params = $request->getCookieParams()) && !empty($params['redirect'])) {
-			return new Uri($params['redirect']);
+			return new PsrUri($params['redirect']);
 		}
 
 		if ($referer = $request->getHeaderLine('Referer')) {
-			return new Uri($referer);
+			return new PsrUri($referer);
 		}
 
-		return new Uri('//'. $request->getUri()->getHost() . '/');
+		return new PsrUri('//'. $request->getUri()->getHost() . '/');
 	}
 
 	public function setRedirect($redirect, $whiteList = false) {
@@ -167,7 +162,7 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 			try {
 				$redirect = $this->getParsedRedirect($redirect);
 			} catch (\Exception $e) {
-				$redirect = new Uri('//'. Route::request()->getUri()->getHost() . '/');
+				$redirect = new PsrUri('//'. Route::request()->getUri()->getHost() . '/');
 			}
 
 
@@ -176,7 +171,7 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 				if ($redirect->getScheme() && !in_array($redirect->getScheme(), ['http', 'https'], true)) {
 					// 协议不是 http https
 					$error = true;
-				} elseif ($redirect->getHost() && !preg_match('/(^|\.)('. implode('|', array_map(function($host){ return preg_quote($host, '/'); }, $this->hosts)) .')$/i', $redirect->getHost())) {
+				} elseif ($redirect->getHost() && !preg_match('/(^|\.)('. implode('|', array_map(function($host){ return preg_quote($host, '/'); }, configure('whitelist_hosts', []))) .')$/i', $redirect->getHost())) {
 					// host 无效
 					$error = true;
 				} elseif ($redirect->getUserInfo()) {
@@ -186,7 +181,7 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 					$error = true;
 				}
 				if (isset($error)) {
-					$redirect = new Uri('//'. Route::request()->getUri()->getHost() . '/');
+					$redirect = new PsrUri('//'. Route::request()->getUri()->getHost() . '/');
 				}
 				if ($redirect->getQuery()) {
 					parse_str($redirect->getQuery(), $queryParams);
@@ -229,6 +224,6 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
     }
 
 	public static function translate($text, $original = true) {
-		return Language::translate($text, ['message', 'default'], $original);
+		return Locale::translate($text, ['message', 'default'], $original);
 	}
 }

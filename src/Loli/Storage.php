@@ -21,14 +21,15 @@ class Storage{
 			if (!$key = parse_url($args[0], PHP_URL_HOST)) {
 				$key = '';
 			}
-			if (empty($_SERVER['LOLI']['storage'][$key])) {
-				$key = empty($_SERVER['LOLI']['storage']) ? '' : key($_SERVER['LOLI']['storage']);
+			$configure = configure('storage', []);
+			if (empty($configure[$key])) {
+				$key = empty($configure) ? '' : key($configure);
 			}
-			$class = (empty($_SERVER['LOLI']['storage'][$key]['type']) ? 'File' : $_SERVER['LOLI']['storage'][$key]['type']);
+			$class = (empty($configure[$key]['type']) ? 'File' : $configure[$key]['type']);
 			if ($class[0] !== '\\') {
 				$class = __NAMESPACE__ . '\Storage\\' . $class . 'Storage';
 			}
-			$this->link = new $class(empty($_SERVER['LOLI']['storage'][$key]) ? [] : $_SERVER['LOLI']['storage'][$key]);
+			$this->link = new $class(empty($configure[$key]) ? [] : $configure[$key]);
 			$this->link->setLogger(Log::storage());
 		}
 		return $this->link->$method(...$args);
