@@ -646,7 +646,7 @@ class MimeType{
 		'g3' => 'image/g3fax',
 		'gif' => 'image/gif',
 		'ief' => 'image/ief',
-		'jpeg|jpg|jpe' => 'image/jpeg',
+		'jpg|jpeg|jpe' => 'image/jpeg',
 		'ktx' => 'image/ktx',
 		'png' => 'image/png',
 		'btif' => 'image/prs.btif',

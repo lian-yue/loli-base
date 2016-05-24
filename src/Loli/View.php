@@ -15,31 +15,50 @@ class View extends ArrayObject{
 
 	protected $dir;
 
+	protected $layouts = [];
+
 	public function __construct($views = [], array $data = []) {
 		$data && $this->merge($data);
 		$this->views = (array) $views;
 	}
 
+    protected function layout($name, $call) {
+        $this->layouts[$name][] = $call;
+    }
+
+	protected function block($name, $call = false) {
+        if (!isset($this->layouts[$name])) {
+            $this->layouts[$name] = [];
+        }
+        if ($call) {
+            $this->layouts[$name][] = $call;
+        }
+
+
+        $key = 0;
+        $parent = function() use (&$key, &$parent, $name) {
+            if (empty($this->layouts[$name][$key])) {
+                return;
+            }
+            $key2 = $key;
+            ++$key;
+            call_user_func($this->layouts[$name][$key2], $parent);
+        };
+        $parent();
+    }
+
+
 	protected function load($files) {
-		foreach ($files as $_file) {
-			if ($is = is_file($_file = configure(['view', 'dir'], './') .'/' . strtolower(strtr($_file, '\\.', '//')) . '.php')) {
+		foreach ((array)$files as $__file) {
+			if ($is = is_file($__file = configure(['view', 'dir'], './') .'/' . strtolower(strtr($__file, '\\.', '//')) . '.php')) {
 				break;
 			}
 		}
 		if (empty($is)) {
 			return false;
 		}
-
-		$_data = [];
-		foreach ($this as $key => $value) {
-			if (!$key || $value === null || !is_string($key) || $key{0} === '_' || $key === 'this' || $key === 'GLOBALS') {
-				continue;
-			}
-			$_data[$key] = $value;
-		}
-		unset($is, $files, $key, $value);
-		extract($_data);
-		require $_file;
+		unset($is, $files);
+		return require $__file;
 	}
 
 	protected function processing() {

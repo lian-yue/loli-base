@@ -1,10 +1,11 @@
 <?php
 namespace Loli;
 
+use JsonSerializable;
 use Psr\Http\Message\UriInterface;
 
 
-class Uri implements UriInterface{
+class Uri implements UriInterface, JsonSerializable{
 
 	private static $schemes = [
 		80 => ['' => true, 'https' => true],

@@ -15,7 +15,7 @@ use JsonSerializable;
 use Psr\Http\Message\UriInterface;
 
 
-use GuzzleHttp\Psr7\Uri;
+use GuzzleHttp\Psr7\Uri as Psr7Uri;
 
 class Paginator implements JsonSerializable{
 	protected $uri;
@@ -35,21 +35,20 @@ class Paginator implements JsonSerializable{
 	protected $ellipsis = true;
 
 	public function __construct($uri = null, $current = false, $limit = 20) {
-		$this->uri = $uri ? $uri : Route::request()->getUri();
 		if ($current === false) {
 			if (($params = Route::request()->getAttribute('params')) && isset($params[$this->key])) {
-				$this->current = $params[$this->key];
+				$current = $params[$this->key];
 			} elseif (($parsedBody = Route::request()->getParsedBody()) && is_array($parsedBody) && isset($parsedBody[$this->key])) {
-				$this->current = $parsedBody[$this->key];
+				$current = $parsedBody[$this->key];
 			} elseif (($queryParams = Route::request()->getQueryParams()) && is_array($queryParams) && isset($queryParams[$this->key])) {
-				$this->current = $queryParams[$this->key];
+				$current = $queryParams[$this->key];
 			} else {
-				$this->current = 1;
+				$current = 1;
 			}
-		} else {
-			$this->current = $current;
 		}
-		$this->limit = $limit;
+        $this->__set('uri', $uri ? $uri : Route::request()->getUri());
+        $this->__set('current', $current);
+        $this->__set('limit', $limit);
 	}
 
 	public function __get($name) {
@@ -58,7 +57,10 @@ class Paginator implements JsonSerializable{
 				return 1;
 				break;
 			case 'end':
-				$end = intval($this->total / $this->limit) + 1;
+				$end = ceil($this->total / $this->limit);
+                if ($end < 1) {
+                    $end = 1;
+                }
 				if ($this->max) {
 					$end = $this->max;
 				}
@@ -80,7 +82,6 @@ class Paginator implements JsonSerializable{
 				$current = $this->current;
 				$min = max(1, $current - $this->for);
 				$max = min($current + $this->for, $this->end);
-
 				$items = [];
 
 				$items[] = ['type' => 'prev', 'value' => self::translate('&laquo; Previous'), 'uri' => ($prev = $this->prev) ? $this->uri($prev) : false];
@@ -88,16 +89,21 @@ class Paginator implements JsonSerializable{
 				if ($this->ellipsis && $min > 1) {
 					$items[] = ['type' => 'ellipsis', 'value' => self::translate('...')];
 				}
-				for ($i = $min; $i < $max; $i++) {
-					$items[] = ['type' => $current === $i ? 'current' : 'uri', 'value' => $i, 'uri' => $this->uri($i)];
+
+                for ($i = $min; $i <= $max; $i++) {
+					$items[] = ['type' => 'uri', 'value' => $i, 'uri' => $this->uri($i), 'active' => $i === $current];
 				}
-				if ($this->ellipsis && $max < $current) {
+
+				if ($this->ellipsis && $max < $this->end) {
 					$items[] = ['type' => 'ellipsis', 'value' => self::translate('...')];
 				}
 				$items[] = ['type' => 'next', 'value' => self::translate('Next &raquo;'), 'uri' => ($next = $this->next) ? $this->uri($next) : false];
 
 				return $items;
 				break;
+            case 'offset':
+                return ($this->current - 1) * $this->limit;
+                break;
 			default:
 				if (isset($this->$name)) {
 					return $this->$name;
@@ -111,7 +117,7 @@ class Paginator implements JsonSerializable{
 		switch ($name) {
 			case 'uri':
 				if (!$value instanceof UriInterface) {
-					$value = new Uri($value);
+					$value = new Psr7Uri($value);
 				}
 				$this->uri = $value;
 				break;
@@ -146,12 +152,15 @@ class Paginator implements JsonSerializable{
 				$this->__set('max', $this->current);
 				$this->max = (int) $value;
 			default:
-				throw new Exception(__METHOD__. '('. $name .') Paginator set name');
+				throw new \Exception(__METHOD__. '('. $name .') Paginator set name');
 		}
 	}
 
 
 	public function uri($page) {
+        if ($page === 1) {
+            $page = null;
+        }
 		if ($this->uri instanceof Uri) {
 			return $this->uri->withQueryParam($this->key, $page);
 		}
@@ -182,7 +191,7 @@ class Paginator implements JsonSerializable{
 				$results .= '<li class="disabled '. $item['type'] .'"><span>'. $item['value'] .'</span></li>';
 			} else {
 				$class = $item['type'];
-				if ($item['type'] === 'current') {
+				if (!empty($item['active'])) {
 					$class .= ' active';
 				}
 				$results .= '<li class="'. $class .'"><a href="'. $item['uri'] .'" ' . (in_array($item['type'], ['prev', 'next'], true) ? 'rel="'. $item['type'] .'"' : '') . '>'. $item['value'] .'</span></li>';
@@ -213,7 +222,7 @@ class Paginator implements JsonSerializable{
 					return $value(...$args);
 				}
 		}
-		throw new Exception(__METHOD__. '('. $name .') Method does not exist');
+		throw new \Exception(__METHOD__. '('. $name .') Method does not exist');
 	}
 
 	public static function translate($text, $original = true) {

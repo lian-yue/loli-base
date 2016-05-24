@@ -162,10 +162,10 @@ abstract class AbstractBuilder{
 
 
 	/**
-	 * selectRow  选择一行
+	 * selectOne  选择一行
 	 * @return
 	 */
-	abstract public function selectRow();
+	abstract public function selectOne();
 
 
 	/**

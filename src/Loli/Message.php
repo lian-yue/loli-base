@@ -22,9 +22,6 @@ use GuzzleHttp\Psr7\Uri as PsrUri;
 
 /*
 
-
-50 = 验证器错误 {name} {title} {type}
-
 200 － 399 执行成功 并且要设置http状态码的
 
 400 － 599 = 执行失败 并且 要设置 http 状态码的
@@ -35,14 +32,13 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 
 	protected $data = [];
 
-	protected $redirect = false;
+	protected $redirectUri = false;
 
 	protected $refresh = 3;
 
-	public function __construct($message = [], $code = 200, $data = [], $redirect = true, $refresh = 3, Message $previous = null) {
-
+	public function __construct($message = [], $code = 200, $data = [], $redirectUri = true, $refresh = 3, Message $previous = null) {
 		// previous　变量自动缩进
-		foreach(['code' => 200, 'data' => [], 'redirect' => false, 'refresh' => 3] as $key => $value) {
+		foreach(['code' => 200, 'data' => [], 'redirectUri' => false, 'refresh' => 3] as $key => $value) {
 			if ($$key instanceof Message) {
 				$previous = $$key;
 				$$key = $value;
@@ -65,8 +61,8 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 		// refresh 刷新
 		$this->setRefresh(isset($data['refresh']) ? $data['refresh'] : $refresh);
 
-		// redirect
-		$this->setRedirect(isset($data['redirect']) ? $data['redirect'] : $redirect, isset($data['redirect']));
+		// redirect uri
+		$this->setRedirectUri(isset($data['redirect_uri']) ? $data['redirect_uri'] : $redirectUri, isset($data['redirect_uri']));
 
 	}
 
@@ -99,8 +95,8 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 		return $this->args;
 	}
 
-	public function getRedirect() {
-		return $this->redirect;
+	public function getRedirectUri() {
+		return $this->redirectUri;
 	}
 
 	public function getRefresh() {
@@ -119,89 +115,93 @@ class Message extends \RuntimeException implements IteratorAggregate, JsonSerial
 
 
 
-	public function getParsedRedirect($redirect) {
-		if (!$redirect) {
+	public static function getParsedRedirectUri($redirectUri = false, $defaultRedirectUri = false, $referer = true) {
+		if (!$redirectUri) {
 			return false;
 		}
 
-		if ($redirect instanceof UriInterface) {
-			return clone $redirect;
+		if ($redirectUri instanceof UriInterface) {
+			return clone $redirectUri;
 		}
 
-		if (is_object($redirect)) {
-			return new PsrUri((string) $redirect);
+		if (is_object($redirectUri) || (is_string($redirectUri) && $redirectUri !== '1')) {
+			return new PsrUri((string) $redirectUri);
 		}
 
 		$request = Route::request();
 		if ($parsedbody = $request->getParsedBody()) {
-			if (is_array($parsedbody) && !empty($parsedbody['redirect'])) {
-				return new PsrUri($parsedbody['redirect']);
+			if (is_array($parsedbody) && !empty($parsedbody['redirect_uri'])) {
+				return new PsrUri($parsedbody['redirect_uri']);
 			}
-			if (is_object($parsedbody) && !empty($parsedbody->redirect)) {
-				return new PsrUri($parsedbody->redirect);
+			if (is_object($parsedbody) && !empty($parsedbody->redirect_uri)) {
+				return new PsrUri($parsedbody->redirect_uri);
 			}
 		}
 
-		if (($params = $request->getQueryParams()) && !empty($params['redirect'])) {
-			return new PsrUri($params['redirect']);
+		if (($params = $request->getQueryParams()) && !empty($params['redirect_uri'])) {
+			return new PsrUri($params['redirect_uri']);
 		}
 
-		if (($params = $request->getCookieParams()) && !empty($params['redirect'])) {
-			return new PsrUri($params['redirect']);
-		}
-
-		if ($referer = $request->getHeaderLine('Referer')) {
+        if ($referer && ($referer = $request->getHeaderLine('referer')) && (!($params = $request->getQueryParams()) || empty($params['_re']) || $params['_re'] < 3)) {
 			return new PsrUri($referer);
 		}
 
+
+        if ($defaultRedirectUri) {
+            if ($defaultRedirectUri instanceof UriInterface) {
+    			return clone $defaultRedirectUri;
+    		}
+            return new PsrUri((string) $defaultRedirectUri);
+        }
 		return new PsrUri('//'. $request->getUri()->getHost() . '/');
 	}
 
-	public function setRedirect($redirect, $whiteList = false) {
-		if ($redirect) {
+
+
+	public function setRedirectUri($redirectUri, $whiteList = false) {
+		if ($redirectUri) {
 			try {
-				$redirect = $this->getParsedRedirect($redirect);
+				$redirectUri = self::getParsedRedirectUri($redirectUri);
 			} catch (\Exception $e) {
-				$redirect = new PsrUri('//'. Route::request()->getUri()->getHost() . '/');
+				$redirectUri = new PsrUri('//'. Route::request()->getUri()->getHost() . '/');
 			}
 
-
 			if (!$whiteList) {
-
-				if ($redirect->getScheme() && !in_array($redirect->getScheme(), ['http', 'https'], true)) {
+				if ($redirectUri->getScheme() && !in_array($redirectUri->getScheme(), ['http', 'https'], true)) {
 					// 协议不是 http https
 					$error = true;
-				} elseif ($redirect->getHost() && !preg_match('/(^|\.)('. implode('|', array_map(function($host){ return preg_quote($host, '/'); }, configure('whitelist_hosts', []))) .')$/i', $redirect->getHost())) {
+				} elseif ($redirectUri->getHost() && !preg_match('/(^|\.)('. implode('|', array_map(function($host){ return preg_quote($host, '/'); }, configure('whitelist_hosts', []))) .')$/i', $redirectUri->getHost())) {
 					// host 无效
 					$error = true;
-				} elseif ($redirect->getUserInfo()) {
+				} elseif ($redirectUri->getUserInfo()) {
 					// 带用户名和密码
 					$error = true;
-				} elseif (stripos($redirect->getPath(), ':') !== false || stripos($redirect->getPath(), ';') !== false) {
+				} elseif (stripos($redirectUri->getPath(), ':') !== false || stripos($redirectUri->getPath(), ';') !== false) {
 					$error = true;
 				}
 				if (isset($error)) {
-					$redirect = new PsrUri('//'. Route::request()->getUri()->getHost() . '/');
+					$redirectUri = new PsrUri('//'. Route::request()->getUri()->getHost() . '/');
 				}
-				if ($redirect->getQuery()) {
-					parse_str($redirect->getQuery(), $queryParams);
+				if ($redirectUri->getQuery()) {
+					parse_str($redirectUri->getQuery(), $queryParams);
 				} else {
 					$queryParams = [];
 				}
 				unset($queryParams['_r'], $queryParams['_message'], $queryParams['_message_code']);
 				$queryParams['_r'] = mt_rand();
+				$queryParams['_re'] = empty(Route::request()->getQueryParams()['_re']) ? 1 : Route::request()->getQueryParams()['_re'] + 1;
 				$queryParams['_message'] = $this->getMessage();
 				$queryParams['_message_code'] = $this->getCode();
 				$queryParams = http_build_query($queryParams, null, '&');
-				$redirect = $redirect->withQuery($queryParams);
+				$redirectUri = $redirectUri->withQuery($queryParams);
 			}
-			if (!$redirect->getScheme()) {
-				$redirect = $redirect->withScheme(Route::request()->getUri()->getScheme());
+			if (!$redirectUri->getScheme()) {
+				$redirectUri = $redirectUri->withScheme(Route::request()->getUri()->getScheme());
 			}
 		} else {
-			$redirect = false;
+			$redirectUri = false;
 		}
-		$this->redirect = $redirect;
+		$this->redirectUri = $redirectUri;
 		return $this;
 	}
 

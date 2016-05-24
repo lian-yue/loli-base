@@ -70,7 +70,7 @@ class ResponseOutput{
 				break;
 			case 'Content-Type':
 				$replace = true;
-				if (strpos($value, ';') === false && ($arrays = explode('/', strtolower($value))) && (in_array($arrays[0], ['text'], true) || (isset($arrays[1]) && in_array($arrays[1], ['javascript', 'x-javascript', 'js', 'plain', 'html', 'xml', 'css'], true)))) {
+				if (strpos($value, ';') === false && ($arrays = explode('/', strtolower($value))) && (in_array($arrays[0], ['text'], true) || (isset($arrays[1]) && in_array($arrays[1], ['javascript', 'x-javascript', 'js', 'json', 'plain', 'html', 'xml', 'css'], true)))) {
 					$value = $value . '; charset=UTF-8';
 				}
 				break;

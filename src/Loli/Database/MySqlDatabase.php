@@ -194,12 +194,15 @@ class MySqlDatabase extends AbstractDatabase{
 		}
 
 		if (is_array($value)) {
-			$value = json_encode($value);
+			$value = $value ? json_encode($value) : '';
 		} elseif (is_object($value)) {
 			if (method_exists($value, '__toString')) {
 				$value = $value->__toString();
 			} else {
 				$value = json_encode($value);
+                if ($value === '[]') {
+                    $value = '';
+                }
 			}
 		}
 

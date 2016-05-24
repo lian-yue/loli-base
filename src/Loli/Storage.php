@@ -12,7 +12,7 @@
 /* ************************************************************************** */
 namespace Loli;
 
-class Storage{
+class Storage {
 	private $link = null;
 
 	public function __call($method, $args) {
@@ -34,4 +34,24 @@ class Storage{
 		}
 		return $this->link->$method(...$args);
 	}
+
+    public static function uri($path) {
+        static $configure;
+
+        if (empty($configure)) {
+            $configure = configure('storage', []);
+        }
+        $path = ltrim($path, '/\\');
+
+        if (($pos = strpos($path, '://')) !== false) {
+            $path = substr($path, $pos + 3);
+        }
+
+        $key = ($pos = strpos($path, '/')) === false ? $path : substr($path, 0, $pos);
+
+        if (empty($configure[$key])) {
+            $key = key($configure);
+        }
+        return $configure[$key]['uri'] . '/' . $path;
+    }
 }

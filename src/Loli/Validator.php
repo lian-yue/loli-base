@@ -29,6 +29,7 @@ class Validator {
 			'min' => -1,				// 允许的最小值
 			'max' => 10,				// 允许的最大值
 			'step' => 3,				// 合法的数字间隔
+			'trim' => false,			// trim
 			'placeholder' => 3,			// 表单的输入提示
 			'minlength' => 1,			// 最小字符串长度
 			'maxlength' => 1,			// 最大字符串长度
@@ -43,6 +44,7 @@ class Validator {
 
 	protected $attributes = [
 		'name',
+		'trim',
 		'required',
 		'minlength',
 		'maxlength',
@@ -179,14 +181,13 @@ class Validator {
 				$message = $error;
 				continue;
 			} elseif ($error) {
-				$message = new Message(['message' => $error, 'title' => $input['title'], 'name' => $input['name'], 'rule' => $input['type']], 50, $message);
+				$message = new Message(['message' => $error, 'title' => $input['title'], 'name' => $input['name'], 'rule' => $input['type']], 400, $message);
 				continue;
 			}
 
 
 
 			// 属性
-			$empty = $value === '' || $value === false || $value === [] || ($value instanceof UploadedFileInterface && $value->getError() === UPLOAD_ERR_NO_FILE);
 			foreach($this->attributes as $attribute) {
 				if (!isset($input[$attribute]) || $input[$attribute] === false) {
 					continue;
@@ -195,14 +196,14 @@ class Validator {
 				if (!method_exists($this, $method)) {
 					continue;
 				}
+                $empty = $value === '' || $value === false || $value === [] || ($value instanceof UploadedFileInterface && $value->getError() === UPLOAD_ERR_NO_FILE);
 				$attributeValue = $input[$attribute];
-
 				$error = $this->$method($value, $attributeValue, $empty, $input, $data, $message);
 				if ($error instanceof Message) {
 					$message = $error;
 					break;
 				} elseif ($error) {
-					$message = new Message(['message' => $error, 'title' => $input['title'], 'name' => $input['name'], 'rule' => $attributeValue], 50, $message);
+					$message = new Message(['message' => $error, 'title' => $input['title'], 'name' => $input['name'], 'rule' => $attributeValue], 400, $message);
 					break;
 				}
 			}
@@ -297,8 +298,7 @@ class Validator {
 		if ($value{0} !== '+' && strlen($value) > 11) {
 			$value = '+' . $value;
 		}
-
-		$value = preg_replace('/+(0+)/', '+', $value);
+		$value = preg_replace('/\+(0+)/', '+', $value);
 
 		if (!preg_match('/(\+?|0*)([1-9]\d{5,13})/', $value)) {
 			return 'validator';
@@ -311,7 +311,7 @@ class Validator {
 			return;
 		}
 		$value = strtolower(trim($value));
-		if (!preg_match('/^\#([0-9a-f]{3}|[0-9a-f]{6})$/i', $value)) {
+		if (!preg_match('/^\#([0-9a-f]{3}|[0-9a-f]{6})$/Di', $value)) {
 			return 'validator';
 		}
 	}
@@ -321,7 +321,7 @@ class Validator {
 			$value = '';
 			return;
 		}
-		if (!preg_match('/^\d{4}$/', $value)) {
+		if (!preg_match('/^\d{4}$/D', $value)) {
 			return 'validator';
 		}
 	}
@@ -331,7 +331,7 @@ class Validator {
 			$value = '';
 			return;
 		}
-		if (!preg_match('/^\d{4}\-(?:0\d|1[0-2])$/', $value)) {
+		if (!preg_match('/^\d{4}\-(?:0\d|1[0-2])$/D', $value)) {
 			return 'validator';
 		}
 	}
@@ -343,7 +343,7 @@ class Validator {
 		}
 
 		$value = strtoupper(trim($value));
-		if (!preg_match('/^\d{4}\-W(?:0\d|1[0-2])$/', $value)) {
+		if (!preg_match('/^\d{4}\-W(?:0\d|1[0-2])$/D', $value)) {
 			return 'validator';
 		}
 	}
@@ -395,7 +395,7 @@ class Validator {
 		$value = $datetime->format('Y-m-d h:i:s');
 	}
 
-	protected function radioType(&$value) {
+	protected function radioType(&$value, $empty, &$input) {
 		if (!is_scalar($value) || !isset($input['option'][$value])) {
 			return 'validator';
 		}
@@ -463,11 +463,11 @@ class Validator {
 				return;
 			}
 			if (count($value) !== 1) {
-				return new Message(['message' => 'validator_max_count', 'title' => $input['title'], 'name' => $input['name'], 'rule' => 1], 50, $message);
+				return new Message(['message' => 'validator_max_count', 'title' => $input['title'], 'name' => $input['name'], 'rule' => 1], 400, $message);
 			}
 			$value = reset($value);
 			if ($value->getError() !== UPLOAD_ERR_OK) {
-				return new Message(['message' => 'validator_file_' . $value->getError(), 'title' => $input['title'], 'name' => $input['name'], 'rule' => $value->getError()], 50, $message);
+				return new Message(['message' => 'validator_file_' . $value->getError(), 'title' => $input['title'], 'name' => $input['name'], 'rule' => $value->getError()], 400, $message);
 			}
 			return;
 		}
@@ -480,7 +480,7 @@ class Validator {
 
 		foreach($value as $uploadedFile) {
 			if ($uploadedFile->getError() !== UPLOAD_ERR_OK) {
-				return new Message(['message' => 'validator_file_' . $uploadedFile->getError(), 'title' => $input['title'], 'name' => $input['name'], 'rule' => $uploadedFile->getError()], 50, $message);
+				return new Message(['message' => 'validator_file_' . $uploadedFile->getError(), 'title' => $input['title'], 'name' => $input['name'], 'rule' => $uploadedFile->getError()], 400, $message);
 			}
 		}
 	}
@@ -490,11 +490,17 @@ class Validator {
 		$value = (string) $value;
 	}
 
+	protected function trimAttribute(&$value) {
+        if (is_string($value)) {
+            $value = trim($value);
+        }
+    }
+
 	protected function nameAttribute(&$value, $attributeValue, $empty, &$input, &$data, $message) {
 		// 重复字段错误
 		if (substr($attributeValue, -6) === '_again') {
 			if (isset($data[$again = substr($attributeValue, 0, -6)]) && $value != $data[$again]) {
-				return new Message(['message' => 'validator_again', 'title' => empty($this->rules[$again]['title']) ? $input['title'] : $this->rules[$again]['title'], 'name' => $input['name'], 'rule' => $attributeValue], 50, $message);
+				return new Message(['message' => 'validator_again', 'title' => empty($this->rules[$again]['title']) ? $input['title'] : $this->rules[$again]['title'], 'name' => $input['name'], 'rule' => $attributeValue], 400, $message);
 			}
 			unset($data[$attributeValue]);
 		}
@@ -530,7 +536,7 @@ class Validator {
 
 
 		if (is_scalar($value) && mb_strlen($value) < $attributeValue) {
-			return 'validator_min_length';
+			return 'validator_min_string';
 		}
 	}
 
@@ -557,7 +563,7 @@ class Validator {
 
 
 		if (is_scalar($value) && mb_strlen($value) > $attributeValue) {
-			return 'validator_max_length';
+			return 'validator_max_string';
 		}
 	}
 
@@ -589,7 +595,7 @@ class Validator {
 		}
 
 		if (is_scalar($value) && mb_strlen($value) > $attributeValue) {
-			return 'validator_max_length';
+			return 'validator_max_string';
 		}
 	}
 
@@ -673,7 +679,13 @@ class Validator {
 		} else {
 			$subjects = $value;
 		}
-		$pattern = '/'. str_replace('/', '\\/', $attributeValue) .'/';
+        $pattern = preg_replace_callback('/(\\\+)u\{([0-9a-z]{2,10})\}/i', function($matches) {
+            if ((strlen($matches[1]) % 2) == 0) {
+                return $matches[1] . 'u{' . $matches[2] . '}';
+            }
+            return $matches[1] . 'x{' . $matches[2] . '}';
+        }, $attributeValue);
+		$pattern = '/^'. str_replace('/', '\\/', $pattern) .'$/Du';
 		foreach ($subjects as $subject) {
 			if (!preg_match($pattern,  $subject)) {
 				return 'validator';
@@ -708,16 +720,17 @@ class Validator {
 			}
 
 			if ($uploadedFile->getError() !== UPLOAD_ERR_OK) {
-				return new Message(['message' => 'validator_file_' . $uploadedFile->getError(), 'title' => $input['title'], 'name' => $input['name'], 'rule' => $uploadedFile->getError()], 50, $message);
+				return new Message(['message' => 'validator_file_' . $uploadedFile->getError(), 'title' => $input['title'], 'name' => $input['name'], 'rule' => $uploadedFile->getError()], 400, $message);
 			}
 
-			$stream = $this->getStream();
+			$stream = $uploadedFile->getStream();
 			$mimeType = $finfo->buffer($stream->read(1024 * 16));
 			$stream->rewind();
 
+
 			if (in_array($mimeType, $accept, true)) {
 
-			} elseif ($image && in_array($mimeType, ['image/png', 'image/jpeg', 'image/webp', 'image/bmp', 'image/gif', 'image/svg', 'image/svg+xml'], true)) {
+			} elseif ($image && in_array($mimeType, ['image/png', 'image/jpeg', 'image/webp', 'image/bmp', 'image/gif'], true)) {
 
 			} elseif ($audio && explode('/', $mimeType)[0] === 'audio') {
 
@@ -744,18 +757,16 @@ class Validator {
 
 	protected function existsAttribute(&$value, $attributeValue, $empty, &$input) {
 		// 不存在
-		if (!$this->query($attributeValue, $input['name'], $value)) {
+		if (!$empty && !$this->query($attributeValue, $input['name'], $value)) {
 			return 'validator_exists';
 		}
 	}
 
 	protected function uniqueAttribute(&$value, $attributeValue, $empty, &$input) {
-		if ($this->query($attributeValue, $input['name'], $value)) {
+		if (!$empty && $this->query($attributeValue, $input['name'], $value)) {
 			return 'validator_unique';
 		}
 	}
-
-
 
 
 	protected function input($name, &$input) {
@@ -802,11 +813,11 @@ class Validator {
 		} else {
 			$class = 'App\\' . strtr($rule[0], '/.@', '\\\\\\');
 		}
-		if (!empty($input['unique'][1])) {
-			$column = $input['unique'][1];
+		if (!empty($rule[1])) {
+			$column = $rule[1];
 		}
 		$model = $class::query($column, $value, '=');
-		if (!empty($input['unique'][2]) && ($json = json_decode($input['unique'][2]))) {
+		if (!empty($rule[2]) && ($json = json_decode($rule[2]))) {
 			foreach ($json as $column => $value) {
 				if (is_object($value) && property_exists($value, 'value')) {
 					$model->query($column, $value->value, isset($value->compare) ? $value->compare : '');
@@ -815,6 +826,6 @@ class Validator {
 				}
 			}
 		}
-		return $model->selectRow();
+		return $model->selectOne();
 	}
 }

@@ -46,6 +46,9 @@ class Route extends ArrayObject{
 
 	const PJAX_HEADER = 'X-Pjax';
 
+    const PJAX_PARAM = 'pjax';
+
+
 
 	const JSON_HEADER = 'X-Json';
 
@@ -57,6 +60,7 @@ class Route extends ArrayObject{
 		'request' => 'static::load',
 		'response' => 'static::load',
 		'extension' => 'static::load',
+		'params' => 'static::load',
 		'ajax' => 'static::load',
 		'pjax' => 'static::load',
 		'json' => 'static::load',
@@ -88,7 +92,7 @@ class Route extends ArrayObject{
 			$scheme = $this->request->getUri()->getScheme();
 			$method = $this->request->getMethod();
 			$host = $this->request->getUri()->getHost();
-			$path = $this->request->getUri()->getPath();
+			$path = urldecode($this->request->getUri()->getPath());
 			$params = [];
 			$queryParams = $this->request->getQueryParams();
 			if ($bodyParams = $this->request->getParsedBody())  {
@@ -124,7 +128,8 @@ class Route extends ArrayObject{
 						$replace['"'.$name.'"'] = $pattern;
 					}
 				}
-				if (!preg_match('/^'. strtr(preg_quote($rule['pathRule'][0], '/'), $replace) . ($rule['isFile'] ? '' :  '\/?') . '$/u', $rule['isFile'] ? $path : $dirPath, $pathMatches)) {
+
+				if (!preg_match('/^'. strtr(preg_quote($rule['pathRule'][0], '/'), $replace) . ($rule['isFile'] ? '' :  '\/?') . '$/Du', $rule['isFile'] ? $path : $dirPath, $pathMatches)) {
 					continue;
 				}
 
@@ -157,7 +162,7 @@ class Route extends ArrayObject{
 
 				// 是目录就跳到目录去
 				if (!$rule['isFile'] && in_array($method, ['GET', 'HEAD']) && substr($rule['path'], -1, 1) === '/' && substr($path, -1, 1) !== '/') {
-					throw new Message('Redirect into the directory', 301, ['redirect' => $scheme .'://' . $host . $path . '/' . (($queryString = $this->request->getUri()->getQuery()) ? '?' . $queryString : '')], '', 0);
+					throw new Message('Redirect into the directory', 301, ['redirect_uri' => $scheme .'://' . $host . $path . '/' . (($queryString = $this->request->getUri()->getQuery()) ? '?' . $queryString : '')], '', 0);
 				}
 
 				$params = $replace = [];
@@ -224,7 +229,6 @@ class Route extends ArrayObject{
 			// 写入附加属性
 			$this->request = $this->request->withAttribute('params', $params);
 
-
 			$this->controller = $controller;
 			$this->node = $node;
 
@@ -239,6 +243,7 @@ class Route extends ArrayObject{
 			unset($uploadedFiles, $bodyParams, $queryParams);
 
 
+            $this->params = $params;
 
 			// 中间键 请求
 			foreach ($middleware as $value) {
@@ -247,8 +252,11 @@ class Route extends ArrayObject{
 				}
 			}
 
+            $this->params = $params;
+
 			// 执行方法
 			$view = $class->$controller[1]($params);
+
 		} catch (Message $view) {
 			// Message
 		} catch (\Exception $e) {
@@ -275,8 +283,8 @@ class Route extends ArrayObject{
 			while ($message) {
 				$data += $message->getData();
 				$data['messages'][] = $message;
-				if (!isset($data['redirect'])) {
-					$data['redirect'] = $message->getRedirect();
+				if (!isset($data['redirect_uri'])) {
+					$data['redirect_uri'] = (string) $message->getRedirectUri();
 					$data['refresh'] = $message->getRefresh();
 				}
 				if (!isset($data['refresh'])) {
@@ -285,11 +293,15 @@ class Route extends ArrayObject{
 				$message = $message->getPrevious();
 			}
 			$data['messages'] = array_reverse($data['messages']);
+            if ($view->getCode() === 301) {
+    			$this->response = $this->response->withHeader('Cache-Control', Header::cacheControl(['public' => true, 'max-age' => 86400]));
+            } else {
+                $this->response = $this->response->withHeader('Cache-Control', Header::cacheControl(['no-cache' => true, 'max-age' => 0]));
+            }
 
-			$this->response = $this->response->withHeader('Cache-Control', Header::cacheControl(['no-cache' => true, 'max-age' => 0]));
 			if ($this->response->getStatusCode() === 200) {
-				if ($data['redirect'] && $data['refresh'] !== false && !$data['refresh']) {
-					$this->response = $this->response->withStatus(302)->withHeader('Location', $data['redirect']);
+				if ($data['redirect_uri'] && $data['refresh'] !== false && !$data['refresh']) {
+					$this->response = $this->response->withStatus($view->getCode() === 301 ? 301: 302)->withHeader('Location', $data['redirect_uri']);
 				}
 			}
 
@@ -332,9 +344,10 @@ class Route extends ArrayObject{
 				}
 			}
 		}
-			if ($this->token->isNew()) {
-				$this->response = $this->response->withHeader(self::TOKEN_HEADER, $this->token->get(true))->withAddedHeader('Set-Cookie', Header::setCookie(self::TOKEN_COOKIE, $this->token->get(true), 94608000, '/'));
-			}
+
+        if ($this->token->isNew()) {
+			$this->response = $this->response->withHeader(self::TOKEN_HEADER, $this->token->get(true))->withAddedHeader('Set-Cookie', Header::setCookie(self::TOKEN_COOKIE, $this->token->get(true), 94608000, '/'));
+		}
 	}
 
 
@@ -355,13 +368,16 @@ class Route extends ArrayObject{
 				// 后缀
 				return strtolower(pathinfo(self::request()->getUri()->getPath(), PATHINFO_EXTENSION));
 				break;
+			case 'params':
+				return [];
+				break;
 			case 'ajax':
 				// 是否是ajax
-				return self::request()->getHeader(self::AJAX_HEADER) || strtolower($this->getHeaderLine('X-Requested-With')) === 'xmlhttprequest';
+				return self::request()->getHeader(self::AJAX_HEADER) || strtolower(self::request()->getHeaderLine('X-Requested-With')) === 'xmlhttprequest';
 				break;
 			case 'pjax':
 				// 是否是 pjax
-				return (bool) self::request()->getHeaderLine(self::PJAX_HEADER);
+				return self::request()->getHeaderLine(self::PJAX_HEADER) || self::request()->getHeaderLine(self::PJAX_PARAM);
 				break;
 			case 'json':
 				// 是否是 json
@@ -416,8 +432,8 @@ class Route extends ArrayObject{
 				return $ip;
 				break;
 			case 'auth':
-				// 验证信息
-				if (!$auth = Auth::selectRow(self::token()->get())) {
+				// 验证信息;
+				if (!$auth = Auth::selectOne(self::token()->get())) {
 					$request = self::request();
 					$auth = new Auth(['token' => self::token()->get(), 'ip' => self::ip(), 'user_id' => 0, 'user_agent' => substr($request->getHeaderLine('User-Agent'), 0, 255), 'profiles' => [], 'created' => new DateTime('now')]);
 					$auth->insert();

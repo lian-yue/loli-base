@@ -57,7 +57,6 @@ class Shh2Storage extends AbstractStorage{
 
 	private function base() {
 		if ($this->link === null) {
-			print_r($this);
 			$hostname = explode(':', $this->hostname, 2) + [1 => 22];
 			if (!$this->link = @ssh2_connect($hostname[0], $hostname[1], $this->publicKey || $this->privateKey ? $this->methods + ['hostkey' => 'ssh-rsa'] : $this->methods, ['disconnect' => [$this, 'disconnect']])) {
 				$this->link = false;

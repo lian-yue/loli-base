@@ -67,9 +67,9 @@ class DateTime extends \DateTime implements JsonSerializable{
 			return self::translate('Now');
 		}
 
-		$since = self::translate(['{1} ' .$value . ($diff > 1 ? 's' : ''), $diff]);
+		$since = self::translate(['{value} ' .$value . ($diff > 1 ? 's' : ''), 'value' => $diff]);
 
- 		return self::translate(['{1} ' . ($dateInterval->invert ? 'later' : 'ago'), $since]);
+ 		return self::translate(['{value} ' . ($dateInterval->invert ? 'later' : 'ago'), 'value' => $since]);
 	}
 
 
@@ -83,7 +83,7 @@ class DateTime extends \DateTime implements JsonSerializable{
 
 
 	public function jsonSerialize() {
-		return ['date' => $this->__toString(), 'diff' => $this->formatDiff()];
+		return $this->__toString();
 	}
 
 	public static function createFromFormat($format, $time, $timezone = null) {

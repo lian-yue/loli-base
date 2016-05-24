@@ -576,7 +576,7 @@ class Cursor implements IteratorAggregate{
 
 		// 主键设定
 		$lowerName = strtolower($name);
-		if ($args && in_array($lowerName, ['update', 'delete', 'select', 'selectrow', 'count', 'insert'], true)) {
+		if ($args && in_array($lowerName, ['update', 'delete', 'select', 'selectone', 'count', 'insert'], true)) {
 			if (count($args) !== count($this->primary)) {
 				$this->database->throwLog(new QueryException(__METHOD__.'('.$name.')', 'The primary key is not the same number of parameters'));
 			}
@@ -589,7 +589,7 @@ class Cursor implements IteratorAggregate{
 			$this->offset(0)->limit(1)->cache($this->primaryCache, 0, false);
 			$result = $this->builder->$name(...$args);
 		} else {
-			$result = $this->builder->$name();
+			$result = $this->builder->$name(...$args);
 		}
 
 

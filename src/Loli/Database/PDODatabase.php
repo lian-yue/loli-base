@@ -197,13 +197,16 @@ class PDODatabase extends AbstractDatabase{
 			$value = clone $value;
 			$value = $value->setTimezone($timezone)->format('Y-m-d H:i:s');
 		}
-		if (is_array($value)) {
-			$value = json_encode($value);
+        if (is_array($value)) {
+			$value = $value ? json_encode($value) : '';
 		} elseif (is_object($value)) {
 			if (method_exists($value, '__toString')) {
 				$value = $value->__toString();
 			} else {
 				$value = json_encode($value);
+                if ($value === '[]') {
+                    $value = '';
+                }
 			}
 		}
 		if ($value === null) {

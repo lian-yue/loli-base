@@ -23,7 +23,7 @@
 /*
 /* ************************************************************************** */
 namespace Loli\Storage;
-use streamWrapper;
+
 
 use Psr\Log\LogLevel;
 use Psr\Log\LoggerAwareInterface;
@@ -32,7 +32,9 @@ use Loli\Traits\ConstructConfigTrait;
 use Loli\Traits\LoggerAwareExceptionTrait;
 
 
-abstract class AbstractStorage implements streamWrapper, LoggerAwareInterface{
+
+
+abstract class AbstractStorage implements LoggerAwareInterface{
 	use ConstructConfigTrait, LoggerAwareExceptionTrait;
 
 	public function path($path, &$protocol = null) {

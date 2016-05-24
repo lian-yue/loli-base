@@ -51,7 +51,7 @@ class ServerRequest extends Request implements ServerRequestInterface {
 			$this->parsedBody = to_array($parsedBody);
 		} elseif (is_array($body)) {
 			$this->parsedBody = to_array($body);
-		} elseif (in_array($contentType = strtolower($this->getHeaderLine('Content-Type')), ['application/json', 'text/json'], true)) {
+		} elseif (in_array($contentType = strtolower(trim(explode(';', $this->getHeaderLine('Content-Type'))[0])), ['application/json', 'text/json'], true)) {
 			$stream = $this->getBody();
 			if ($stream->getSize() <= $stream) {
 				$contents = $stream->getContents();

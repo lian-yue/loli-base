@@ -39,7 +39,7 @@ class ServerRequestInput{
 			$trustedProxy = true;
 		} elseif (in_array($this->server['REMOTE_ADDR'], ['127.0.0.1', 'localhost'], true)) {
 			$trustedProxy = true;
-		} elseif (($trustedProxy = $configure('trustedProxy', [])) && filter_var($this->server['REMOTE_ADDR'], FILTER_VALIDATE_IP) && IP::match($trustedProxy, $this->server['REMOTE_ADDR'])) {
+		} elseif (($trustedProxy = configure('trustedProxy', [])) && filter_var($this->server['REMOTE_ADDR'], FILTER_VALIDATE_IP) && IP::match($trustedProxy, $this->server['REMOTE_ADDR'])) {
 			$trustedProxy = true;
 		} else {
 			$trustedProxy = false;
@@ -213,9 +213,9 @@ class ServerRequestInput{
 			$parsedBody = $_POST;
 		} elseif ($this->body->getSize() > self::$maxParsedSize) {
 			$parsedBody = [];
-		} elseif (!empty($this->headers['Content-Type']) && in_array(strtolower($this->headers['Content-Type']), ['application/json', 'text/json'], true)) {
+		} elseif (!empty($this->headers['Content-Type']) && in_array(strtolower(trim(explode(';', $this->headers['Content-Type'])[0])), ['application/json', 'text/json'], true)) {
 			$parsedBody = ($json = json_decode(trim($this->body->getContents()), true)) ? $json : [];
-		} elseif (!empty($this->headers['Content-Type']) && strtolower($this->headers['Content-Type']) === 'application/x-www-form-urlencoded') {
+		} elseif (!empty($this->headers['Content-Type']) && strtolower(trim(explode(';', $this->headers['Content-Type'])[0])) === 'application/x-www-form-urlencoded') {
 			parse_str(trim($this->body->getContents()), $parsedBody);
 		}
 		$this->parsedBody = $parsedBody;

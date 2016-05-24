@@ -66,7 +66,7 @@ class FileStorage extends AbstractStorage{
 	}
 
 	public function mkdir($path, $mode, $options) {
-		return @mkdir($this->dir . $this->path($path), $this->chmodDir);
+		return @mkdir($this->dir . $this->path($path), $this->chmodDir, $options & STREAM_MKDIR_RECURSIVE);
 	}
 
 	public function rmdir($path) {

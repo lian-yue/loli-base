@@ -660,17 +660,18 @@ class SqlBuilder extends AbstractBuilder{
 	private function getGroup($type) {
 		if (!isset($this->data['group'])) {
 			$group = [];
-			if ($option = $this->getOptions('order')) {
+			if ($option = $this->getOptions('group')) {
 				foreach($option as $value) {
 					if (!$value->value) {
 						continue;
 					}
+
+                    $function = $value->function ? (empty(self::$functions[$function = strtoupper($value->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : false;
 					if ($value->expression) {
 						$value = $value->value;
 					} elseif (!is_string($value->value) || !($value = $this->database->key($value->value))) {
 						continue;
 					}
-					$function = $option->function ? (empty(self::$functions[$function = strtoupper($option->function)]) ? preg_replace('/[^A-Z]/', '', $function) : $function) : false;
 					if ($function) {
 						$value = $function . '('.$value.')';
 					}
@@ -1371,7 +1372,7 @@ class SqlBuilder extends AbstractBuilder{
 				$command = 'DROP TABLE :table;';
 		}
 
-		if ($exists && (!($option = $this->getOptions('exists')) || !$option->value)) {
+		if ($exists && (!($option = $this->getOptions('exists')) || !end($option)->value)) {
 			$exists = '';
 		}
 		return $this->command(strtr($command, [':table' => $table, ':exists' => $exists]), 60);
@@ -1540,7 +1541,7 @@ class SqlBuilder extends AbstractBuilder{
 			unset($value);
 			$document = implode(', ', $document);
 
-			$command = 'UPDATE :form SET :document :where :order :offset :limit';
+			$command = 'UPDATE :form SET :document :where :order :limit :offset';
 			$this->data['update'] = strtr($command, [':ignore' => $this->getIgnore(), ':form' => $this->getFrom('UPDATE'), ':document' => $document, ':where' => $this->getWhere(), ':order' => $this->getOrder(), ':offset' => $this->getOffset(), ':limit' => $this->getLimit()]);
 
 		}
@@ -1567,7 +1568,7 @@ class SqlBuilder extends AbstractBuilder{
 			$this->data['selectReplaces'] = [':field' => $this->getFields(), ':form' => $this->getFrom('SELECT'), ':where' => $this->getWhere(), ':group' => $this->getGroup('SELECT'), ':having' => $this->getHaving(), ':order' => $this->getOrder(), ':offset' => $this->getOffset(), ':limit' => $this->getLimit(), ':union' => $this->getUnion(), ':lock' => $this->getLock()];
 
 			// 命令行
-			$this->data['selectCommand'] = strtr('SELECT :rows :field :form :where :group :having :order :offset :limit :lock :union;', $this->data['selectReplaces'] + [':rows' => $this->getRows()]);
+			$this->data['selectCommand'] = strtr('SELECT :rows :field :form :where :group :having :order :limit :offset :lock :union;', $this->data['selectReplaces'] + [':rows' => $this->getRows()]);
 		}
 
 		// 不需要执行的
@@ -1611,7 +1612,7 @@ class SqlBuilder extends AbstractBuilder{
 		return $this->data['select'];
 	}
 
-	public function selectRow() {
+	public function selectOne() {
 		$this->getLimit();
 		if (empty($this->data['limit'])) {
 			$this->data['limit'] = "LIMIT 1";
@@ -1705,7 +1706,7 @@ class SqlBuilder extends AbstractBuilder{
 
 
 	public function delete() {
-		$command = strtr('DELETE :ignore :form :where :order :offset :limit;', [':ignore' => $this->getIgnore(), ':form' => $this->getFrom('DELETE'), ':where' => $this->getWhere(), ':order' => $this->getOrder(), ':offset' => $this->getOffset(), ':limit' => $this->getLimit()]);
+		$command = strtr('DELETE :ignore :form :where :order :limit :offset;', [':ignore' => $this->getIgnore(), ':form' => $this->getFrom('DELETE'), ':where' => $this->getWhere(), ':order' => $this->getOrder(), ':offset' => $this->getOffset(), ':limit' => $this->getLimit()]);
 		return $this->command($command);
 	}
 

@@ -90,11 +90,11 @@ class Locale{
 			}
 			return strtr(self::translate(reset($text), $groups, $original), $replace);
 		}
-
+        $text2 = strtolower($text);
 		foreach ((array) $groups as $group) {
 			// 如果已经有了直接返回
-			if (isset(self::$groups[self::$language][$group][$text])) {
-				return self::$groups[self::$language][$group][$text];
+			if (isset(self::$groups[self::$language][$group][$text2])) {
+				return self::$groups[self::$language][$group][$text2];
 			}
 
 			if (self::$languageFile && !isset(self::$groups[self::$language][$group]) && !in_array($file = strtr(self::$languageFile,  ['{language}'=> self::$language, '{group}' => $group]), self::$load, true)) {
@@ -104,8 +104,8 @@ class Locale{
 				}
 				if (is_file($file)) {
 					self::$groups[self::$language][$group] = ((array) require $file) + self::$groups[self::$language][$group];
-					if (isset(self::$groups[self::$language][$group][$text])) {
-						return self::$groups[self::$language][$group][$text];
+					if (isset(self::$groups[self::$language][$group][$text2])) {
+						return self::$groups[self::$language][$group][$text2];
 					}
 				}
 			}

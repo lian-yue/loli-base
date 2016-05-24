@@ -13,6 +13,6 @@
 namespace Loli;
 class Controller {
 	public function __call($name, $args) {
-		throw new Message('The controller method does not exist', 404);
+		throw new Message('controller_exists', 404);
 	}
 }
